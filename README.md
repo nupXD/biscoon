@@ -104,6 +104,62 @@ biscoon-project/
 - Edit HTML files in the `pages/` directory
 - Modify styles in `assets/css/main.css`
 - Update JavaScript in `assets/js/biscoon.js`
+- Add backend API routes in `server.js`
+
+### Running the backend
+1. Install dependencies with `npm install`
+2. Start the server with `npm start`
+3. Open the site through `http://localhost:4000/index.html`
+
+### Backend and database
+- The backend is built with `Express.js` in `server.js`
+- User authentication and listing persistence are stored in SQLite
+- The database file is created at `data/biscoon.db`
+- Tables are created automatically on first run
+
+### SQLite schema
+- `users`
+  - `id` TEXT PRIMARY KEY
+  - `name` TEXT NOT NULL
+  - `email` TEXT NOT NULL UNIQUE
+  - `phone` TEXT
+  - `password` TEXT NOT NULL
+  - `createdAt` TEXT NOT NULL
+- `listings`
+  - `id` TEXT PRIMARY KEY
+  - `userId` TEXT NOT NULL
+  - `title` TEXT NOT NULL
+  - `description` TEXT NOT NULL
+  - `category` TEXT NOT NULL
+  - `subcategory` TEXT
+  - `price` TEXT
+  - `location` TEXT
+  - `contactEmail` TEXT
+  - `contactPhone` TEXT
+  - `images` TEXT
+  - `createdAt` TEXT NOT NULL
+  - `updatedAt` TEXT NOT NULL
+
+### API endpoints
+- `POST /api/auth/register`
+  - Register a new user
+  - Request body: `name`, `email`, `phone`, `password`, `confirmPassword`
+  - Response: user data and JWT token
+- `POST /api/auth/login`
+  - Login with existing user credentials
+  - Request body: `email`, `password`
+  - Response: user data and JWT token
+- `GET /api/auth/me`
+  - Returns current authenticated user
+  - Requires `Authorization: Bearer <token>` header
+- `POST /api/listings`
+  - Create a new listing for the authenticated user
+  - Request body: `title`, `description`, `category`, optionally `subcategory`, `price`, `location`, `contactEmail`, `contactPhone`, `images`
+- `GET /api/listings`
+  - Retrieve all listings
+  - Optional query: `?category=<category>`
+- `GET /api/listings/:id`
+  - Retrieve a single listing by ID
 
 ## 🛠️ Technologies Used
 

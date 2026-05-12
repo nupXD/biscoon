@@ -80,7 +80,7 @@
   </div>
   <div class="auth-layout">
     <div class="auth-card">
-      <form action="#" method="post">
+      <form id="registerForm" action="#" method="post">
         <div class="form-group">
           <label class="form-label" for="name">पूरा नाम / Full name</label>
           <input class="form-input" id="name" name="name" type="text" placeholder="Your name" required />
@@ -101,6 +101,7 @@
           <label class="form-label" for="confirmPassword">पासवर्ड पुष्टि / Confirm password</label>
           <input class="form-input" id="confirmPassword" name="confirmPassword" type="password" placeholder="••••••••" required />
         </div>
+        <div id="authMessage" class="form-helper"></div>
         <div class="form-row">
           <label><input type="checkbox" name="agree" required /> I agree to Biscoon’s terms and privacy policy</label>
         </div>
@@ -128,5 +129,6 @@
   </div>
 </section>
 <script src="../../assets/js/biscoon.js"></script>
+<script src="../../assets/js/auth.js"></script>
 </body>
 </html>
