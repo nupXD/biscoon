@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Biscoon — The Global Nepali Ecosystem</title>
+<meta name="description" content="Connecting 4.5 million Nepalis worldwide through community, commerce, and culture."/>
+<link rel="stylesheet" href="assets/css/main.css"/>
+<style>
+/* ── Homepage-specific styles ── */
+.hero {
+  background: linear-gradient(160deg, #fff 0%, #fef8f7 55%, #fcedeb 100%);
+  padding: 56px 40px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before { content:''; position:absolute; top:-80px; right:-100px; width:500px; height:500px; border-radius:50%; background:radial-gradient(circle,rgba(192,57,43,.05) 0%,transparent 70%); pointer-events:none }
+.hero::after { content:'नेपाल'; position:absolute; right:40px; top:40px; font-family:'Noto Sans Devanagari',sans-serif; font-size:120px; font-weight:700; color:rgba(192,57,43,.04); pointer-events:none; user-select:none }
+.hero-eyebrow { font-size:10.5px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.14em; margin-bottom:20px; font-family:'IBM Plex Mono',monospace }
+.biscoon-name { font-family:'Cormorant Garamond',serif; font-size:clamp(60px,8vw,100px); font-style:italic; font-weight:700; color:var(--red); line-height:.95; display:block; letter-spacing:-.02em }
+.biscoon-sub  { font-family:'Cormorant Garamond',serif; font-size:clamp(20px,3vw,34px); font-style:italic; font-weight:400; color:var(--navy); display:block; margin-top:6px }
+.hero-devanagari { font-family:'Noto Sans Devanagari',sans-serif; font-size:15px; color:var(--gray-500); margin:14px 0 6px }
+.hero-desc { font-size:14px; color:var(--text-muted); max-width:520px; line-height:1.7; margin-bottom:28px }
+.location-bar { margin-top:10px; font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px }
+.location-bar a { color:var(--red); text-decoration:none; font-weight:500; border-bottom:1px dashed var(--red-light) }
+.stats-strip { display:flex; margin-top:30px; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; background:white; box-shadow:0 2px 10px rgba(0,0,0,.05); max-width:700px }
+.stat-cell { flex:1; padding:14px 16px; text-align:center; border-right:1.5px solid var(--border); transition:background .15s; cursor:default }
+.stat-cell:hover { background:var(--gray-100) }
+.stat-cell:last-child { border-right:none }
+.stat-num { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:700; color:var(--red); display:block; line-height:1.1 }
+.stat-lbl { font-size:10.5px; color:var(--text-muted); margin-top:3px; display:block }
+.stat-cell.pg-stat { background:var(--red); cursor:pointer; transition:background .15s }
+.stat-cell.pg-stat:hover { background:var(--red-dark) }
+.stat-cell.pg-stat .stat-num, .stat-cell.pg-stat .stat-lbl { color:white }
+/* Category Grid */
+.cat-section { padding:44px 40px; background:var(--off-white); border-top:1px solid var(--border) }
+.cat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:9px; margin-top:22px }
+.cat-card { border:1.5px solid var(--border); border-radius:10px; padding:13px 8px; text-align:center; cursor:pointer; transition:background .15s,border-color .2s,transform .2s,box-shadow .2s; position:relative; background:white; text-decoration:none; display:block; color:inherit }
+.cat-card:hover { background:var(--red-ultra); border-color:var(--red); transform:translateY(-2px); box-shadow:0 4px 14px rgba(192,57,43,.1) }
+.cat-card:hover .cn,.cat-card:hover .ce { color:var(--red) }
+.cat-card.featured { border-color:var(--red); border-width:2px; background:var(--red-ultra) }
+.cat-emoji { font-size:22px; display:block; margin-bottom:5px; line-height:1.3 }
+.cn { font-family:'Noto Sans Devanagari',sans-serif; font-size:10.5px; font-weight:500; color:var(--text); display:block; line-height:1.3; transition:color .15s }
+.ce { font-size:9.5px; color:var(--text-muted); display:block; margin-top:2px; transition:color .15s }
+.badge-new { position:absolute; top:5px; right:5px; background:var(--gold); color:var(--navy); font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
+.badge-feat { position:absolute; top:5px; left:5px; background:var(--red); color:white; font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
+/* Alert banners */
+.alert-banner { padding:13px 40px; display:flex; align-items:center; gap:12px; font-size:13px; line-height:1.4 }
+.alert-arrival { background:#fff5f5; border-top:3px solid var(--red); border-bottom:1px solid #fcc }
+.alert-tps { background:#fffbeb; border-top:3px solid var(--gold); border-bottom:1px solid #fde68a }
+.alert-icon { font-size:18px; flex-shrink:0 }
+.alert-link { margin-left:auto; color:var(--red); text-decoration:none; font-weight:600; font-size:12px; white-space:nowrap; flex-shrink:0; border:1px solid var(--red-light); padding:4px 12px; border-radius:20px; transition:background .15s }
+.alert-link:hover { background:var(--red-light) }
+.alert-link-gold { margin-left:auto; color:var(--gold-dark); text-decoration:none; font-weight:600; font-size:12px; white-space:nowrap; flex-shrink:0; border:1px solid #fde68a; padding:4px 12px; border-radius:20px }
+/* Listings layout */
+.listings-wrap { display:grid; grid-template-columns:1fr 300px; gap:24px; padding:24px 40px 48px; align-items:start }
+.filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border) }
+.filter-btn { padding:5px 13px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:11.5px; cursor:pointer; font-family:'Noto Sans Devanagari',sans-serif; color:var(--gray-600); transition:all .15s; white-space:nowrap }
+.filter-btn:hover { background:var(--red-ultra); border-color:var(--red-light); color:var(--red) }
+.filter-btn.active { background:var(--red); border-color:var(--red); color:white }
+.filter-btn.pg-filter { background:var(--red-ultra); border-color:var(--red); color:var(--red); font-weight:600 }
+.filter-btn.pg-filter:hover,.filter-btn.pg-filter.active { background:var(--red); color:white }
+/* Sidebar */
+.sidebar { display:flex; flex-direction:column; gap:14px; position:sticky; top:74px }
+.sb-fb-group { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border) }
+.sb-fb-group:last-child { border-bottom:none }
+.sb-avatar { width:36px; height:36px; border-radius:8px; background:var(--navy); display:flex; align-items:center; justify-content:center; font-size:8.5px; color:white; font-weight:700; flex-shrink:0; text-align:center; padding:2px }
+.sb-fb-name { font-size:11.5px; font-weight:500; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.sb-fb-members { font-size:10px; color:var(--text-muted) }
+.sb-fb-join { font-size:10px; color:#1877F2; font-weight:700; flex-shrink:0 }
+.event-item { padding:8px 0; border-bottom:1px solid var(--border) }
+.event-item:last-child { border-bottom:none }
+.event-date { font-size:9.5px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.06em; font-family:'IBM Plex Mono',monospace }
+.event-name { font-size:12px; font-weight:500; color:var(--text); margin-top:2px }
+.event-loc { font-size:10.5px; color:var(--text-muted) }
+/* FB grid */
+.fb-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px }
+.fb-card { border:1.5px solid var(--border); border-radius:10px; padding:16px; background:white; display:flex; flex-direction:column; gap:8px; transition:border-color .2s,transform .2s,box-shadow .2s; cursor:pointer }
+.fb-card:hover { border-color:#1877F2; transform:translateY(-3px); box-shadow:0 6px 20px rgba(24,119,242,.12) }
+.fb-card-icon { font-size:28px }
+.fb-card-name { font-size:13px; font-weight:600; color:var(--navy) }
+.fb-card-members { font-size:11px; color:var(--text-muted) }
+.fb-card-desc { font-size:11.5px; color:var(--gray-600); line-height:1.5; flex:1 }
+.fb-card-btn { margin-top:auto; padding:7px 0; border:1.5px solid #1877F2; border-radius:6px; background:transparent; color:#1877F2; font-size:12px; font-weight:600; cursor:pointer; transition:background .15s,color .15s; width:100% }
+.fb-card-btn:hover { background:#1877F2; color:white }
+/* Heatmap */
+.heatmap-section { background:#0d1117; padding:48px 40px }
+.heatmap-section .section-title { color:white }
+.heatmap-section .section-subtitle { color:#8b949e; margin-bottom:24px }
+.heatmap-box { background:#161b22; border-radius:14px; border:1px solid #30363d; padding:28px }
+.heatmap-dots { position:relative; width:100%; height:280px; background:linear-gradient(180deg,#1c2333 0%,#161b22 100%); border-radius:8px; border:1px solid #21262d; overflow:hidden }
+.heatmap-dot { position:absolute; border-radius:50%; background:var(--red); opacity:.75; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; cursor:pointer; transition:transform .2s,opacity .2s; transform:translate(-50%,-50%); animation:pulse 3s ease-in-out infinite }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,.4)} 50%{box-shadow:0 0 0 6px rgba(192,57,43,0)} }
+.heatmap-dot:hover { transform:translate(-50%,-50%) scale(1.35); opacity:1; z-index:10; animation:none }
+.heatmap-tooltip { display:none; position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.9); color:white; font-size:10px; padding:5px 10px; border-radius:5px; white-space:nowrap; pointer-events:none; z-index:100 }
+.heatmap-dot:hover .heatmap-tooltip { display:block }
+.heatmap-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:18px }
+.hmap-stat { background:#1c2333; border:1px solid #21262d; border-radius:8px; padding:12px; text-align:center }
+.hmap-num { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:700; color:var(--red) }
+.hmap-lbl { font-size:10px; color:#8b949e; margin-top:3px }
+/* Journal strip */
+.journal-section { background:var(--navy); padding:40px }
+.journal-section .section-title { color:white }
+.journal-section .section-subtitle { color:rgba(255,255,255,.4); margin-bottom:20px }
+.journal-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px }
+.journal-card { background:var(--navy-mid); border-radius:10px; padding:20px; border:1px solid rgba(255,255,255,.08); transition:background .2s,transform .2s; cursor:pointer }
+.journal-card:hover { background:var(--navy-light); transform:translateY(-2px) }
+.journal-cat { font-size:9.5px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; font-family:'IBM Plex Mono',monospace }
+.journal-headline { font-size:15px; font-weight:600; color:white; line-height:1.45; margin-bottom:8px }
+.journal-excerpt { font-size:12px; color:rgba(255,255,255,.45); line-height:1.6; margin-bottom:12px }
+.journal-footer { display:flex; justify-content:space-between; font-size:10.5px; color:rgba(255,255,255,.3); padding-top:12px; border-top:1px solid rgba(255,255,255,.08) }
+.journal-read { color:var(--red); font-weight:600; text-decoration:none; font-size:11px }
+/* Calendar */
+.cal-section { padding:40px; background:var(--off-white) }
+.cal-wrap { border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-top:20px }
+.cal-wrap iframe { display:block; width:100%; border:none }
+.cal-credit { text-align:center; margin-top:10px; font-size:11px; color:var(--text-muted) }
+.cal-credit a { color:var(--red); text-decoration:none; font-weight:500 }
+/* Homepage CTA */
+.home-cta { background:linear-gradient(135deg,var(--red),var(--red-dark)); padding:56px 40px; text-align:center; position:relative; overflow:hidden }
+.home-cta::before { content:''; position:absolute; top:-50%; left:-10%; width:120%; height:200%; background:radial-gradient(ellipse,rgba(255,255,255,.06) 0%,transparent 60%); pointer-events:none }
+.home-cta .sub { font-family:'Noto Sans Devanagari',sans-serif; font-size:12px; color:rgba(255,255,255,.5); margin-bottom:12px }
+.home-cta h2 { font-family:'Cormorant Garamond',serif; font-size:clamp(28px,4vw,46px); font-weight:700; font-style:italic; color:white; margin-bottom:10px }
+.home-cta p { font-size:15px; color:rgba(255,255,255,.8); margin-bottom:28px; max-width:460px; margin-left:auto; margin-right:auto }
+.home-cta-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap }
+/* Responsive overrides */
+@media(max-width:1100px) { .cat-grid{grid-template-columns:repeat(5,1fr)} .fb-grid{grid-template-columns:repeat(2,1fr)} .heatmap-stats{grid-template-columns:repeat(2,1fr)} .journal-cards{grid-template-columns:1fr} }
+@media(max-width:900px) { .listings-wrap{grid-template-columns:1fr} .sidebar{display:none} .hero::after{display:none} }
+@media(max-width:640px) { .cat-grid{grid-template-columns:repeat(3,1fr)} .fb-grid{grid-template-columns:1fr} .hero,.cat-section,.listings-wrap,.heatmap-section,.journal-section,.cal-section,.home-cta,.alert-banner{padding-left:20px;padding-right:20px} .home-cta-btns{flex-direction:column;align-items:center} }
+</style>
+</head>
+<body>
+
+<!-- TICKER 1 -->
+<div class="ticker-wrap ticker-markets">
+  <div class="ticker-label">📈 MARKETS</div>
+  <div class="ticker-track anim-35">
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Russell 2000</span><span class="val up">2,045.12</span><span class="chg up"> ▲+0.55%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">MU</span><span class="val up">$117.34</span><span class="chg up"> ▲+2.10%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AKAM</span><span class="val down">$92.67</span><span class="chg down"> ▼-0.48%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">NVDA</span><span class="val up">$884.55</span><span class="chg up"> ▲+3.21%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AMD</span><span class="val up">$167.89</span><span class="chg up"> ▲+1.76%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">CSCO</span><span class="val down">$46.23</span><span class="chg down"> ▼-0.12%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AAPL</span><span class="val up">$192.45</span><span class="chg up"> ▲+0.94%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#86efac">NEPSE</span><span class="val up">2,341.87</span><span class="chg up"> ▲+0.63%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Russell 2000</span><span class="val up">2,045.12</span><span class="chg up"> ▲+0.55%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">MU</span><span class="val up">$117.34</span><span class="chg up"> ▲+2.10%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AKAM</span><span class="val down">$92.67</span><span class="chg down"> ▼-0.48%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">NVDA</span><span class="val up">$884.55</span><span class="chg up"> ▲+3.21%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AMD</span><span class="val up">$167.89</span><span class="chg up"> ▲+1.76%</span></span>
+    <span class="ticker-item"><span class="sym" style="color:#fbbf24">NEPSE</span><span class="val up">2,341.87</span><span class="chg up"> ▲+0.63%</span></span>
+  </div>
+</div>
+<!-- TICKER 2 -->
+<div class="ticker-wrap ticker-crypto">
+  <div class="ticker-label">₿ CRYPTO</div>
+  <div class="ticker-track anim-42">
+    <span class="ticker-item"><span class="sym">BTC</span><span class="val up">$67,420</span><span class="chg up"> ▲+2.4%</span></span>
+    <span class="ticker-item"><span class="sym">ETH</span><span class="val up">$3,187</span><span class="chg up"> ▲+1.8%</span></span>
+    <span class="ticker-item"><span class="sym">XRP</span><span class="val down">$0.582</span><span class="chg down"> ▼-0.7%</span></span>
+    <span class="ticker-item"><span class="sym">SOL</span><span class="val up">$162.45</span><span class="chg up"> ▲+4.1%</span></span>
+    <span class="ticker-item"><span class="sym">BNB</span><span class="val up">$594.30</span><span class="chg up"> ▲+0.9%</span></span>
+    <span class="ticker-item"><span class="sym">DOGE</span><span class="val up">$0.1612</span><span class="chg up"> ▲+5.2%</span></span>
+    <span class="ticker-item"><span class="sym">ADA</span><span class="val down">$0.4531</span><span class="chg down"> ▼-1.1%</span></span>
+    <span class="ticker-item"><span class="sym">AVAX</span><span class="val up">$38.92</span><span class="chg up"> ▲+2.7%</span></span>
+    <span class="ticker-item"><span class="sym">LINK</span><span class="val up">$14.87</span><span class="chg up"> ▲+1.4%</span></span>
+    <span class="ticker-item"><span class="sym">DOT</span><span class="val down">$7.23</span><span class="chg down"> ▼-0.5%</span></span>
+    <span class="ticker-item"><span class="sym">USDT</span><span class="val neutral">$1.000</span></span>
+    <span class="ticker-item"><span class="sym">Mkt Cap</span><span class="val up">$2.31T</span><span class="chg up"> ▲+1.9%</span></span>
+    <span class="ticker-item"><span class="sym">BTC</span><span class="val up">$67,420</span><span class="chg up"> ▲+2.4%</span></span>
+    <span class="ticker-item"><span class="sym">ETH</span><span class="val up">$3,187</span><span class="chg up"> ▲+1.8%</span></span>
+    <span class="ticker-item"><span class="sym">SOL</span><span class="val up">$162.45</span><span class="chg up"> ▲+4.1%</span></span>
+    <span class="ticker-item"><span class="sym">BNB</span><span class="val up">$594.30</span><span class="chg up"> ▲+0.9%</span></span>
+    <span class="ticker-item"><span class="sym">DOGE</span><span class="val up">$0.1612</span><span class="chg up"> ▲+5.2%</span></span>
+    <span class="ticker-item"><span class="sym">ADA</span><span class="val down">$0.4531</span><span class="chg down"> ▼-1.1%</span></span>
+    <span class="ticker-item"><span class="sym">Mkt Cap</span><span class="val up">$2.31T</span><span class="chg up"> ▲+1.9%</span></span>
+  </div>
+</div>
+<!-- TICKER 3 -->
+<div class="ticker-wrap ticker-npr">
+  <div class="ticker-label">🇳🇵 NPR</div>
+  <div class="ticker-track anim-48">
+    <span class="ticker-item"><span class="sym">USD</span><span class="val">133.45</span></span>
+    <span class="ticker-item"><span class="sym">EUR</span><span class="val">144.82</span></span>
+    <span class="ticker-item"><span class="sym">GBP</span><span class="val">168.34</span></span>
+    <span class="ticker-item"><span class="sym">AUD</span><span class="val">88.23</span></span>
+    <span class="ticker-item"><span class="sym">CAD</span><span class="val">97.56</span></span>
+    <span class="ticker-item"><span class="sym">CHF</span><span class="val">148.91</span></span>
+    <span class="ticker-item"><span class="sym">CNY</span><span class="val">18.42</span></span>
+    <span class="ticker-item"><span class="sym">JPY</span><span class="val">0.89</span></span>
+    <span class="ticker-item"><span class="sym">SAR</span><span class="val">35.58</span></span>
+    <span class="ticker-item"><span class="sym">QAR</span><span class="val">36.64</span></span>
+    <span class="ticker-item"><span class="sym">AED</span><span class="val">36.34</span></span>
+    <span class="ticker-item"><span class="sym">SGD</span><span class="val">99.12</span></span>
+    <span class="ticker-item"><span class="sym">HKD</span><span class="val">17.07</span></span>
+    <span class="ticker-item"><span class="sym">KRW</span><span class="val">0.097</span></span>
+    <span class="ticker-item"><span class="sym">MYR</span><span class="val">28.45</span></span>
+    <span class="ticker-item" style="opacity:.4;font-size:10px;color:#8b9ab5">Nepal Rastra Bank · May 11, 2026</span>
+    <span class="ticker-item"><span class="sym">USD</span><span class="val">133.45</span></span>
+    <span class="ticker-item"><span class="sym">EUR</span><span class="val">144.82</span></span>
+    <span class="ticker-item"><span class="sym">GBP</span><span class="val">168.34</span></span>
+    <span class="ticker-item"><span class="sym">AUD</span><span class="val">88.23</span></span>
+    <span class="ticker-item"><span class="sym">CAD</span><span class="val">97.56</span></span>
+    <span class="ticker-item"><span class="sym">SGD</span><span class="val">99.12</span></span>
+    <span class="ticker-item"><span class="sym">AED</span><span class="val">36.34</span></span>
+    <span class="ticker-item"><span class="sym">MYR</span><span class="val">28.45</span></span>
+  </div>
+</div>
+<!-- TICKER 4 -->
+<div class="ticker-wrap ticker-news">
+  <div class="ticker-label">📰 NEWS</div>
+  <div class="ticker-track anim-30">
+    <span class="ticker-item">🎉 Biscoon अब १२ नया अमेरिकी शहरमा — आफ्नो समुदाय खोज्नुहोस्</span>
+    <span class="ticker-item">🏡 नि:शुल्क Paying Guest लिस्टिङ — आज नै आफ्नो कोठा सूचीबद्ध गर्नुस्</span>
+    <span class="ticker-item">📢 TPS धारकहरूलाई नि:शुल्क कानुनी सहायता — Immigration खण्ड हेर्नुस्</span>
+    <span class="ticker-item">💼 Boston, NYC र SF मा OPT-Friendly जागिरका नया अवसरहरू</span>
+    <span class="ticker-item">🎊 GBNC Annual Spring Gala 2082 — Events मा दर्ता गर्नुस्</span>
+    <span class="ticker-item">🎉 Biscoon अब १२ नया अमेरिकी शहरमा — आफ्नो समुदाय खोज्नुहोस्</span>
+    <span class="ticker-item">🏡 नि:शुल्क Paying Guest लिस्टिङ — आज नै आफ्नो कोठा सूचीबद्ध गर्नुस्</span>
+    <span class="ticker-item">📢 TPS धारकहरूलाई नि:शुल्क कानुनी सहायता — Immigration खण्ड हेर्नुस्</span>
+    <span class="ticker-item">💼 Boston, NYC र SF मा OPT-Friendly जागिरका नया अवसरहरू</span>
+    <span class="ticker-item">🎊 GBNC Annual Spring Gala 2082 — Events मा दर्ता गर्नुस्</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">
+    <svg width="32" height="32" viewBox="0 0 32 32"><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#C0392B" fill-opacity=".1" stroke="#C0392B" stroke-width="1.5"/><text x="16" y="21.5" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#C0392B">B</text></svg>
+    <span class="nav-wordmark">Biscoon</span>
+  </a>
+  <div class="nav-links">
+    <a href="pages/marketplace/kinbech.html">किनबेच</a>
+    <a href="pages/jobs/jobs.html">रोजगार</a>
+    <a href="pages/housing/housing.html">घर / कोठा</a>
+    <a href="pages/marketplace/services.html">सेवाहरू</a>
+    <a href="pages/community/organizations.html">संगठन</a>
+    <a href="pages/community/literature.html">साहित्य</a>
+    <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  </div>
+  <form class="nav-search" action="#" onsubmit="return false;">
+    <input type="search" class="nav-search-input" placeholder="Search Biscoon…" aria-label="Search Biscoon"/>
+    <button type="submit" class="nav-search-btn">🔍</button>
+  </form>
+  <div class="nav-ctas">
+    <a class="btn-ghost" href="pages/auth/login.html">साइन इन</a>
+    <a class="btn-primary" href="pages/auth/signup.html">साइन अप</a>
+  </div>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-drawer" id="mobileDrawer">
+  <a href="pages/marketplace/kinbech.html">किनबेच</a>
+  <a href="pages/jobs/jobs.html">रोजगार</a>
+  <a href="pages/housing/housing.html">घर / कोठा</a>
+  <a href="pages/marketplace/services.html">सेवाहरू</a>
+  <a href="pages/community/organizations.html">संगठन</a>
+  <a href="pages/community/literature.html">साहित्य</a>
+  <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  <div class="mobile-drawer-btns">
+    <a class="btn-ghost" href="pages/auth/login.html" style="flex:1">साइन इन</a>
+    <a class="btn-primary" href="pages/auth/signup.html" style="flex:1">साइन अप</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">⛰ INTEGRATING NEPALI CLIMATE ACROSS GLOBAL NEPALIS</div>
+  <span class="biscoon-name">Biscoon</span>
+  <span class="biscoon-sub">The Global Nepali Ecosystem</span>
+  <div class="hero-devanagari">नेपाली जलवायु — विश्वभर एकीकृत</div>
+  <p class="hero-desc">Connect with 4.5 million Nepalis worldwide — find housing, jobs, services, and community wherever you are.</p>
+  <div class="search-bar" style="max-width:660px">
+    <select class="search-select" id="searchCategory">
+      <option value="">सबै श्रेणी</option>
+      <option value="jobs">💼 रोजगार</option>
+      <option value="housing">🏠 घर / कोठा</option>
+      <option value="pg">🏡 Paying Guest</option>
+      <option value="services">🔧 सेवाहरू</option>
+      <option value="student">🎓 विद्यार्थी</option>
+      <option value="immigration">🛂 Immigration</option>
+    </select>
+    <input type="text" class="search-input" placeholder="Search jobs, housing, services…" id="searchInput"/>
+    <button class="search-btn" onclick="doSearch()">खोज्नुस्</button>
+  </div>
+  <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" style="display:none;color:#bbb;font-size:11px"> · Detecting…</span></div>
+  <div class="stats-strip">
+    <div class="stat-cell"><span class="stat-num">4.5M+</span><span class="stat-lbl">Global Nepalis</span></div>
+    <div class="stat-cell"><span class="stat-num">39</span><span class="stat-lbl">Categories</span></div>
+    <div class="stat-cell"><span class="stat-num">90+</span><span class="stat-lbl">Countries</span></div>
+    <div class="stat-cell"><span class="stat-num">Free</span><span class="stat-lbl">To list</span></div>
+    <div class="stat-cell pg-stat" onclick="location.href='pages/paying-guest.html'"><span class="stat-num">🏡</span><span class="stat-lbl">शःशुल्क पाहुना</span></div>
+  </div>
+</section>
+
+<!-- CATEGORY GRID -->
+<section class="cat-section">
+  <div class="section-title">Browse All Categories</div>
+  <div class="section-subtitle">39 categories covering every Nepali need — click to explore each section</div>
+  <div class="cat-grid">
+    <a class="cat-card" href="pages/jobs/jobs.html"><span class="cat-emoji">💼</span><span class="cn">रोजगार</span><span class="ce">Jobs</span></a>
+    <a class="cat-card" href="pages/jobs/student.html"><span class="cat-emoji">🎓</span><span class="cn">विद्यार्थी</span><span class="ce">Student Network</span></a>
+    <a class="cat-card" href="pages/housing/real-estate.html"><span class="cat-emoji">🏗️</span><span class="cn">घर जग्गा</span><span class="ce">Real Estate</span></a>
+    <a class="cat-card" href="pages/housing/housing.html"><span class="cat-emoji">🏠</span><span class="cn">आवास</span><span class="ce">Housing</span></a>
+    <a class="cat-card featured" href="pages/housing/paying-guest.html"><span class="badge-feat">FEATURED</span><span class="cat-emoji">🏡</span><span class="cn">शःशुल्क पाहुना</span><span class="ce">Paying Guest</span></a>
+    <a class="cat-card" href="pages/marketplace/services.html"><span class="cat-emoji">🔧</span><span class="cn">सेवाहरू</span><span class="ce">Services</span></a>
+    <a class="cat-card" href="pages/marketplace/photography.html"><span class="badge-new">New</span><span class="cat-emoji">📸</span><span class="cn">फोटोग्राफी</span><span class="ce">Photography</span></a>
+    <a class="cat-card" href="pages/community/art.html"><span class="cat-emoji">🎨</span><span class="cn">कला</span><span class="ce">Art</span></a>
+    <a class="cat-card" href="pages/jobs/ai-services.html"><span class="badge-new">New</span><span class="cat-emoji">🤖</span><span class="cn">AI सेवा</span><span class="ce">AI Services</span></a>
+    <a class="cat-card" href="pages/marketplace/business-for-sale.html"><span class="badge-new">New</span><span class="cat-emoji">🏢</span><span class="cn">व्यापार बिक्री</span><span class="ce">Business for Sale</span></a>
+    <a class="cat-card" href="pages/marketplace/translation.html"><span class="cat-emoji">🌐</span><span class="cn">अनुवाद</span><span class="ce">Translation</span></a>
+    <a class="cat-card" href="pages/jobs/immigration.html"><span class="cat-emoji">🛂</span><span class="cn">आप्रवासन</span><span class="ce">Immigration</span></a>
+    <a class="cat-card" href="pages/marketplace/shops.html"><span class="cat-emoji">🏪</span><span class="cn">पसलहरू</span><span class="ce">Shops</span></a>
+    <a class="cat-card" href="pages/marketplace/restaurants.html"><span class="cat-emoji">🍛</span><span class="cn">रेस्टुरेन्ट</span><span class="ce">Restaurants</span></a>
+    <a class="cat-card" href="pages/marketplace/produce.html"><span class="cat-emoji">🥬</span><span class="cn">तरकारी</span><span class="ce">Produce</span></a>
+    <a class="cat-card" href="pages/jobs/cpa.html"><span class="cat-emoji">📊</span><span class="cn">CPA / लेखा</span><span class="ce">CPA</span></a>
+    <a class="cat-card" href="pages/jobs/finance.html"><span class="cat-emoji">💹</span><span class="cn">वित्त</span><span class="ce">Finance</span></a>
+    <a class="cat-card" href="pages/community/events.html"><span class="cat-emoji">🎉</span><span class="cn">कार्यक्रम</span><span class="ce">Events</span></a>
+    <a class="cat-card" href="pages/community/matrimony.html"><span class="cat-emoji">💍</span><span class="cn">विवाह</span><span class="ce">Matrimony</span></a>
+    <a class="cat-card" href="pages/jobs/education.html"><span class="cat-emoji">📚</span><span class="cn">शिक्षा</span><span class="ce">Education</span></a>
+    <a class="cat-card" href="pages/jobs/healthcare.html"><span class="cat-emoji">🏥</span><span class="cn">स्वास्थ्य</span><span class="ce">Healthcare</span></a>
+    <a class="cat-card" href="pages/community/travel.html"><span class="cat-emoji">✈️</span><span class="cn">यात्रा</span><span class="ce">Travel</span></a>
+    <a class="cat-card" href="pages/community/music.html"><span class="cat-emoji">🎵</span><span class="cn">संगीत</span><span class="ce">Music</span></a>
+    <a class="cat-card" href="pages/community/sports.html"><span class="cat-emoji">⚽</span><span class="cn">खेलकुद</span><span class="ce">Sports</span></a>
+    <a class="cat-card" href="pages/community/yoga.html"><span class="cat-emoji">🧘</span><span class="cn">योग</span><span class="ce">Yoga</span></a>
+    <a class="cat-card" href="pages/marketplace/beauty.html"><span class="cat-emoji">💇</span><span class="cn">सौन्दर्य</span><span class="ce">Beauty / Salon</span></a>
+    <a class="cat-card" href="pages/marketplace/auto.html"><span class="cat-emoji">🚗</span><span class="cn">सवारी</span><span class="ce">Auto / Cars</span></a>
+    <a class="cat-card" href="pages/jobs/legal.html"><span class="cat-emoji">⚖️</span><span class="cn">कानुन</span><span class="ce">Legal Services</span></a>
+    <a class="cat-card" href="pages/jobs/insurance.html"><span class="cat-emoji">🛡️</span><span class="cn">बीमा</span><span class="ce">Insurance</span></a>
+    <a class="cat-card" href="pages/jobs/tech.html"><span class="cat-emoji">💻</span><span class="cn">प्रविधि</span><span class="ce">Tech Services</span></a>
+    <a class="cat-card" href="pages/jobs/tutoring.html"><span class="cat-emoji">📝</span><span class="cn">ट्युसन</span><span class="ce">Tutoring</span></a>
+    <a class="cat-card" href="pages/marketplace/childcare.html"><span class="cat-emoji">👶</span><span class="cn">बाल सेवा</span><span class="ce">Child Care</span></a>
+    <a class="cat-card" href="pages/marketplace/cleaning.html"><span class="cat-emoji">🧹</span><span class="cn">सफाई</span><span class="ce">Cleaning</span></a>
+    <a class="cat-card" href="pages/housing/moving.html"><span class="cat-emoji">📦</span><span class="cn">सामान सार्ने</span><span class="ce">Moving</span></a>
+    <a class="cat-card" href="pages/community/literature.html"><span class="badge-new">New</span><span class="cat-emoji">📖</span><span class="cn">साहित्य</span><span class="ce">Literature</span></a>
+    <a class="cat-card" href="pages/community/pen-pals.html"><span class="badge-new">New</span><span class="cat-emoji">✉️</span><span class="cn">पत्रमित्रता</span><span class="ce">Pen Pals</span></a>
+    <a class="cat-card" href="pages/community/jyotish.html"><span class="cat-emoji">🔮</span><span class="cn">हस्तरेखा</span><span class="ce">Jyotish</span></a>
+    <a class="cat-card" href="pages/community/matchmaker.html"><span class="cat-emoji">💑</span><span class="cn">लमी</span><span class="ce">Matchmaker</span></a>
+    <a class="cat-card" href="pages/community/organizations.html"><span class="cat-emoji">🏛️</span><span class="cn">संगठन</span><span class="ce">Organizations</span></a>
+  </div>
+</section>
+
+<!-- ALERT BANNERS -->
+<div class="alert-banner alert-arrival">
+  <span class="alert-icon">🏠</span>
+  <div><strong>Just arrived? Need a room TODAY?</strong> — Browse urgent Paying Guest listings. Nepali hosts ready to help.</div>
+  <a href="pages/housing/paying-guest.html" class="alert-link">View Rooms →</a>
+</div>
+<div class="alert-banner alert-tps">
+  <span class="alert-icon">⚠️</span>
+  <div><strong>TPS Crisis:</strong> 14,800+ Nepali TPS holders affected — Free legal consultations available now.</div>
+  <a href="pages/jobs/immigration.html" class="alert-link-gold">Get Help →</a>
+</div>
+
+<!-- LISTINGS + SIDEBAR -->
+<section class="listings-wrap" id="listings">
+  <div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter(this,'all')">सबै</button>
+      <button class="filter-btn" onclick="setFilter(this,'jobs')">💼 Jobs</button>
+      <button class="filter-btn" onclick="setFilter(this,'student')">🎓 Students</button>
+      <button class="filter-btn" onclick="setFilter(this,'realestate')">🏗️ Real Estate</button>
+      <button class="filter-btn" onclick="setFilter(this,'housing')">🏠 Housing</button>
+      <button class="filter-btn" onclick="setFilter(this,'services')">🔧 Services</button>
+      <button class="filter-btn" onclick="setFilter(this,'immigration')">🛂 Immigration</button>
+      <button class="filter-btn" onclick="setFilter(this,'restaurants')">🍛 Restaurants</button>
+      <button class="filter-btn pg-filter" onclick="setFilter(this,'pg')">🏡 Paying Guest</button>
+    </div>
+    <div id="listingsContainer">
+      <div class="section-divider" data-group="jobs">💼 Job Listings <span class="count">5 new</span></div>
+      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">💼</div><div class="listing-body"><div class="listing-title">Senior Software Engineer — Full Stack (React/Node)</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 2h ago</span><span>TechCorp Inc.</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-blue">H1B Sponsor</span><span class="tag tag-navy">Remote OK</span></div></div><div class="listing-price">$130–160k</div></a>
+      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">🏥</div><div class="listing-body"><div class="listing-title">Registered Nurse — ICU, Mass General Hospital</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 5h ago</span><span>MGH</span></div><div class="listing-tags"><span class="tag tag-green">Visa Sponsor</span><span class="tag tag-gold">Sign-on Bonus</span><span class="tag tag-red">Urgent</span></div></div><div class="listing-price">$90–105k</div></a>
+      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">📊</div><div class="listing-body"><div class="listing-title">Data Scientist — ML/AI Focus (Python, TensorFlow)</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 8h ago</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-purple">CPT OK</span></div></div><div class="listing-price">$110–135k</div></a>
+      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Nepali Language Teacher — Part-time weekends</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-gray">Part-time</span></div></div><div class="listing-price">$25–35/hr</div></a>
+
+      <div class="section-divider" data-group="student">🎓 Student Network <span class="count">3 new</span></div>
+      <a class="listing-card" data-cat="student" href="pages/jobs/student.html"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Looking for OPT job referrals — CS/ML grad from Northeastern</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 3h ago</span></div><div class="listing-tags"><span class="tag tag-red">OPT Active</span><span class="tag tag-blue">CS/ML</span></div></div><div class="listing-price">Open</div></a>
+      <a class="listing-card" data-cat="student" href="pages/jobs/student.html"><div class="listing-thumb">📚</div><div class="listing-body"><div class="listing-title">STEM tutoring — Math, Physics, Chemistry (K-12 & college)</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-blue">Online &amp; in-person</span></div></div><div class="listing-price">$30/hr</div></a>
+
+      <div class="section-divider" data-group="realestate">🏗️ Real Estate <span class="count">2 new</span></div>
+      <a class="listing-card" data-cat="realestate" href="pages/housing/real-estate.html"><div class="listing-thumb">🏗️</div><div class="listing-body"><div class="listing-title">3BR Condo — Fully renovated, Nepali neighborhood, Lowell</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 3d ago</span><span>Kiran Realty</span></div><div class="listing-tags"><span class="tag tag-green">Verified</span><span class="tag tag-navy">Nepali Agent</span></div></div><div class="listing-price">$485,000</div></a>
+
+      <div class="section-divider" data-group="housing">🏠 Housing / Rooms <span class="count">4 new</span></div>
+      <a class="listing-card" data-cat="housing" href="pages/housing/housing.html"><div class="listing-thumb">🏠</div><div class="listing-body"><div class="listing-title">Room for rent — Allston, shared 3BR, all utilities included</div><div class="listing-meta"><span>📍 Allston, MA</span><span>🕐 6h ago</span><span>Available June 1</span></div><div class="listing-tags"><span class="tag tag-green">Nepali roommates</span><span class="tag tag-red">Urgent</span></div></div><div class="listing-price">$1,100/mo</div></a>
+      <a class="listing-card" data-cat="housing" href="pages/housing/housing.html"><div class="listing-thumb">🛏️</div><div class="listing-body"><div class="listing-title">Private room — female preferred, near Malden T stop</div><div class="listing-meta"><span>📍 Malden, MA</span><span>🕐 12h ago</span></div><div class="listing-tags"><span class="tag tag-purple">Female only</span><span class="tag tag-green">T access</span></div></div><div class="listing-price">$950/mo</div></a>
+
+      <div class="section-divider" data-group="pg">🏡 Paying Guest <span class="count">6 new</span></div>
+      <a class="listing-card" data-cat="pg" href="pages/housing/paying-guest.html"><div class="listing-thumb">🏡</div><div class="listing-body"><div class="listing-title">Free PG stay — Cambridge MA, Nepali family, meals included</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 Just posted</span></div><div class="listing-tags"><span class="tag tag-green">FREE to stay</span><span class="tag tag-gold">Meals included</span></div></div><div class="listing-price">FREE</div></a>
+      <a class="listing-card" data-cat="pg" href="pages/housing/paying-guest.html"><div class="listing-thumb">🏡</div><div class="listing-body"><div class="listing-title">PG near Harvard Square — 2 weeks free for new arrivals</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 4h ago</span></div><div class="listing-tags"><span class="tag tag-green">2 weeks free</span></div></div><div class="listing-price">2 wks free</div></a>
+
+      <div class="section-divider" data-group="services">🔧 Services <span class="count">3 new</span></div>
+      <a class="listing-card" data-cat="services" href="pages/marketplace/services.html"><div class="listing-thumb">🚗</div><div class="listing-body"><div class="listing-title">Airport rides &amp; local transport — Nepali driver, BOS/PVD</div><div class="listing-meta"><span>📍 Boston metro</span><span>🕐 1d ago</span></div><div class="listing-tags"><span class="tag tag-green">Verified</span><span class="tag tag-navy">24/7</span></div></div><div class="listing-price">From $35</div></a>
+      <a class="listing-card" data-cat="services" href="pages/marketplace/services.html"><div class="listing-thumb">🍛</div><div class="listing-body"><div class="listing-title">Home-cooked Nepali meals — tiffin service, weekly subscription</div><div class="listing-meta"><span>📍 Malden, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-gold">Home-cooked</span></div></div><div class="listing-price">$60/week</div></a>
+
+      <div class="section-divider" data-group="immigration">🛂 Immigration <span class="count">2 new</span></div>
+      <a class="listing-card" data-cat="immigration" href="pages/jobs/immigration.html"><div class="listing-thumb">🛂</div><div class="listing-body"><div class="listing-title">Free TPS consultation — Nepali-speaking immigration attorney</div><div class="listing-meta"><span>📍 Boston, MA (remote OK)</span><span>🕐 Same day</span></div><div class="listing-tags"><span class="tag tag-red">TPS Specialist</span><span class="tag tag-green">Free consult</span></div></div><div class="listing-price">Free</div></a>
+
+      <div class="section-divider" data-group="restaurants">🍛 Restaurants <span class="count">2 new</span></div>
+      <a class="listing-card" data-cat="restaurants" href="pages/marketplace/restaurants.html"><div class="listing-thumb">🍛</div><div class="listing-body"><div class="listing-title">Himalayan Kitchen — Authentic Nepali &amp; Tibetan cuisine</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>Open 11am–10pm</span><span>⭐ 4.8</span></div><div class="listing-tags"><span class="tag tag-gold">Nepali-owned</span><span class="tag tag-green">Dine-in &amp; Takeout</span></div></div><div class="listing-price">$$</div></a>
+    </div>
+    <button class="load-more" onclick="location.href='pages/kinbech.html'">View all listings →</button>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-widget">
+      <div class="widget-header">🌤 Boston Weather</div>
+      <div class="widget-body">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span style="font-size:34px">⛅</span>
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:var(--navy);line-height:1">62°F</div>
+            <div style="font-size:12px;color:var(--text-muted)">Boston, Massachusetts</div>
+          </div>
+        </div>
+        <div class="widget-row"><span class="lbl">Humidity</span><span class="val">58%</span></div>
+        <div class="widget-row"><span class="lbl">Wind</span><span class="val">12 mph SW</span></div>
+        <div class="widget-row"><span class="lbl">High / Low</span><span class="val">65° / 54°</span></div>
+      </div>
+    </div>
+    <div class="sidebar-widget">
+      <div class="widget-header">👥 Nearby Groups</div>
+      <div class="widget-body" style="padding:10px 14px">
+        <div class="sb-fb-group"><div class="sb-avatar" style="background:#1877F2">GBNC</div><div style="flex:1;min-width:0"><div class="sb-fb-name">Greater Boston Nepali Community</div><div class="sb-fb-members">42,800 members</div></div><div class="sb-fb-join">Join →</div></div>
+        <div class="sb-fb-group"><div class="sb-avatar" style="background:#1d5b9e">NYN</div><div style="flex:1;min-width:0"><div class="sb-fb-name">NY Nepali Kaam Post</div><div class="sb-fb-members">38,200 members</div></div><div class="sb-fb-join">Join →</div></div>
+        <div class="sb-fb-group"><div class="sb-avatar" style="background:#7c3aed">NAS</div><div style="flex:1;min-width:0"><div class="sb-fb-name">Nepali Students USA</div><div class="sb-fb-members">31,000 members</div></div><div class="sb-fb-join">Join →</div></div>
+      </div>
+    </div>
+    <div class="sidebar-widget">
+      <div class="widget-header">📅 Upcoming Events</div>
+      <div class="widget-body" style="padding:10px 14px">
+        <div class="event-item"><div class="event-date">MAY 18, 2026</div><div class="event-name">GBNC Spring Gala</div><div class="event-loc">📍 Marriott Copley, Boston</div></div>
+        <div class="event-item"><div class="event-date">JUN 7, 2026</div><div class="event-name">Haat Bazaar — Nepali Market Day</div><div class="event-loc">📍 Lowell, MA</div></div>
+        <div class="event-item"><div class="event-date">JUN 21, 2026</div><div class="event-name">Yoga &amp; Wellness Community</div><div class="event-loc">📍 Cambridge Common</div></div>
+      </div>
+    </div>
+    <div class="sidebar-widget">
+      <div class="widget-header">📊 Boston Nepali Stats</div>
+      <div class="widget-body">
+        <div class="widget-row"><span class="lbl">Est. Nepalis in Boston metro</span><span class="val">28,000+</span></div>
+        <div class="widget-row"><span class="lbl">Active listings</span><span class="val">1,247</span></div>
+        <div class="widget-row"><span class="lbl">Nepali businesses</span><span class="val">83</span></div>
+        <div class="widget-row"><span class="lbl">PG rooms available</span><span class="val">12 today</span></div>
+      </div>
+    </div>
+    <div class="post-cta-widget">
+      <h4>List for Free!</h4>
+      <p>Reach 50,000+ Nepalis in your area. No fees ever.</p>
+      <a class="btn-white" href="pages/post/listing.html">+ Post a Free Listing</a>
+    </div>
+  </div>
+</section>
+
+<!-- HEATMAP -->
+<section class="heatmap-section">
+  <div class="section-title">Nepali Diaspora in the USA</div>
+  <div class="section-subtitle">Estimated population by metro — hover for details</div>
+  <div class="heatmap-box">
+    <div class="heatmap-dots" id="heatmapDots"></div>
+    <div class="heatmap-stats">
+      <div class="hmap-stat"><div class="hmap-num">4.5M+</div><div class="hmap-lbl">Nepalis worldwide</div></div>
+      <div class="hmap-stat"><div class="hmap-num">210K+</div><div class="hmap-lbl">In USA</div></div>
+      <div class="hmap-stat"><div class="hmap-num">42</div><div class="hmap-lbl">States</div></div>
+      <div class="hmap-stat"><div class="hmap-num">90+</div><div class="hmap-lbl">Countries globally</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- JOURNAL -->
+<section class="journal-section">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px">
+    <div><div class="section-title">Biscoon Business Journal</div><div class="section-subtitle">News and insights for the global Nepali community</div></div>
+    <a href="#" style="color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:1px;flex-shrink:0">All articles →</a>
+  </div>
+  <div class="journal-cards">
+    <div class="journal-card"><div class="journal-cat">Finance &amp; Investment</div><div class="journal-headline">How Nepali-Americans are building wealth through US real estate</div><div class="journal-excerpt">A growing cohort of diaspora Nepalis are leveraging tech salaries to build portfolios — reinvesting in Kathmandu's booming market.</div><div class="journal-footer"><span>Boston · May 8, 2026</span><a href="#" class="journal-read">Read →</a></div></div>
+    <div class="journal-card"><div class="journal-cat">Immigration</div><div class="journal-headline">TPS extension 2026: What 14,800 Nepali families need to know</div><div class="journal-excerpt">The Ninth Circuit's decision has major implications. Our immigration correspondent breaks down what changes and what remains the same.</div><div class="journal-footer"><span>Washington DC · May 9, 2026</span><a href="pages/jobs/immigration.html" class="journal-read">Read →</a></div></div>
+    <div class="journal-card"><div class="journal-cat">Community</div><div class="journal-headline">Nepali-owned restaurants in Greater Boston: culture, cuisine, and community</div><div class="journal-excerpt">From Cambridge to Lowell, Nepali restaurants are becoming cultural anchors — serving not just food but connection and belonging.</div><div class="journal-footer"><span>Boston · May 10, 2026</span><a href="pages/marketplace/restaurants.html" class="journal-read">Read →</a></div></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="home-cta">
+  <div class="sub">नेपाली जलवायु — विश्वभर एकीकृत</div>
+  <h2>List free, reach 50,000+ Nepalis</h2>
+  <p>Post your job, room, service, or business today — completely free. No fees, no commission.</p>
+  <div class="home-cta-btns">
+    <a class="btn-white" href="pages/post/listing.html">+ Post a Free Listing</a>
+    <button class="btn-outline-white" onclick="location.href='pages/kinbech.html'">Browse All Listings</button>
+  </div>
+</section>
+
+<!-- CALENDAR -->
+<section class="cal-section">
+  <div class="section-title">Hamro Patro — Nepali Calendar</div>
+  <div class="section-subtitle">Bikram Sambat 2083 — Nepali dates, festivals, and auspicious occasions</div>
+  <div class="cal-wrap">
+    <iframe src="https://www.hamropatro.com/widgets/calwidget-full.php" height="430" scrolling="no" frameborder="0" title="Hamro Patro Nepali Calendar"></iframe>
+  </div>
+  <div class="cal-credit">Powered by <a href="https://www.hamropatro.com" target="_blank" rel="noopener">HamroPatro.com</a></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="footer-logo">Biscoon</div>
+      <div class="footer-tagline">नेपाली जलवायु — विश्वभर एकीकृत</div>
+      <p>The Global Nepali Ecosystem — connecting 4.5 million Nepalis across 90+ countries.</p>
+    </div>
+    <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="pages/marketplace/kinbech.html">किनबेच</a></li><li><a href="pages/jobs/jobs.html">रोजगार</a></li><li><a href="pages/housing/housing.html">घर / कोठा</a></li><li><a href="pages/marketplace/services.html">सेवाहरू</a></li><li><a href="pages/housing/paying-guest.html">Paying Guest</a></li></ul></div>
+    <div class="footer-col"><h5>Community</h5><ul><li><a href="pages/community/organizations.html">संगठन</a></li><li><a href="pages/community/literature.html">साहित्य</a></li><li><a href="pages/community/matchmaker.html">लमी</a></li><li><a href="pages/community/pen-pals.html">पत्रमित्रता</a></li><li><a href="pages/community/events.html">Events</a></li></ul></div>
+    <div class="footer-col"><h5>Biscoon</h5><ul><li><a href="#">About</a></li><li><a href="#">Advertise</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Contact</a></li></ul></div>
+  </div>
+</footer>
+<div class="footer-countries">
+  <span class="lbl">Serving Nepalis in:</span>
+  <a href="#">🇺🇸 USA</a><a href="#">🇬🇧 UK</a><a href="#">🇦🇺 Australia</a><a href="#">🇨🇦 Canada</a><a href="#">🇯🇵 Japan</a><a href="#">🇰🇷 Korea</a><a href="#">🇦🇪 UAE</a><a href="#">🇶🇦 Qatar</a><a href="#">🇸🇦 Saudi Arabia</a><a href="#">🇩🇪 Germany</a><a href="#">🇳🇿 NZ</a><a href="#">🇮🇳 India</a><a href="#">🇳🇵 Nepal</a><a href="#" class="more">+ 80 more →</a>
+</div>
+<div class="footer-bottom">
+  <p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p>
+  <p style="font-family:'Noto Sans Devanagari',sans-serif;color:rgba(255,255,255,.2)">नेपाली जलवायु — विश्वभर एकीकृत</p>
+</div>
+
+<script src="assets/js/biscoon.js"></script>
+<script>
+function setFilter(btn, cat) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.listing-card[data-cat]').forEach(c => {
+    c.style.display = (cat === 'all' || c.dataset.cat === cat) ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.section-divider[data-group]').forEach(d => {
+    d.style.display = (cat === 'all') ? 'flex' : 'none';
+  });
+}
+</script>
+</body>
+</html>

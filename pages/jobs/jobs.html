@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Biscoon — Job Listings</title>
+<link rel="stylesheet" href="../../assets/css/main.css"/>
+</head>
+<body>
+
+<nav>
+  <a href="../../index.html" class="nav-logo">
+    <svg width="32" height="32" viewBox="0 0 32 32"><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#C0392B" fill-opacity=".1" stroke="#C0392B" stroke-width="1.5"/><text x="16" y="21.5" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#C0392B">B</text></svg>
+    <span class="nav-wordmark">Biscoon</span>
+  </a>
+  <div class="nav-links">
+    <a href="../marketplace/kinbech.html">किनबेच</a>
+    <a href="rojgar.html">रोजगार</a>
+    <a href="../housing/housing.html">घर / कोठा</a>
+    <a href="../marketplace/services.html">सेवाहरू</a>
+    <a href="../community/organizations.html">संगठन</a>
+    <a href="../community/literature.html">साहित्य</a>
+    <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  </div>
+  <div class="nav-ctas">
+    <a class="btn-ghost" href="../auth/login.html">साइन इन</a>
+    <a class="btn-primary" href="../auth/signup.html">साइन अप</a>
+  </div>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-drawer" id="mobileDrawer">
+  <a href="../marketplace/kinbech.html">किनबेच</a>
+  <a href="rojgar.html">रोजगार</a>
+  <a href="../housing/housing.html">घर / कोठा</a>
+  <a href="../marketplace/services.html">सेवाहरू</a>
+  <a href="../community/organizations.html">संगठन</a>
+  <a href="../community/literature.html">साहित्य</a>
+  <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  <div class="mobile-drawer-btns">
+    <a class="btn-ghost" href="../auth/login.html" style="flex:1">साइन इन</a>
+    <a class="btn-primary" href="../auth/signup.html" style="flex:1">साइन अप</a>
+  </div>
+</div>
+
+<div class="page-hero">
+  <div class="page-hero-eyebrow">💼 JOBS · EMPLOYMENT · रोजगार</div>
+  <h1 class="page-hero-title"><span class="emoji">💼</span>Job Listings</h1>
+  <div class="page-hero-devanagari">रोजगार</div>
+  <p class="page-hero-desc">Find Nepali-friendly jobs across the USA — OPT, CPT, H1B, and green card sponsor opportunities.</p>
+  <div class="page-hero-stats"><div class="page-hero-stat"><span class="num">850+</span><span class="lbl">Active listings</span></div><div class="page-hero-stat"><span class="num">340+</span><span class="lbl">OPT-friendly</span></div><div class="page-hero-stat"><span class="num">180+</span><span class="lbl">H1B sponsors</span></div><div class="page-hero-stat"><span class="num">All levels</span><span class="lbl">Entry to Senior</span></div></div>
+</div>
+<div class="breadcrumb"><a href="../../index.html">🏠 Biscoon</a><span class="sep">›</span><span>Job Listings — रोजगार</span></div>
+<div class="filter-sort-bar" style="padding:12px 40px">
+  <input type="text" class="search-input" placeholder="Search Job Listings…" style="border:1.5px solid var(--border);border-radius:8px;flex:1;max-width:400px;padding:8px 14px;font-size:13px;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter')alert('Searching…')"/>
+  <button class="chip" data-filter="all">All Jobs</button><button class="chip" data-filter="opt">OPT Friendly</button><button class="chip" data-filter="h1b">H1B Sponsor</button><button class="chip" data-filter="remote">Remote</button><button class="chip" data-filter="parttime">Part-time</button><button class="chip" data-filter="healthcare">Healthcare</button><button class="chip" data-filter="tech">Tech</button><button class="chip" data-filter="education">Education</button>
+  <select class="sort-select"><option>Newest first</option><option>Price: Low</option><option>Price: High</option></select>
+</div>
+<div class="page-layout">
+  <div class="page-main">
+    <a class="listing-card" data-cat="opt" href="#"><div class="listing-thumb">💼</div><div class="listing-body"><div class="listing-title">Senior Software Engineer — React/Node.js, Remote OK</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 2h ago</span><span>TechCorp Inc.</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-blue">H1B Sponsor</span><span class="tag tag-navy">Remote</span></div></div><div class="listing-price">$130–160k</div></a>
+<a class="listing-card" data-cat="opt" href="#"><div class="listing-thumb">🧑‍💻</div><div class="listing-body"><div class="listing-title">Data Scientist — ML/AI Focus, Python & TensorFlow</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 5h ago</span><span>Nepali AI Labs</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-purple">CPT OK</span></div></div><div class="listing-price">$110–135k</div></a>
+<a class="listing-card" data-cat="healthcare" href="#"><div class="listing-thumb">🏥</div><div class="listing-body"><div class="listing-title">Registered Nurse — ICU / Critical Care</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 8h ago</span><span>Mass General Hospital</span></div><div class="listing-tags"><span class="tag tag-green">Visa Sponsor</span><span class="tag tag-gold">Sign-on Bonus</span><span class="tag tag-red">Urgent</span></div></div><div class="listing-price">$90–105k</div></a>
+<a class="listing-card" data-cat="h1b" href="#"><div class="listing-thumb">📊</div><div class="listing-body"><div class="listing-title">Financial Analyst — Investment Banking</div><div class="listing-meta"><span>📍 New York, NY</span><span>🕐 1d ago</span><span>Himalayan Capital</span></div><div class="listing-tags"><span class="tag tag-blue">H1B Sponsor</span><span class="tag tag-navy">Hybrid</span></div></div><div class="listing-price">$95–125k</div></a>
+<a class="listing-card" data-cat="opt" href="#"><div class="listing-thumb">🏗️</div><div class="listing-body"><div class="listing-title">Civil Engineer — Infrastructure Projects</div><div class="listing-meta"><span>📍 Houston, TX</span><span>🕐 2d ago</span><span>Bridge Engineering LLC</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-blue">H1B Sponsor</span></div></div><div class="listing-price">$85–110k</div></a>
+<a class="listing-card" data-cat="parttime" href="#"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Nepali Language Teacher — Weekend Part-time</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 3d ago</span><span>Nepal Community Center</span></div><div class="listing-tags"><span class="tag tag-gray">Part-time</span><span class="tag tag-green">Work Auth Req'd</span></div></div><div class="listing-price">$25–35/hr</div></a>
+<a class="listing-card" data-cat="healthcare" href="#"><div class="listing-thumb">💊</div><div class="listing-body"><div class="listing-title">Pharmacist — Retail & Clinical openings</div><div class="listing-meta"><span>📍 Multiple MA cities</span><span>🕐 3d ago</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-blue">H1B Sponsor</span></div></div><div class="listing-price">$55–65/hr</div></a>
+<a class="listing-card" data-cat="tech" href="#"><div class="listing-thumb">🧑‍🔬</div><div class="listing-body"><div class="listing-title">Research Associate — Biotech, PhD preferred</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 4d ago</span><span>MIT-affiliated lab</span></div><div class="listing-tags"><span class="tag tag-blue">OPT</span><span class="tag tag-navy">Lab visa OK</span></div></div><div class="listing-price">$65,000–80,000</div></a>
+<a class="listing-card" href="#"><div class="listing-thumb">🏪</div><div class="listing-body"><div class="listing-title">Store Manager — Nepali grocery, Lowell</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 5d ago</span><span>Everest Grocery</span></div><div class="listing-tags"><span class="tag tag-gold">Nepali-owned</span><span class="tag tag-gray">Full-time</span></div></div><div class="listing-price">$45–55k</div></a>
+<a class="listing-card" data-cat="parttime" href="#"><div class="listing-thumb">✈️</div><div class="listing-body"><div class="listing-title">Airport Shuttle Driver — BOS/PVD routes</div><div class="listing-meta"><span>📍 Boston Metro</span><span>🕐 1w ago</span></div><div class="listing-tags"><span class="tag tag-gray">Driver's license req'd</span></div></div><div class="listing-price">$18–22/hr</div></a>
+    <div class="pagination">
+      <button class="pg-btn disabled">← Prev</button>
+      <button class="pg-btn active">1</button>
+      <button class="pg-btn">2</button>
+      <button class="pg-btn">3</button>
+      <button class="pg-btn">→ Next</button>
+    </div>
+  </div>
+  
+<div class="page-sidebar">
+  <div class="sidebar-widget">
+    <div class="widget-header">📊 Quick Stats</div>
+    <div class="widget-body">
+      <div class="widget-row"><span class="lbl">Job listings today</span><span class="val">127 new</span></div>
+      <div class="widget-row"><span class="lbl">OPT openings</span><span class="val">340+</span></div><div class="widget-row"><span class="lbl">H1B sponsors</span><span class="val">180+</span></div><div class="widget-row"><span class="lbl">Remote jobs</span><span class="val">89</span></div><div class="widget-row"><span class="lbl">Part-time</span><span class="val">92</span></div>
+    </div>
+  </div>
+  <div class="sidebar-widget">
+    <div class="widget-header">📅 Events</div>
+    <div class="widget-body" style="padding:10px 14px">
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:9.5px;font-weight:700;color:var(--red);font-family:'IBM Plex Mono',monospace">MAY 18, 2026</div><div style="font-size:12px;font-weight:500;margin-top:2px">GBNC Spring Gala</div><div style="font-size:10.5px;color:var(--text-muted)">📍 Marriott Copley, Boston</div></div>
+      <div style="padding:8px 0"><div style="font-size:9.5px;font-weight:700;color:var(--red);font-family:'IBM Plex Mono',monospace">JUN 7, 2026</div><div style="font-size:12px;font-weight:500;margin-top:2px">Haat Bazaar — Nepali Market</div><div style="font-size:10.5px;color:var(--text-muted)">📍 Lowell, MA</div></div>
+    </div>
+  </div>
+  <div class="post-cta-widget">
+    <h4>Post a Free Listing</h4>
+    <p>Reach 50,000+ Nepalis. No fees ever.</p>
+    <button>+ Post Now</button>
+  </div>
+</div>
+</div>
+
+<section class="post-cta-strip">
+  <h2>Post your listing for free</h2>
+  <p>Reach 50,000+ Nepalis worldwide — no fees, no commissions, ever.</p>
+  <div class="cta-btns">
+    <button class="btn-white">+ Post Now</button>
+    <button class="btn-outline-white" onclick="history.back()">← Back to Homepage</button>
+  </div>
+</section>
+
+
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="footer-logo">Biscoon</div>
+      <div class="footer-tagline">नेपाली जलवायु — विश्वभर एकीकृत</div>
+      <p>The Global Nepali Ecosystem — connecting 4.5 million Nepalis across 90+ countries.</p>
+    </div>
+    <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="../marketplace/kinbech.html">किनबेच</a></li><li><a href="rojgar.html">रोजगार</a></li><li><a href="../housing/housing.html">घर / कोठा</a></li><li><a href="../marketplace/services.html">सेवाहरू</a></li><li><a href="../housing/paying-guest.html">Paying Guest</a></li></ul></div>
+    <div class="footer-col"><h5>Community</h5><ul><li><a href="../community/organizations.html">संगठन</a></li><li><a href="../community/literature.html">साहित्य</a></li><li><a href="../community/matchmaker.html">लमी</a></li><li><a href="../community/pen-pals.html">पत्रमित्रता</a></li><li><a href="../community/events.html">Events</a></li></ul></div>
+    <div class="footer-col"><h5>Biscoon</h5><ul><li><a href="#">About</a></li><li><a href="#">Advertise</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Contact</a></li></ul></div>
+  </div>
+</footer>
+<div class="footer-countries">
+  <span class="lbl">Serving Nepalis in:</span>
+  <a href="#">🇺🇸 USA</a><a href="#">🇬🇧 UK</a><a href="#">🇦🇺 Australia</a><a href="#">🇨🇦 Canada</a><a href="#">🇯🇵 Japan</a><a href="#">🇦🇪 UAE</a><a href="#">🇶🇦 Qatar</a><a href="#">🇩🇪 Germany</a><a href="#">🇳🇵 Nepal</a><a href="#" class="more">+ 80 more →</a>
+</div>
+<div class="footer-bottom">
+  <p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p>
+  <p style="font-family:'Noto Sans Devanagari',sans-serif;color:rgba(255,255,255,.2)">नेपाली जलवायु — विश्वभर एकीकृत</p>
+</div>
+
+<script src="../../assets/js/biscoon.js"></script>
+</body>
+</html>
