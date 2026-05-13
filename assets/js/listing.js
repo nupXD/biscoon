@@ -14,6 +14,31 @@ function showListingMessage(message, type = 'error') {
   el.className = type === 'success' ? 'form-helper success-text' : 'form-helper error-text';
 }
 
+function toggleListingForm(enabled) {
+  const form = document.getElementById('listingForm');
+  if (!form) return;
+  Array.from(form.elements).forEach(element => {
+    element.disabled = !enabled;
+  });
+}
+
+function setListingAuthState() {
+  const token = getToken();
+  const form = document.getElementById('listingForm');
+  const guard = document.getElementById('listingGuardMessage');
+  if (!form) return;
+
+  if (token) {
+    if (guard) guard.style.display = 'none';
+    showListingMessage('You are signed in. You can publish, edit, and delete your listings.', 'success');
+    toggleListingForm(true);
+  } else {
+    if (guard) guard.style.display = 'block';
+    showListingMessage('Please log in to publish, edit, or delete your listings.', 'error');
+    toggleListingForm(false);
+  }
+}
+
 function serializeImages(inputEl) {
   if (!inputEl || !inputEl.files) return [];
   return Array.from(inputEl.files).map(file => file.name);
@@ -127,6 +152,7 @@ function renderListingList(listings) {
 async function fetchMyListings() {
   const token = getToken();
   if (!token) {
+    setListingAuthState();
     renderListingList([]);
     return;
   }
@@ -201,5 +227,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (form) {
     form.addEventListener('submit', submitListing);
   }
+  setListingAuthState();
   fetchMyListings();
 });
