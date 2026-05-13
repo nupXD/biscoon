@@ -158,8 +158,18 @@ biscoon-project/
 - `GET /api/listings`
   - Retrieve all listings
   - Optional query: `?category=<category>`
+- `GET /api/listings/mine`
+  - Retrieve listings created by the current authenticated user
+  - Requires `Authorization: Bearer <token>` header
 - `GET /api/listings/:id`
   - Retrieve a single listing by ID
+- `PUT /api/listings/:id`
+  - Update a listing owned by the authenticated user
+  - Request body may include `title`, `description`, `category`, `subcategory`, `price`, `location`, `contactEmail`, `contactPhone`, `images`
+  - Requires `Authorization: Bearer <token>` header
+- `DELETE /api/listings/:id`
+  - Delete a listing owned by the authenticated user
+  - Requires `Authorization: Bearer <token>` header
 
 ## 🛠️ Technologies Used
 

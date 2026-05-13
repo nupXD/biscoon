@@ -95,6 +95,18 @@ async function findUserById(id) {
   return getAsync('SELECT * FROM users WHERE id = ?', [id]);
 }
 
+async function findListingById(id) {
+  return getAsync('SELECT * FROM listings WHERE id = ?', [id]);
+}
+
+function normalizeListing(listing) {
+  if (!listing) return null;
+  return {
+    ...listing,
+    images: listing.images ? JSON.parse(listing.images) : [],
+  };
+}
+
 async function createUser(user) {
   return runAsync(
     'INSERT INTO users (id, name, email, phone, password, createdAt) VALUES (?, ?, ?, ?, ?, ?)',
@@ -248,14 +260,91 @@ app.get('/api/listings', async (req, res) => {
 });
 
 app.get('/api/listings/:id', async (req, res) => {
-  const listing = await getAsync('SELECT * FROM listings WHERE id = ?', [req.params.id]);
+  const listing = await findListingById(req.params.id);
   if (!listing) {
     return res.status(404).json({ error: 'Listing not found.' });
   }
+  res.json(normalizeListing(listing));
+});
+
+app.get('/api/listings/mine', authMiddleware, async (req, res) => {
+  const rows = await allAsync('SELECT * FROM listings WHERE userId = ? ORDER BY createdAt DESC', [req.user.id]);
+  res.json({ listings: rows.map(normalizeListing) });
+});
+
+app.put('/api/listings/:id', authMiddleware, async (req, res) => {
+  const listing = await findListingById(req.params.id);
+  if (!listing) {
+    return res.status(404).json({ error: 'Listing not found.' });
+  }
+  if (listing.userId !== req.user.id) {
+    return res.status(403).json({ error: 'You do not have permission to edit this listing.' });
+  }
+
+  const {
+    title = listing.title,
+    description = listing.description,
+    category = listing.category,
+    subcategory = listing.subcategory,
+    price = listing.price,
+    location = listing.location,
+    contactEmail = listing.contactEmail,
+    contactPhone = listing.contactPhone,
+    images = listing.images ? JSON.parse(listing.images) : [],
+  } = req.body;
+
+  if (!title || !description || !category) {
+    return res.status(400).json({ error: 'Title, description, and category are required.' });
+  }
+
+  const updatedAt = new Date().toISOString();
+  const imageList = Array.isArray(images) ? images : [];
+
+  await runAsync(
+    `UPDATE listings SET title = ?, description = ?, category = ?, subcategory = ?, price = ?, location = ?, contactEmail = ?, contactPhone = ?, images = ?, updatedAt = ? WHERE id = ?`,
+    [
+      title.trim(),
+      description.trim(),
+      category.trim(),
+      subcategory ? String(subcategory).trim() : '',
+      price ? String(price).trim() : '',
+      location ? String(location).trim() : '',
+      contactEmail ? String(contactEmail).trim() : '',
+      contactPhone ? String(contactPhone).trim() : '',
+      JSON.stringify(imageList),
+      updatedAt,
+      listing.id,
+    ]
+  );
+
   res.json({
-    ...listing,
-    images: listing.images ? JSON.parse(listing.images) : [],
+    listing: {
+      ...listing,
+      title,
+      description,
+      category,
+      subcategory,
+      price,
+      location,
+      contactEmail,
+      contactPhone,
+      images: imageList,
+      updatedAt,
+    },
   });
+});
+
+app.delete('/api/listings/:id', authMiddleware, async (req, res) => {
+  const listing = await findListingById(req.params.id);
+  if (!listing) {
+    return res.status(404).json({ error: 'Listing not found.' });
+  }
+  if (listing.userId !== req.user.id) {
+    return res.status(403).json({ error: 'You do not have permission to delete this listing.' });
+  }
+
+  await runAsync('DELETE FROM listings WHERE id = ?', [listing.id]);
+  res.json({ success: true, message: 'Listing deleted successfully.' });
 });
 
 app.use((req, res) => {

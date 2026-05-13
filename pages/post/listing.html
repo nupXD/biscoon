@@ -89,7 +89,7 @@
     <div class="post-card">
       <h2>List your opportunity in minutes</h2>
       <p>Use the form below to create a clear listing that attracts the right Nepali buyers, renters, or customers.</p>
-      <form action="#" method="post">
+      <form id="listingForm" action="#" method="post">
         <div class="form-section">
           <h3>Listing category</h3>
           <div class="form-group">
@@ -175,11 +175,16 @@
             </div>
           </div>
         </div>
+        <div id="listingMessage" class="form-helper"></div>
         <div class="post-submit">
           <button class="btn-primary" type="submit">Publish listing</button>
           <a class="btn-ghost" href="../auth/login.html">Sign in to manage listings</a>
         </div>
       </form>
+      <div class="form-section" id="myListingsSection">
+        <h3>My listings</h3>
+        <div id="listingList">Loading your listings...</div>
+      </div>
     </div>
     <aside class="post-sidebar">
       <div class="sidebar-widget">
@@ -222,5 +227,6 @@
 <div class="footer-countries"><span class="lbl">Serving Nepalis in:</span><a href="#">🇺🇸 USA</a><a href="#">🇬🇧 UK</a><a href="#">🇦🇺 Australia</a><a href="#">🇨🇦 Canada</a><a href="#">🇯🇵 Japan</a><a href="#">🇳🇵 Nepal</a><a href="#" class="more">+ 80 more →</a></div>
 <div class="footer-bottom"><p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p><p>नेपाली जलवायु — विश्वभर एकीकृत</p></div>
 <script src="../../assets/js/biscoon.js"></script>
+<script src="../../assets/js/listing.js"></script>
 </body>
 </html>
