@@ -225,10 +225,6 @@ To contribute:
 3. Test locally through `npm start`
 4. Submit a pull request
 
-## 📄 License
-
-This project is open source. Please check individual files for licensing information.
-
 ---
 
 **Built for the Nepali community in the US** 🇳🇵
