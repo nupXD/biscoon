@@ -2,84 +2,72 @@ const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sqlite3 = require('sqlite3').verbose();
+const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || 'biscoon_dev_secret';
-const DB_FILE = path.join(__dirname, 'data', 'biscoon.db');
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/biscoon';
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-const db = new sqlite3.Database(DB_FILE, err => {
-  if (err) {
-    console.error('Unable to open database:', err);
-    process.exit(1);
-  }
+// ── MongoDB Connection ──
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('✓ Connected to MongoDB');
+}).catch(err => {
+  console.error('✗ MongoDB connection error:', err);
+  process.exit(1);
 });
 
-db.serialize(() => {
-  db.run('PRAGMA foreign_keys = ON');
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    phone TEXT,
-    password TEXT NOT NULL,
-    createdAt TEXT NOT NULL
-  )`);
+// ── User Schema ──
+const userSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4, unique: true, required: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  phone: { type: String },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+}, { collection: 'users' });
 
-  db.run(`CREATE TABLE IF NOT EXISTS listings (
-    id TEXT PRIMARY KEY,
-    userId TEXT NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    category TEXT NOT NULL,
-    subcategory TEXT,
-    price TEXT,
-    location TEXT,
-    contactEmail TEXT,
-    contactPhone TEXT,
-    images TEXT,
-    createdAt TEXT NOT NULL,
-    updatedAt TEXT NOT NULL,
-    FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
-  )`);
+// ── Listing Schema ──
+const listingSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4, unique: true, required: true },
+  userId: { type: String, required: true },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  category: { type: String, required: true, index: true },
+  subcategory: { type: String },
+  price: { type: String },
+  location: { type: String, index: true },
+  contactEmail: { type: String },
+  contactPhone: { type: String },
+  images: [{ type: String }],
+  createdAt: { type: Date, default: Date.now, index: true },
+  updatedAt: { type: Date, default: Date.now },
+}, { collection: 'listings' });
+
+// ── Text Index for full-text search (ready for Elasticsearch) ──
+listingSchema.index({
+  title: 'text',
+  description: 'text',
+  category: 'text',
+  location: 'text',
 });
 
-function runAsync(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
-}
+const User = mongoose.model('User', userSchema);
+const Listing = mongoose.model('Listing', listingSchema);
 
-function getAsync(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
-
-function allAsync(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-}
-
+// ── Helper Functions ──
 function sanitizeUser(user) {
-  const { password, ...safe } = user;
+  const userObj = user.toObject ? user.toObject() : user;
+  const { password, ...safe } = userObj;
   return safe;
 }
 
@@ -88,32 +76,28 @@ function createToken(user) {
 }
 
 async function findUserByEmail(email) {
-  return getAsync('SELECT * FROM users WHERE email = ?', [email]);
+  return User.findOne({ email: email.toLowerCase() });
 }
 
 async function findUserById(id) {
-  return getAsync('SELECT * FROM users WHERE id = ?', [id]);
+  return User.findOne({ id });
 }
 
 async function findListingById(id) {
-  return getAsync('SELECT * FROM listings WHERE id = ?', [id]);
+  return Listing.findOne({ id });
 }
 
 function normalizeListing(listing) {
   if (!listing) return null;
+  const listingObj = listing.toObject ? listing.toObject() : listing;
   return {
-    ...listing,
-    images: listing.images ? JSON.parse(listing.images) : [],
+    ...listingObj,
+    images: listingObj.images || [],
   };
 }
 
-async function createUser(user) {
-  return runAsync(
-    'INSERT INTO users (id, name, email, phone, password, createdAt) VALUES (?, ?, ?, ?, ?, ?)',
-    [user.id, user.name, user.email, user.phone, user.password, user.createdAt]
-  );
-}
 
+// ── Auth Middleware ──
 async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace('Bearer ', '');
@@ -129,6 +113,8 @@ async function authMiddleware(req, res, next) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
   }
 }
+
+// ── AUTH ENDPOINTS ──
 
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, phone, password, confirmPassword } = req.body;
@@ -149,16 +135,22 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = {
+  const user = new User({
     id: uuidv4(),
     name: name.trim(),
     email: normalizedEmail,
     phone: phone ? phone.trim() : '',
     password: passwordHash,
-    createdAt: new Date().toISOString(),
-  };
+  });
 
-  await createUser(user);
+  try {
+    await user.save();
+  } catch (err) {
+    if (err && err.code === 11000 && err.keyPattern && err.keyPattern.email) {
+      return res.status(409).json({ error: 'An account with this email already exists.' });
+    }
+    throw err;
+  }
 
   return res.status(201).json({
     user: sanitizeUser(user),
@@ -193,70 +185,111 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
 
+app.put('/api/auth/me', authMiddleware, async (req, res) => {
+  const { name, phone, currentPassword, newPassword, confirmPassword } = req.body;
+  const user = await findUserById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  const updatedName = name ? name.trim() : user.name;
+  const updatedPhone = phone ? phone.trim() : user.phone || '';
+  let passwordHash = user.password;
+
+  if (newPassword || confirmPassword || currentPassword) {
+    if (!currentPassword) {
+      return res.status(400).json({ error: 'Current password is required to change your password.' });
+    }
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirmation are required.' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New passwords do not match.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+
+    const currentMatches = await bcrypt.compare(currentPassword, user.password);
+    if (!currentMatches) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+    passwordHash = await bcrypt.hash(newPassword, 10);
+  }
+
+  user.name = updatedName;
+  user.phone = updatedPhone;
+  user.password = passwordHash;
+  await user.save();
+
+  const updatedUser = await findUserById(user.id);
+  res.json({ user: sanitizeUser(updatedUser) });
+});
+
+
+
+// ── LISTING ENDPOINTS ──
+
 app.post('/api/listings', authMiddleware, async (req, res) => {
   const { title, description, category, subcategory, price, location, contactEmail, contactPhone, images } = req.body;
   if (!title || !description || !category) {
     return res.status(400).json({ error: 'Title, description, and category are required.' });
   }
 
-  const listingId = uuidv4();
-  const createdAt = new Date().toISOString();
-  const imageList = Array.isArray(images) ? images : [];
+  const listing = new Listing({
+    id: uuidv4(),
+    userId: req.user.id,
+    title: title.trim(),
+    description: description.trim(),
+    category: category.trim(),
+    subcategory: subcategory ? subcategory.trim() : '',
+    price: price ? String(price).trim() : '',
+    location: location ? location.trim() : '',
+    contactEmail: contactEmail ? contactEmail.trim() : '',
+    contactPhone: contactPhone ? contactPhone.trim() : '',
+    images: Array.isArray(images) ? images : [],
+  });
 
-  await runAsync(
-    `INSERT INTO listings (id, userId, title, description, category, subcategory, price, location, contactEmail, contactPhone, images, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      listingId,
-      req.user.id,
-      title.trim(),
-      description.trim(),
-      category.trim(),
-      subcategory ? subcategory.trim() : '',
-      price ? String(price).trim() : '',
-      location ? location.trim() : '',
-      contactEmail ? contactEmail.trim() : '',
-      contactPhone ? contactPhone.trim() : '',
-      JSON.stringify(imageList),
-      createdAt,
-      createdAt,
-    ]
-  );
+  await listing.save();
 
   res.status(201).json({
-    listing: {
-      id: listingId,
-      userId: req.user.id,
-      title,
-      description,
-      category,
-      subcategory,
-      price,
-      location,
-      contactEmail,
-      contactPhone,
-      images: imageList,
-      createdAt,
-      updatedAt: createdAt,
-    },
+    listing: normalizeListing(listing),
   });
 });
 
 app.get('/api/listings', async (req, res) => {
   const category = req.query.category;
-  let rows;
+  const subcategory = req.query.subcategory;
+  const search = req.query.search;
+  const limit = Math.min(Number.parseInt(req.query.limit, 10) || 0, 100);
+
+  let query = {};
   if (category) {
-    rows = await allAsync('SELECT * FROM listings WHERE category = ? ORDER BY createdAt DESC', [category]);
-  } else {
-    rows = await allAsync('SELECT * FROM listings ORDER BY createdAt DESC');
+    query.category = category;
+  }
+  if (subcategory) {
+    query.subcategory = subcategory;
   }
 
-  const listings = rows.map(listing => ({
-    ...listing,
-    images: listing.images ? JSON.parse(listing.images) : [],
-  }));
+  let listingsQuery;
+  if (search) {
+    // Full-text search (ready for Elasticsearch)
+    listingsQuery = Listing.find({ $text: { $search: search }, ...query }).sort({ createdAt: -1 });
+  } else {
+    listingsQuery = Listing.find(query).sort({ createdAt: -1 });
+  }
 
-  res.json({ listings });
+  if (limit) {
+    listingsQuery = listingsQuery.limit(limit);
+  }
+
+  const listings = await listingsQuery;
+  res.json({ listings: listings.map(normalizeListing) });
+});
+
+app.get('/api/listings/mine', authMiddleware, async (req, res) => {
+  const listings = await Listing.find({ userId: req.user.id }).sort({ createdAt: -1 });
+  res.json({ listings: listings.map(normalizeListing) });
 });
 
 app.get('/api/listings/:id', async (req, res) => {
@@ -265,11 +298,6 @@ app.get('/api/listings/:id', async (req, res) => {
     return res.status(404).json({ error: 'Listing not found.' });
   }
   res.json(normalizeListing(listing));
-});
-
-app.get('/api/listings/mine', authMiddleware, async (req, res) => {
-  const rows = await allAsync('SELECT * FROM listings WHERE userId = ? ORDER BY createdAt DESC', [req.user.id]);
-  res.json({ listings: rows.map(normalizeListing) });
 });
 
 app.put('/api/listings/:id', authMiddleware, async (req, res) => {
@@ -290,47 +318,28 @@ app.put('/api/listings/:id', authMiddleware, async (req, res) => {
     location = listing.location,
     contactEmail = listing.contactEmail,
     contactPhone = listing.contactPhone,
-    images = listing.images ? JSON.parse(listing.images) : [],
+    images = listing.images,
   } = req.body;
 
   if (!title || !description || !category) {
     return res.status(400).json({ error: 'Title, description, and category are required.' });
   }
 
-  const updatedAt = new Date().toISOString();
-  const imageList = Array.isArray(images) ? images : [];
+  listing.title = title.trim();
+  listing.description = description.trim();
+  listing.category = category.trim();
+  listing.subcategory = subcategory ? String(subcategory).trim() : '';
+  listing.price = price ? String(price).trim() : '';
+  listing.location = location ? String(location).trim() : '';
+  listing.contactEmail = contactEmail ? String(contactEmail).trim() : '';
+  listing.contactPhone = contactPhone ? String(contactPhone).trim() : '';
+  listing.images = Array.isArray(images) ? images : [];
+  listing.updatedAt = new Date();
 
-  await runAsync(
-    `UPDATE listings SET title = ?, description = ?, category = ?, subcategory = ?, price = ?, location = ?, contactEmail = ?, contactPhone = ?, images = ?, updatedAt = ? WHERE id = ?`,
-    [
-      title.trim(),
-      description.trim(),
-      category.trim(),
-      subcategory ? String(subcategory).trim() : '',
-      price ? String(price).trim() : '',
-      location ? String(location).trim() : '',
-      contactEmail ? String(contactEmail).trim() : '',
-      contactPhone ? String(contactPhone).trim() : '',
-      JSON.stringify(imageList),
-      updatedAt,
-      listing.id,
-    ]
-  );
+  await listing.save();
 
   res.json({
-    listing: {
-      ...listing,
-      title,
-      description,
-      category,
-      subcategory,
-      price,
-      location,
-      contactEmail,
-      contactPhone,
-      images: imageList,
-      updatedAt,
-    },
+    listing: normalizeListing(listing),
   });
 });
 
@@ -343,14 +352,16 @@ app.delete('/api/listings/:id', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: 'You do not have permission to delete this listing.' });
   }
 
-  await runAsync('DELETE FROM listings WHERE id = ?', [listing.id]);
+  await Listing.deleteOne({ id: listing.id });
   res.json({ success: true, message: 'Listing deleted successfully.' });
 });
 
+// ── 404 Handler ──
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found.' });
 });
 
+// ── Start Server ──
 app.listen(PORT, () => {
-  console.log(`Biscoon auth backend is running at http://localhost:${PORT}`);
+  console.log(`🚀 Biscoon backend running at http://localhost:${PORT}`);
 });

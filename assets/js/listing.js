@@ -44,16 +44,33 @@ function serializeImages(inputEl) {
   return Array.from(inputEl.files).map(file => file.name);
 }
 
+function formatSpecificLocation(area, state) {
+  return [area, state].map(value => value.trim()).filter(Boolean).join(', ');
+}
+
+function splitSpecificLocation(location = '') {
+  const parts = location.split(',').map(part => part.trim()).filter(Boolean);
+  if (parts.length < 2) return { area: location || '', state: '' };
+  return {
+    area: parts.slice(0, -1).join(', '),
+    state: parts[parts.length - 1],
+  };
+}
+
 function mapFormToListing() {
   const listingType = document.getElementById('listingType');
   const category = document.getElementById('category');
   const title = document.getElementById('title');
   const description = document.getElementById('description');
+  const area = document.getElementById('area');
+  const state = document.getElementById('state');
   const location = document.getElementById('location');
   const price = document.getElementById('price');
   const contactEmail = document.getElementById('contactEmail');
   const contactPhone = document.getElementById('contactPhone');
   const imagesUpload = document.getElementById('imagesUpload');
+  const specificLocation = formatSpecificLocation(area.value, state.value);
+  if (location) location.value = specificLocation;
 
   return {
     title: title.value.trim(),
@@ -61,7 +78,7 @@ function mapFormToListing() {
     category: category.value.trim(),
     subcategory: listingType.value.trim(),
     price: price.value.trim(),
-    location: location.value.trim(),
+    location: specificLocation,
     contactEmail: contactEmail.value.trim(),
     contactPhone: contactPhone.value.trim(),
     images: serializeImages(imagesUpload),
@@ -84,8 +101,8 @@ async function submitListing(event) {
   }
 
   const listing = mapFormToListing();
-  if (!listing.title || !listing.description || !listing.category) {
-    showListingMessage('Title, description, and category are required.', 'error');
+  if (!listing.title || !listing.description || !listing.category || !listing.location) {
+    showListingMessage('Title, description, category, area, and state are required.', 'error');
     return;
   }
 
@@ -189,10 +206,13 @@ async function loadListing(id) {
   if (!form) return;
 
   form.setAttribute('data-editing-id', id);
+  const locationParts = splitSpecificLocation(listing.location || '');
   document.getElementById('listingType').value = listing.subcategory || '';
   document.getElementById('category').value = listing.category || '';
   document.getElementById('title').value = listing.title || '';
   document.getElementById('description').value = listing.description || '';
+  document.getElementById('area').value = locationParts.area;
+  document.getElementById('state').value = locationParts.state;
   document.getElementById('location').value = listing.location || '';
   document.getElementById('price').value = listing.price || '';
   document.getElementById('contactEmail').value = listing.contactEmail || '';

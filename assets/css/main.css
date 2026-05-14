@@ -155,6 +155,31 @@ nav {
 .mobile-drawer a:hover, .mobile-drawer a.active { background: var(--red-ultra); color: var(--red) }
 .mobile-drawer a.pg-link { color: var(--red); font-weight: 600 }
 .mobile-drawer-btns { display: flex; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border) }
+.mobile-user-menu { display: none; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border) }
+body.biscoon-logged-in .mobile-drawer.open .mobile-user-menu { display: flex }
+body.biscoon-logged-in .mobile-drawer.open .mobile-drawer-btns { display: none }
+body.biscoon-logged-out .mobile-drawer.open .mobile-user-menu { display: none }
+body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex }
+.mobile-user-info { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--gray-100); border-radius: 8px }
+.mobile-user-info .user-avatar { font-size: 16px }
+.mobile-user-info .user-name { font-size: 14px; font-weight: 500; color: var(--text) }
+.mobile-user-menu a { padding: 10px 14px; border-radius: 8px; font-size: 15px; color: var(--gray-700); text-decoration: none; font-family: 'Noto Sans Devanagari', sans-serif }
+.mobile-user-menu a:hover { background: var(--red-ultra); color: var(--red) }
+
+/* ── USER DROPDOWN ── */
+.user-dropdown { position: relative; margin-left: auto }
+.user-btn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 8px; background: transparent; cursor: pointer; transition: border-color .15s, background .15s }
+.user-btn:hover { border-color: var(--red); background: var(--red-ultra) }
+.user-avatar { font-size: 16px }
+.user-name { font-size: 13px; font-family: 'Noto Sans Devanagari', sans-serif; color: var(--gray-700); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.dropdown-arrow { font-size: 10px; color: var(--gray-500); transition: transform .15s }
+.user-btn.open .dropdown-arrow { transform: rotate(180deg) }
+.dropdown-menu { display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 140px; z-index: 1000; margin-top: 4px }
+.dropdown-menu.open { display: block }
+.dropdown-menu a { display: block; padding: 10px 14px; color: var(--gray-700); text-decoration: none; font-size: 13px; font-family: 'Noto Sans Devanagari', sans-serif; transition: background .15s }
+.dropdown-menu a:hover { background: var(--red-ultra); color: var(--red) }
+.dropdown-menu a:first-child { border-radius: 7px 7px 0 0 }
+.dropdown-menu a:last-child { border-radius: 0 0 7px 7px }
 
 /* ── PAGE HERO (category pages) ── */
 .page-hero {
@@ -378,6 +403,7 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
 .empty-state .icon { font-size: 48px; margin-bottom: 16px }
 .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px }
 .empty-state p { font-size: 13px; line-height: 1.6 }
+.dynamic-listing-note { border: 1px solid var(--border); border-radius: 10px; background: var(--off-white); color: var(--text-muted); font-size: 12.5px; padding: 12px 14px; margin-bottom: 12px }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) { .page-layout { grid-template-columns: 1fr } .page-sidebar { display: none } }

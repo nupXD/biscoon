@@ -22,24 +22,48 @@
     <a href="../community/literature.html">साहित्य</a>
     <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
-  <div class="nav-ctas">
+  <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="../auth/login.html">साइन इन</a>
     <a class="btn-primary" href="../auth/signup.html">साइन अप</a>
+  </div>
+  <div class="user-dropdown" id="userDropdown" style="display: none;">
+    <button class="user-btn" id="userBtn">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="userName">Profile</span>
+      <span class="dropdown-arrow">▼</span>
+    </button>
+    <div class="dropdown-menu" id="dropdownMenu">
+      <a href="../auth/profile.html">📋 My Profile</a>
+      <a href="../post/listing.html">➕ Add Listing</a>
+      <a href="#" id="logoutBtn">🚪 Logout</a>
+    </div>
   </div>
   <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer">
-  <a href="../marketplace/kinbech.html">किनबेच</a>
-  <a href="rojgar.html">रोजगार</a>
-  <a href="../housing/housing.html">घर / कोठा</a>
-  <a href="../marketplace/services.html">सेवाहरू</a>
-  <a href="../community/organizations.html">संगठन</a>
-  <a href="../community/literature.html">साहित्य</a>
-  <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
-  <div class="mobile-drawer-btns">
-    <a class="btn-ghost" href="../auth/login.html" style="flex:1">साइन इन</a>
-    <a class="btn-primary" href="../auth/signup.html" style="flex:1">साइन अप</a>
+  
+    <a href="../marketplace/kinbech.html">किनबेच</a>
+    <a href="rojgar.html">रोजगार</a>
+    <a href="../housing/housing.html">घर / कोठा</a>
+    <a href="../marketplace/services.html">सेवाहरू</a>
+    <a href="../community/organizations.html">संगठन</a>
+    <a href="../community/literature.html">साहित्य</a>
+    <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  
+  <div class="mobile-drawer-btns" id="mobileBtns">
+    <a class="btn-ghost" href="../auth/login.html" style="flex:1;text-align:center;">साइन इन</a>
+    <a class="btn-primary" href="../auth/signup.html" style="flex:1;text-align:center;">साइन अप</a>
   </div>
+  <div class="mobile-user-menu" id="mobileUserMenu">
+    <div class="mobile-user-info">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="mobileUserName">Profile</span>
+    </div>
+    <a href="../auth/profile.html">📋 My Profile</a>
+    <a href="../post/listing.html">➕ Add Listing</a>
+    <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
+  </div>
+</div>
 </div>
 
 <div class="page-hero">

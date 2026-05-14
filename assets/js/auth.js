@@ -27,7 +27,7 @@ function saveToken(token) {
 function handleLogin(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const email = form.querySelector('#email').value.trim();
+  const email = form.querySelector('#email').value.trim().toLowerCase();
   const password = form.querySelector('#password').value;
 
   postJson('/api/auth/login', { email, password })
@@ -44,7 +44,7 @@ function handleRegister(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const name = form.querySelector('#name').value.trim();
-  const email = form.querySelector('#email').value.trim();
+  const email = form.querySelector('#email').value.trim().toLowerCase();
   const phone = form.querySelector('#phone').value.trim();
   const password = form.querySelector('#password').value;
   const confirmPassword = form.querySelector('#confirmPassword').value;

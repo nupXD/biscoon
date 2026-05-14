@@ -60,6 +60,15 @@
 .filter-btn.active { background:var(--red); border-color:var(--red); color:white }
 .filter-btn.pg-filter { background:var(--red-ultra); border-color:var(--red); color:var(--red); font-weight:600 }
 .filter-btn.pg-filter:hover,.filter-btn.pg-filter.active { background:var(--red); color:white }
+.search-results-panel { background:white; border:1px solid var(--border); border-radius:20px; padding:24px 28px; margin:0 40px 32px; box-shadow:0 18px 48px rgba(0,0,0,.06); }
+.search-results-header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+.search-results-header .section-title { margin:0; }
+.search-results-header .section-subtitle { margin:0; color:var(--text-muted); font-size:13px; max-width:760px; }
+.btn-clear { border:1px solid var(--border); background:white; color:var(--navy); padding:10px 18px; border-radius:999px; cursor:pointer; transition:all .15s; font-size:13px; }
+.btn-clear:hover { background:var(--navy); color:white; border-color:var(--navy); }
+.search-results-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+.search-results-empty { padding:30px 0; color:var(--text-muted); font-size:14px; }
+@media(max-width:900px) { .search-results-panel { margin:0 20px 32px; padding:20px; } .search-results-grid { grid-template-columns:1fr; } }
 /* Sidebar */
 .sidebar { display:flex; flex-direction:column; gap:14px; position:sticky; top:74px }
 .sb-fb-group { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border) }
@@ -248,23 +257,66 @@
     <input type="search" class="nav-search-input" placeholder="Search Biscoon…" aria-label="Search Biscoon"/>
     <button type="submit" class="nav-search-btn">🔍</button>
   </form>
-  <div class="nav-ctas">
+  <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="pages/auth/login.html">साइन इन</a>
     <a class="btn-primary" href="pages/auth/signup.html">साइन अप</a>
+  </div>
+  <div class="user-dropdown" id="userDropdown" style="display: none;">
+    <button class="user-btn" id="userBtn">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="userName">Profile</span>
+      <span class="dropdown-arrow">▼</span>
+    </button>
+    <div class="dropdown-menu" id="dropdownMenu">
+      <a href="pages/auth/profile.html">📋 My Profile</a>
+      <a href="pages/post/listing.html">➕ Add Listing</a>
+      <a href="#" id="logoutBtn">🚪 Logout</a>
+    </div>
+  </div>
+  <div class="user-dropdown" id="userDropdown" style="display: none;">
+    <button class="user-btn" id="userBtn">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="userName">User</span>
+      <span class="dropdown-arrow">▼</span>
+    </button>
+    <div class="dropdown-menu" id="dropdownMenu">
+      <a href="pages/auth/profile.html">प्रोफाइल</a>
+      <a href="#" id="logoutBtn">लग आउट</a>
+    </div>
   </div>
   <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer">
-  <a href="pages/marketplace/kinbech.html">किनबेच</a>
-  <a href="pages/jobs/jobs.html">रोजगार</a>
-  <a href="pages/housing/housing.html">घर / कोठा</a>
-  <a href="pages/marketplace/services.html">सेवाहरू</a>
-  <a href="pages/community/organizations.html">संगठन</a>
-  <a href="pages/community/literature.html">साहित्य</a>
-  <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
-  <div class="mobile-drawer-btns">
-    <a class="btn-ghost" href="pages/auth/login.html" style="flex:1">साइन इन</a>
-    <a class="btn-primary" href="pages/auth/signup.html" style="flex:1">साइन अप</a>
+  
+    <a href="pages/marketplace/kinbech.html">किनबेच</a>
+    <a href="pages/jobs/jobs.html">रोजगार</a>
+    <a href="pages/housing/housing.html">घर / कोठा</a>
+    <a href="pages/marketplace/services.html">सेवाहरू</a>
+    <a href="pages/community/organizations.html">संगठन</a>
+    <a href="pages/community/literature.html">साहित्य</a>
+    <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  
+  <div class="mobile-drawer-btns" id="mobileBtns">
+    <a class="btn-ghost" href="pages/auth/login.html" style="flex:1;text-align:center;">साइन इन</a>
+    <a class="btn-primary" href="pages/auth/signup.html" style="flex:1;text-align:center;">साइन अप</a>
+  </div>
+  <div class="mobile-user-menu" id="mobileUserMenu">
+    <div class="mobile-user-info">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="mobileUserName">Profile</span>
+    </div>
+    <a href="pages/auth/profile.html">📋 My Profile</a>
+    <a href="pages/post/listing.html">➕ Add Listing</a>
+    <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
+  </div>
+</div>
+  <div class="mobile-user-menu" id="mobileUserMenu" style="display: none;">
+    <div class="mobile-user-info">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="mobileUserName">User</span>
+    </div>
+    <a href="pages/auth/profile.html">प्रोफाइल</a>
+    <a href="#" id="mobileLogoutBtn">लग आउट</a>
   </div>
 </div>
 
@@ -295,6 +347,19 @@
     <div class="stat-cell"><span class="stat-num">90+</span><span class="stat-lbl">Countries</span></div>
     <div class="stat-cell"><span class="stat-num">Free</span><span class="stat-lbl">To list</span></div>
     <div class="stat-cell pg-stat" onclick="location.href='pages/paying-guest.html'"><span class="stat-num">🏡</span><span class="stat-lbl">शःशुल्क पाहुना</span></div>
+  </div>
+</section>
+
+<section class="search-results-panel" id="searchResultsPanel" style="display:none;">
+  <div class="search-results-header">
+    <div>
+      <div class="section-title">Search results</div>
+      <div class="section-subtitle" id="searchResultsMeta">Enter a term and choose a category to surface matching posts.</div>
+    </div>
+    <button class="btn-clear" onclick="clearSearch()">Clear search</button>
+  </div>
+  <div id="searchResultsContainer" class="search-results-grid">
+    <div class="search-results-empty">Search listings by keyword, category, or location to see matching posts.</div>
   </div>
 </section>
 
@@ -528,17 +593,5 @@
 </div>
 
 <script src="assets/js/biscoon.js"></script>
-<script>
-function setFilter(btn, cat) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.listing-card[data-cat]').forEach(c => {
-    c.style.display = (cat === 'all' || c.dataset.cat === cat) ? 'flex' : 'none';
-  });
-  document.querySelectorAll('.section-divider[data-group]').forEach(d => {
-    d.style.display = (cat === 'all') ? 'flex' : 'none';
-  });
-}
-</script>
 </body>
 </html>

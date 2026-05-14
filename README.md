@@ -1,6 +1,6 @@
 # Biscoon - Nepali Community Marketplace
 
-A static website marketplace platform designed for the Nepali community in the United States, providing services, jobs, housing, and community connections.
+A dynamic marketplace platform designed for the Nepali community in the United States, providing services, jobs, housing, and community connections.
 
 ## 🌟 Overview
 
@@ -10,7 +10,11 @@ Biscoon is a comprehensive online marketplace that connects Nepali immigrants an
 
 ### Core Functionality
 - **User Authentication**: Login and signup pages for user accounts
-- **Listing Creation**: Form-based posting system with file upload capabilities
+- **Persistent Login UI**: Logged-in users see profile/add-listing/logout dropdowns across every page
+- **Duplicate Email Protection**: Registration blocks duplicate email addresses, including case-insensitive matches
+- **Dynamic Listings**: Homepage, search results, and category pages can render live MongoDB listings
+- **Listing Creation**: Form-based posting system for jobs, housing, services, marketplace, and community categories
+- **Specific Location Posting**: Listings collect area/city and state, then store a searchable location like `Allston, MA`
 - **Category Organization**: Well-structured sections for different service types
 
 ### Categories Available
@@ -22,7 +26,7 @@ Biscoon is a comprehensive online marketplace that connects Nepali immigrants an
 ### Technical Features
 - Responsive design for mobile and desktop
 - Clean, modern UI with Nepali language support
-- Static site architecture for easy deployment
+- Express-backed frontend with dynamic MongoDB data
 - Organized file structure with modular CSS and JavaScript
 
 ## 📁 Project Structure
@@ -93,12 +97,15 @@ biscoon-project/
 
 ### Prerequisites
 - Modern web browser (Chrome, Firefox, Safari, Edge)
-- No server required - runs entirely in the browser
+- Node.js and npm for the backend
+- MongoDB running locally, or a hosted MongoDB connection string
 
 ### Installation
 1. Clone or download the project files
-2. Open `index.html` in your web browser
-3. Navigate through the site using the menu and links
+2. Install dependencies with `npm install`
+3. Start MongoDB locally or set `MONGODB_URI`
+4. Start the server with `npm start`
+5. Open `http://localhost:4000/index.html`
 
 ### Development
 - Edit HTML files in the `pages/` directory
@@ -108,43 +115,50 @@ biscoon-project/
 
 ### Running the backend
 1. Install dependencies with `npm install`
-2. Start the server with `npm start`
-3. Open the site through `http://localhost:4000/index.html`
+2. Make sure MongoDB is running
+3. Optionally set environment variables:
+   - `PORT` defaults to `4000`
+   - `MONGODB_URI` defaults to `mongodb://localhost:27017/biscoon`
+   - `JWT_SECRET` defaults to a development-only secret
+4. Start the server with `npm start`
+5. Open the site through `http://localhost:4000/index.html`
 
 ### Backend and database
 - The backend is built with `Express.js` in `server.js`
-- User authentication and listing persistence are stored in SQLite
-- The database file is created at `data/biscoon.db`
-- Tables are created automatically on first run
+- User authentication and listing persistence are stored in MongoDB through Mongoose
+- The default database is `biscoon` at `mongodb://localhost:27017/biscoon`
+- Collections and indexes are created by Mongoose when the server starts and data is written
 
-### SQLite schema
+### MongoDB collections
 - `users`
-  - `id` TEXT PRIMARY KEY
-  - `name` TEXT NOT NULL
-  - `email` TEXT NOT NULL UNIQUE
-  - `phone` TEXT
-  - `password` TEXT NOT NULL
-  - `createdAt` TEXT NOT NULL
+  - `id` String, unique
+  - `name` String, required
+  - `email` String, required, unique, lowercase
+  - `phone` String
+  - `password` String, required, bcrypt hash
+  - `createdAt` Date
 - `listings`
-  - `id` TEXT PRIMARY KEY
-  - `userId` TEXT NOT NULL
-  - `title` TEXT NOT NULL
-  - `description` TEXT NOT NULL
-  - `category` TEXT NOT NULL
-  - `subcategory` TEXT
-  - `price` TEXT
-  - `location` TEXT
-  - `contactEmail` TEXT
-  - `contactPhone` TEXT
-  - `images` TEXT
-  - `createdAt` TEXT NOT NULL
-  - `updatedAt` TEXT NOT NULL
+  - `id` String, unique
+  - `userId` String, required
+  - `title` String, required
+  - `description` String, required
+  - `category` String, required, indexed
+  - `subcategory` String
+  - `price` String
+  - `location` String, indexed
+  - `contactEmail` String
+  - `contactPhone` String
+  - `images` Array of strings
+  - `createdAt` Date, indexed
+  - `updatedAt` Date
+  - Text index across `title`, `description`, `category`, and `location`
 
 ### API endpoints
 - `POST /api/auth/register`
   - Register a new user
   - Request body: `name`, `email`, `phone`, `password`, `confirmPassword`
   - Response: user data and JWT token
+  - Duplicate emails return `409` with `An account with this email already exists.`
 - `POST /api/auth/login`
   - Login with existing user credentials
   - Request body: `email`, `password`
@@ -155,9 +169,11 @@ biscoon-project/
 - `POST /api/listings`
   - Create a new listing for the authenticated user
   - Request body: `title`, `description`, `category`, optionally `subcategory`, `price`, `location`, `contactEmail`, `contactPhone`, `images`
+  - The posting form builds `location` from area/city and state fields
 - `GET /api/listings`
   - Retrieve all listings
-  - Optional query: `?category=<category>`
+  - Optional query: `?category=<category>&subcategory=<subcategory>&search=<term>&limit=<number>`
+  - Category values line up with page slugs such as `jobs`, `housing`, `services`, `paying-guest`, `restaurants`, `tech`, and `immigration`
 - `GET /api/listings/mine`
   - Retrieve listings created by the current authenticated user
   - Requires `Authorization: Bearer <token>` header
@@ -176,7 +192,9 @@ biscoon-project/
 - **HTML5**: Semantic markup and structure
 - **CSS3**: Responsive design and styling
 - **JavaScript**: Interactive functionality
-- **Static Site Architecture**: No backend dependencies
+- **Express.js**: Backend API and static file serving
+- **MongoDB + Mongoose**: User and listing persistence
+- **JWT + bcryptjs**: Authentication tokens and password hashing
 
 ## 🎯 Target Audience
 
@@ -201,10 +219,10 @@ The site is fully responsive and optimized for:
 
 ## 🤝 Contributing
 
-This is a static site project. To contribute:
+To contribute:
 1. Fork the repository
 2. Make your changes
-3. Test locally by opening `index.html`
+3. Test locally through `npm start`
 4. Submit a pull request
 
 ## 📄 License
