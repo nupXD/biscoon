@@ -71,6 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
   ensureAuthDropdowns();
   checkAuthState();
   bindAuthDropdownEvents();
+  bindProtectedPostActions();
+  bindListingDetailModal();
+  bindBrowseListingActions();
+  guardPostingPage();
 
   // Close dropdown when clicking outside
   document.addEventListener('click', function(e) {
@@ -215,6 +219,112 @@ function bindAuthDropdownEvents() {
       logout();
     });
   });
+}
+
+function getPostListingPath() {
+  return '/pages/post/listing.html';
+}
+
+function getHomeListingsPath(category = '', subcategory = '') {
+  const url = new URL('/index.html', window.location.origin);
+  if (category && category !== 'all') url.searchParams.set('category', category);
+  if (subcategory && subcategory !== 'all') url.searchParams.set('subcategory', subcategory);
+  url.hash = 'listings';
+  return url.pathname + url.search + url.hash;
+}
+
+function getLoginPath(redirectTo = getPostListingPath()) {
+  const url = new URL('/pages/auth/login.html', window.location.origin);
+  url.searchParams.set('redirect', redirectTo);
+  return url.pathname + url.search;
+}
+
+function goToPostOrLogin() {
+  const destination = localStorage.getItem('biscoonToken')
+    ? getPostListingPath()
+    : getLoginPath(getPostListingPath());
+  window.location.href = destination;
+}
+
+function isPostListingAnchor(anchor) {
+  if (!anchor) return false;
+  const rawHref = anchor.getAttribute('href') || '';
+  if (rawHref.includes('post/listing.html')) return true;
+  return rawHref === 'listing.html' && window.location.pathname.includes('/pages/post/');
+}
+
+function isPostActionButton(button) {
+  if (!button) return false;
+  const text = button.textContent.trim().toLowerCase();
+  return text.includes('post now') || text.includes('post a listing') || text.includes('post a free listing');
+}
+
+function bindProtectedPostActions() {
+  document.addEventListener('click', function(e) {
+    const anchor = e.target.closest('a');
+    if (isPostListingAnchor(anchor)) {
+      e.preventDefault();
+      goToPostOrLogin();
+      return;
+    }
+
+    const button = e.target.closest('button');
+    if (isPostActionButton(button)) {
+      e.preventDefault();
+      goToPostOrLogin();
+    }
+  });
+}
+
+function normalizeCategoryForListings(category) {
+  const aliases = {
+    realestate: 'real-estate',
+    pg: 'pg',
+    students: 'student',
+    rojgar: 'jobs',
+  };
+  return aliases[category] || category || '';
+}
+
+function getSelectedBrowseScope() {
+  const activeHomeFilter = document.querySelector('.filter-btn.active');
+  if (activeHomeFilter) {
+    return { category: normalizeCategoryForListings(getFilterFromButton(activeHomeFilter)), subcategory: '' };
+  }
+
+  const category = normalizeCategoryForListings(inferPageCategory());
+  const activeChip = document.querySelector('.filter-chips .chip.active[data-filter]');
+  const chipFilter = activeChip ? activeChip.dataset.filter : '';
+  return {
+    category,
+    subcategory: chipFilter && chipFilter !== 'all' ? chipFilter : '',
+  };
+}
+
+function isBrowseListingAction(element) {
+  if (!element) return false;
+  if (element.classList.contains('load-more')) return true;
+  const text = element.textContent.trim().toLowerCase();
+  return text.includes('browse all listings')
+    || text.includes('browse all categories')
+    || text.includes('view all listings')
+    || text.includes('load more listings');
+}
+
+function bindBrowseListingActions() {
+  document.addEventListener('click', function(e) {
+    const action = e.target.closest('button, a');
+    if (!isBrowseListingAction(action)) return;
+    e.preventDefault();
+    const { category, subcategory } = getSelectedBrowseScope();
+    window.location.href = getHomeListingsPath(category, subcategory);
+  });
+}
+
+function guardPostingPage() {
+  if (!window.location.pathname.endsWith('/pages/post/listing.html')) return;
+  if (localStorage.getItem('biscoonToken')) return;
+  window.location.href = getLoginPath(getPostListingPath());
 }
 
 async function fetchUserInfo(token) {
@@ -399,9 +509,10 @@ function getDynamicListingsContainer() {
   return null;
 }
 
-async function fetchListings(category = '', search = '', limit = 0) {
+async function fetchListings(category = '', search = '', limit = 0, subcategory = '') {
   const url = new URL(`${getApiBase()}/api/listings`);
   if (category && category !== 'all') url.searchParams.set('category', category);
+  if (subcategory && subcategory !== 'all') url.searchParams.set('subcategory', subcategory);
   if (search) url.searchParams.set('search', search);
   if (limit) url.searchParams.set('limit', String(limit));
 
@@ -411,13 +522,25 @@ async function fetchListings(category = '', search = '', limit = 0) {
   return data.listings || [];
 }
 
+async function fetchListingStats() {
+  const response = await fetch(`${getApiBase()}/api/listings/stats/summary`);
+  if (!response.ok) throw new Error('Unable to load listing stats');
+  return response.json();
+}
+
+function formatCount(value, fallback = '0') {
+  const number = Number(value || 0);
+  if (!number) return fallback;
+  return number.toLocaleString();
+}
+
 function listingToCard(listing) {
   const category = listing.category || 'other';
   const meta = getCategoryMeta(category);
   const subcategory = listing.subcategory ? `<span class="tag tag-blue">${escapeHtml(listing.subcategory)}</span>` : '';
   const contact = listing.contactEmail ? `<span>${escapeHtml(listing.contactEmail)}</span>` : '';
   return `
-    <a class="listing-card" data-cat="${escapeHtml(category)}" href="${getListingPageHref(listing.id || '')}">
+    <a class="listing-card" data-cat="${escapeHtml(category)}" data-listing-id="${escapeHtml(listing.id || '')}" href="${getListingPageHref(listing.id || '')}">
       <div class="listing-thumb">${meta.emoji}</div>
       <div class="listing-body">
         <div class="listing-title">${escapeHtml(listing.title || 'Untitled listing')}</div>
@@ -434,6 +557,94 @@ function listingToCard(listing) {
       <div class="listing-price">${escapeHtml(listing.price || 'Open')}</div>
     </a>
   `;
+}
+
+function ensureListingModal() {
+  let modal = document.getElementById('listingModal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'listingModal';
+  modal.className = 'listing-modal';
+  modal.innerHTML = `
+    <div class="listing-modal-backdrop" data-close-listing-modal></div>
+    <div class="listing-modal-panel" role="dialog" aria-modal="true" aria-labelledby="listingModalTitle">
+      <button class="listing-modal-close" type="button" data-close-listing-modal aria-label="Close listing details">×</button>
+      <div id="listingModalBody" class="listing-modal-body">
+        <div class="empty-state"><div class="icon">📄</div><h3>Loading listing...</h3></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function closeListingModal() {
+  const modal = document.getElementById('listingModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  document.body.classList.remove('listing-modal-open');
+}
+
+function renderListingModalContent(listing) {
+  const meta = getCategoryMeta(listing.category || 'other');
+  const contactEmail = listing.contactEmail
+    ? `<a class="btn-primary" href="mailto:${escapeHtml(listing.contactEmail)}">Email poster</a>`
+    : '';
+  const contactPhone = listing.contactPhone
+    ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>`
+    : '';
+
+  return `
+    <div class="listing-detail-kicker">${meta.emoji} ${escapeHtml(meta.label)}</div>
+    <h2 id="listingModalTitle">${escapeHtml(listing.title || 'Untitled listing')}</h2>
+    <div class="listing-detail-meta">
+      <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
+      <span>🕐 ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+      ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
+    </div>
+    <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
+    <p>${escapeHtml(listing.description || 'No description provided.')}</p>
+    <div class="listing-detail-contact">${contactEmail}${contactPhone}</div>
+  `;
+}
+
+async function openListingModal(id) {
+  if (!id) return;
+  const modal = ensureListingModal();
+  const body = modal.querySelector('#listingModalBody');
+  modal.classList.add('open');
+  document.body.classList.add('listing-modal-open');
+  body.innerHTML = '<div class="empty-state"><div class="icon">📄</div><h3>Loading listing...</h3></div>';
+
+  try {
+    const response = await fetch(`${getApiBase()}/api/listings/${encodeURIComponent(id)}`);
+    if (!response.ok) throw new Error('Listing not found');
+    const listing = await response.json();
+    body.innerHTML = renderListingModalContent(listing);
+  } catch (error) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">📄</div><h3>Listing not found</h3><p>This listing may have been removed.</p></div>';
+  }
+}
+
+function bindListingDetailModal() {
+  document.addEventListener('click', function(e) {
+    const closeTarget = e.target.closest('[data-close-listing-modal]');
+    if (closeTarget) {
+      e.preventDefault();
+      closeListingModal();
+      return;
+    }
+
+    const card = e.target.closest('.listing-card[data-listing-id]');
+    if (!card) return;
+    e.preventDefault();
+    openListingModal(card.dataset.listingId);
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeListingModal();
+  });
 }
 
 function renderListings(listings, target = getDynamicListingsContainer()) {
@@ -462,6 +673,72 @@ function renderListings(listings, target = getDynamicListingsContainer()) {
       ${items.map(listingToCard).join('')}
     `;
   }).join('');
+}
+
+function updateHeroStats(stats, category = inferPageCategory()) {
+  const heroStats = document.querySelectorAll('.page-hero-stat');
+  if (!heroStats.length) return;
+
+  const normalizedCategory = normalizeCategoryForListings(category);
+  const categoryCount = normalizedCategory ? stats.byCategory?.[normalizedCategory] || 0 : stats.total;
+  const values = [
+    { num: formatCount(categoryCount), label: normalizedCategory ? `${getCategoryMeta(normalizedCategory).label} Listings` : 'Active Listings' },
+    { num: formatCount(stats.week), label: 'New This Week' },
+    { num: formatCount(stats.cities), label: 'Cities Covered' },
+  ];
+
+  heroStats.forEach((stat, index) => {
+    const value = values[index];
+    if (!value) return;
+    const num = stat.querySelector('.num');
+    const label = stat.querySelector('.lbl');
+    if (num) num.textContent = value.num;
+    if (label) label.textContent = value.label;
+  });
+}
+
+function updateSidebarStats(stats, category = inferPageCategory()) {
+  const normalizedCategory = normalizeCategoryForListings(category);
+  const categoryCount = normalizedCategory ? stats.byCategory?.[normalizedCategory] || 0 : stats.total;
+
+  document.querySelectorAll('.widget-row').forEach(row => {
+    const label = row.querySelector('.lbl')?.textContent.toLowerCase() || '';
+    const value = row.querySelector('.val');
+    if (!value) return;
+
+    if (label.includes('active listing') || label.includes('service listings') || label.includes('listed org') || label.includes('works published') || label.includes('rooms available') || label.includes('pg rooms')) {
+      value.textContent = formatCount(categoryCount);
+    } else if (label.includes('new today') || label.includes('listings today')) {
+      value.textContent = `${formatCount(stats.today)} new`;
+    } else if (label.includes('new this week') || label.includes('new this month')) {
+      value.textContent = formatCount(stats.week);
+    } else if (label.includes('cities')) {
+      value.textContent = formatCount(stats.cities);
+    }
+  });
+}
+
+function updateHomeStats(stats) {
+  const listingStatRows = Array.from(document.querySelectorAll('.widget-row'));
+  listingStatRows.forEach(row => {
+    const label = row.querySelector('.lbl')?.textContent.toLowerCase() || '';
+    const value = row.querySelector('.val');
+    if (!value) return;
+
+    if (label.includes('active listings')) value.textContent = formatCount(stats.total);
+    if (label.includes('pg rooms')) value.textContent = formatCount(stats.byCategory?.pg || stats.byCategory?.['paying-guest'] || 0);
+  });
+}
+
+async function hydrateDynamicStats(category = inferPageCategory()) {
+  try {
+    const stats = await fetchListingStats();
+    updateHeroStats(stats, category);
+    updateSidebarStats(stats, category);
+    updateHomeStats(stats);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function renderSearchResults(listings, search = '', category = '') {
@@ -507,7 +784,7 @@ async function setFilter(button, category) {
   if (button) button.classList.add('active');
 
   try {
-    const listings = await fetchListings(category);
+    const listings = await fetchListings(normalizeCategoryForListings(category));
     renderListings(listings);
   } catch (error) {
     console.error(error);
@@ -520,10 +797,26 @@ async function hydrateDynamicListings(category = inferPageCategory()) {
   if (!target) return;
 
   try {
+    const params = new URLSearchParams(window.location.search);
+    const requestedCategory = normalizeCategoryForListings(params.get('category') || '');
+    const requestedSubcategory = params.get('subcategory') || '';
+    const requestedSearch = params.get('search') || '';
     const activeHomeFilter = document.querySelector('.filter-btn.active');
-    const homeCategory = activeHomeFilter ? getFilterFromButton(activeHomeFilter) : '';
-    const listings = await fetchListings(homeCategory || category, '', 50);
+    const homeCategory = activeHomeFilter ? normalizeCategoryForListings(getFilterFromButton(activeHomeFilter)) : '';
+    const selectedCategory = requestedCategory || homeCategory || normalizeCategoryForListings(category);
+
+    if (requestedCategory && activeHomeFilter) {
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', normalizeCategoryForListings(getFilterFromButton(btn)) === requestedCategory);
+      });
+    }
+
+    const listings = await fetchListings(selectedCategory, requestedSearch, 100, requestedSubcategory);
     renderListings(listings, target);
+
+    if (window.location.hash === '#listings') {
+      target.closest('#listings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   } catch (error) {
     console.error(error);
   }
@@ -569,6 +862,7 @@ async function hydrateListingDetail() {
 document.addEventListener('DOMContentLoaded', function () {
   hydrateDynamicListings();
   hydrateListingDetail();
+  hydrateDynamicStats();
 
   document.querySelectorAll('.chip[data-filter]').forEach(chip => {
     chip.addEventListener('click', async function () {

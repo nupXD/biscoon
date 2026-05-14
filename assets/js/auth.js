@@ -24,6 +24,11 @@ function saveToken(token) {
   if (token) localStorage.setItem('biscoonToken', token);
 }
 
+function getRedirectTarget() {
+  const redirect = new URLSearchParams(window.location.search).get('redirect');
+  return redirect || '/index.html';
+}
+
 function handleLogin(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -35,7 +40,7 @@ function handleLogin(event) {
       if (data.error) return showAuthMessage(data.error, 'error');
       saveToken(data.token);
       showAuthMessage('Login successful! Redirecting...', 'success');
-      setTimeout(() => window.location.href = '/index.html', 800);
+      setTimeout(() => window.location.href = getRedirectTarget(), 800);
     })
     .catch(() => showAuthMessage('Unable to connect to the authentication server.', 'error'));
 }
@@ -58,7 +63,7 @@ function handleRegister(event) {
       if (data.error) return showAuthMessage(data.error, 'error');
       saveToken(data.token);
       showAuthMessage('Account created successfully! Redirecting...', 'success');
-      setTimeout(() => window.location.href = '/index.html', 1200);
+      setTimeout(() => window.location.href = getRedirectTarget(), 1200);
     })
     .catch(() => showAuthMessage('Unable to connect to the authentication server.', 'error'));
 }

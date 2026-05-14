@@ -13,6 +13,7 @@ Biscoon is a comprehensive online marketplace that connects Nepali immigrants an
 - **Persistent Login UI**: Logged-in users see profile/add-listing/logout dropdowns across every page
 - **Duplicate Email Protection**: Registration blocks duplicate email addresses, including case-insensitive matches
 - **Dynamic Listings**: Homepage, search results, and category pages can render live MongoDB listings
+- **Dynamic Page Stats**: Hero stats, sidebar stats, and category counts hydrate from live listing data
 - **Listing Creation**: Form-based posting system for jobs, housing, services, marketplace, and community categories
 - **Specific Location Posting**: Listings collect area/city and state, then store a searchable location like `Allston, MA`
 - **Category Organization**: Well-structured sections for different service types
@@ -38,7 +39,18 @@ biscoon-project/
 │   ├── css/
 │   │   └── main.css             # Main stylesheet
 │   └── js/
-│       └── biscoon.js           # Main JavaScript file
+│       ├── auth.js              # Login/signup handlers
+│       ├── biscoon.js           # Shared navigation, auth UI, search, dynamic listings
+│       ├── listing.js           # Listing create/edit page handlers
+│       └── profile.js           # Profile and my-listings handlers
+├── src/
+│   ├── config/                  # Environment and database connection
+│   ├── middleware/              # Express middleware
+│   ├── models/                  # Mongoose models
+│   ├── routes/                  # API route modules
+│   └── utils/                   # Shared backend helpers
+├── server.js                    # Express app wiring and startup
+├── seed.js                      # Optional sample MongoDB seed data
 └── pages/
     ├── auth/
     │   ├── login.html           # User login page
@@ -111,7 +123,8 @@ biscoon-project/
 - Edit HTML files in the `pages/` directory
 - Modify styles in `assets/css/main.css`
 - Update JavaScript in `assets/js/biscoon.js`
-- Add backend API routes in `server.js`
+- Add backend API routes in `src/routes/`
+- Add Mongoose schemas in `src/models/`
 
 ### Running the backend
 1. Install dependencies with `npm install`
@@ -123,8 +136,15 @@ biscoon-project/
 4. Start the server with `npm start`
 5. Open the site through `http://localhost:4000/index.html`
 
+### Optional sample data
+Run `npm run seed` to reset MongoDB and create one sample user plus sample listings.
+
+Sample login:
+- Email: `john@example.com`
+- Password: `password123`
+
 ### Backend and database
-- The backend is built with `Express.js` in `server.js`
+- The backend is built with `Express.js` in `server.js` and route/model modules in `src/`
 - User authentication and listing persistence are stored in MongoDB through Mongoose
 - The default database is `biscoon` at `mongodb://localhost:27017/biscoon`
 - Collections and indexes are created by Mongoose when the server starts and data is written
@@ -174,6 +194,8 @@ biscoon-project/
   - Retrieve all listings
   - Optional query: `?category=<category>&subcategory=<subcategory>&search=<term>&limit=<number>`
   - Category values line up with page slugs such as `jobs`, `housing`, `services`, `paying-guest`, `restaurants`, `tech`, and `immigration`
+- `GET /api/listings/stats/summary`
+  - Retrieve dynamic counts for total listings, today's listings, this week's listings, cities covered, category counts, and subcategory counts
 - `GET /api/listings/mine`
   - Retrieve listings created by the current authenticated user
   - Requires `Authorization: Bearer <token>` header

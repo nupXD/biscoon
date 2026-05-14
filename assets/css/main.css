@@ -404,6 +404,19 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
 .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px }
 .empty-state p { font-size: 13px; line-height: 1.6 }
 .dynamic-listing-note { border: 1px solid var(--border); border-radius: 10px; background: var(--off-white); color: var(--text-muted); font-size: 12.5px; padding: 12px 14px; margin-bottom: 12px }
+.listing-modal { display: none; position: fixed; inset: 0; z-index: 3000; align-items: center; justify-content: center; padding: 24px }
+.listing-modal.open { display: flex }
+.listing-modal-backdrop { position: absolute; inset: 0; background: rgba(5,13,31,.58); backdrop-filter: blur(4px) }
+.listing-modal-panel { position: relative; width: min(720px, 100%); max-height: min(760px, calc(100vh - 48px)); overflow: auto; background: white; border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 28px 80px rgba(0,0,0,.28); padding: 34px }
+.listing-modal-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 999px; background: white; color: var(--gray-600); cursor: pointer; font-size: 22px; line-height: 1; display: flex; align-items: center; justify-content: center }
+.listing-modal-close:hover { border-color: var(--red); color: var(--red); background: var(--red-ultra) }
+.listing-modal-open { overflow: hidden }
+.listing-modal-body .listing-detail-kicker { font-size: 11px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 12px; font-family: 'IBM Plex Mono', monospace }
+.listing-modal-body h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(30px, 5vw, 46px); color: var(--navy); line-height: 1.05; margin-bottom: 14px }
+.listing-detail-meta { display: flex; flex-wrap: wrap; gap: 12px; color: var(--text-muted); font-size: 13px; margin-bottom: 18px }
+.listing-detail-price { color: var(--red); font-size: 23px; font-weight: 700; margin-bottom: 18px }
+.listing-modal-body p { color: var(--gray-700); line-height: 1.8; font-size: 15px; white-space: pre-wrap; margin-bottom: 24px }
+.listing-detail-contact { display: flex; flex-wrap: wrap; gap: 12px }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) { .page-layout { grid-template-columns: 1fr } .page-sidebar { display: none } }
