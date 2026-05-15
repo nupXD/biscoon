@@ -1,270 +1,668 @@
 # Biscoon - Nepali Community Marketplace
 
-A dynamic marketplace platform designed for the Nepali community in the United States, providing services, jobs, housing, and community connections.
+Biscoon is a dynamic community marketplace for Nepalis in the United States. It brings together listings for jobs, housing, paying guests, services, shops, restaurants, events, community organizations, and cultural connections in one searchable platform.
 
-## 🌟 Overview
+The project is built as a static HTML/CSS/JavaScript frontend served by an Express backend, with MongoDB/Mongoose for user accounts and live listing data.
 
-Biscoon is a comprehensive online marketplace that connects Nepali immigrants and businesses in the US. The platform offers categorized listings for jobs, housing, services, community events, and more, all tailored to the needs of the Nepali diaspora.
+## Project Goals
 
-## ✨ Features
+- Help Nepali community members find relevant listings by category, location, and search terms.
+- Allow registered users to create, edit, delete, and manage their own listings.
+- Keep users logged in across all pages and hide sign-in/sign-up actions once authenticated.
+- Make listings dynamic across the homepage, category pages, search results, profile, and post pages.
+- Keep the codebase readable by separating global CSS, page CSS, JavaScript, routes, models, and helpers.
 
-### Core Functionality
-- **User Authentication**: Login and signup pages for user accounts
-- **Persistent Login UI**: Logged-in users see profile/add-listing/logout dropdowns across every page
-- **Duplicate Email Protection**: Registration blocks duplicate email addresses, including case-insensitive matches
-- **Dynamic Listings**: Homepage, search results, and category pages can render live MongoDB listings
-- **Dynamic Page Stats**: Hero stats, sidebar stats, and category counts hydrate from live listing data
-- **Listing Creation**: Form-based posting system for jobs, housing, services, marketplace, and community categories
-- **Specific Location Posting**: Listings collect area/city and state, then store a searchable location like `Allston, MA`
-- **Listing Images**: Users can upload, preview, remove, and edit up to 6 listing images; category defaults appear when no images are uploaded
-- **Listing Detail Popups**: Listing cards open detail popups with image galleries, contact actions, and owner edit controls
-- **Category Organization**: Well-structured sections for different service types
+## Main Features
 
-### Categories Available
-- **Jobs**: Employment opportunities, tutoring, healthcare, tech, finance, and more
-- **Housing**: Real estate, paying guest accommodations, moving services
-- **Marketplace**: Services, childcare, beauty, auto, restaurants, photography, and business sales
-- **Community**: Events, matrimony, matchmaker services, sports, music, art, literature, yoga, and cultural organizations
+### Authentication
 
-### Technical Features
-- Responsive design for mobile and desktop
-- Clean, modern UI with Nepali language support
-- Express-backed frontend with dynamic MongoDB data
-- Organized file structure with modular CSS and JavaScript
-- Page-specific CSS extracted to `assets/css/pages/` so HTML files stay readable and avoid inline CSS
+- User signup and login with JWT authentication.
+- Duplicate email validation prevents the same email from registering more than once.
+- Login state is persisted in `localStorage`.
+- Logged-in users see profile/add-listing/logout dropdowns across pages.
+- Logged-out users are redirected to login before creating or managing listings.
 
-## 📁 Project Structure
+### Dynamic Listings
 
-```
+- Listings are stored in MongoDB.
+- Homepage and category pages can render live listing data.
+- Search supports keywords and category filtering.
+- Browse/load-more actions preserve the selected category or subcategory.
+- Listing cards open detail popups instead of redirecting away.
+- Detail pages still exist for direct listing URLs.
+
+### Listing Posting
+
+Users can create meaningful listings with:
+
+- Category
+- Specific type/subcategory
+- Title/headline
+- Description
+- Area/city and state
+- Location type
+- Availability/timing
+- Price/rate
+- Price note
+- Contact email and phone
+- Contact preference
+- External link
+- Tags
+- Up to 6 images
+
+The posting form builds a searchable location string such as `Allston, MA`.
+
+### Listing Images
+
+- Users can upload multiple images.
+- Images are resized in the browser before saving.
+- Up to 6 images can be stored per listing.
+- Existing images can be kept, removed, or replaced while editing.
+- Listing cards show the first uploaded image.
+- If no image exists, a category-based default visual is shown.
+- Popups and detail pages show an image gallery, or a default image area when no images were uploaded.
+
+### Profile Management
+
+The profile page lets authenticated users:
+
+- View account details.
+- Update name and phone.
+- Change password with current password validation.
+- View all their posted listings.
+- Click a listing to open a popup detail view.
+- Edit a listing inside the same popup.
+- Add/remove listing images from the popup editor.
+- Delete owned listings.
+
+### Dynamic Stats
+
+The backend exposes listing stats used by page UI:
+
+- Total listings
+- Listings posted today
+- Listings posted this week
+- Cities covered
+- Counts by category
+- Counts by subcategory
+
+## Technology Stack
+
+- HTML5
+- CSS3
+- JavaScript
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- JWT
+- bcryptjs
+
+## Project Structure
+
+```text
 biscoon-project/
-├── index.html                    # Homepage
+├── index.html
+├── package.json
+├── package-lock.json
+├── server.js
+├── seed.js
+├── README.md
 ├── assets/
 │   ├── css/
-│   │   ├── main.css             # Global shared stylesheet
-│   │   └── pages/               # Page-specific extracted stylesheets
+│   │   ├── main.css
+│   │   └── pages/
+│   │       ├── index.css
+│   │       ├── auth/
+│   │       ├── community/
+│   │       ├── housing/
+│   │       ├── jobs/
+│   │       ├── marketplace/
+│   │       └── post/
 │   └── js/
-│       ├── auth.js              # Login/signup handlers
-│       ├── biscoon.js           # Shared navigation, auth UI, search, dynamic listings
-│       ├── listing.js           # Listing create/edit page handlers
-│       └── profile.js           # Profile and my-listings handlers
-├── src/
-│   ├── config/                  # Environment and database connection
-│   ├── middleware/              # Express middleware
-│   ├── models/                  # Mongoose models
-│   ├── routes/                  # API route modules
-│   └── utils/                   # Shared backend helpers
-├── server.js                    # Express app wiring and startup
-├── seed.js                      # Optional sample MongoDB seed data
+│       ├── auth.js
+│       ├── biscoon.js
+│       ├── listing.js
+│       └── profile.js
+├── pages/
+│   ├── auth/
+│   ├── community/
+│   ├── housing/
+│   ├── jobs/
+│   ├── marketplace/
+│   └── post/
 ├── scripts/
-│   └── extract-page-css.js      # Helper to extract inline/page CSS into assets/css/pages
-└── pages/
-    ├── auth/
-    │   ├── login.html           # User login page
-    │   └── signup.html          # User registration page
-    ├── post/
-    │   └── listing.html         # Create new listing page
-    ├── community/
-    │   ├── art.html
-    │   ├── events.html
-    │   ├── jyotish.html
-    │   ├── literature.html
-    │   ├── matchmaker.html
-    │   ├── matrimony.html
-    │   ├── music.html
-    │   ├── organizations.html
-    │   ├── pen-pals.html
-    │   ├── sports.html
-    │   ├── travel.html
-    │   └── yoga.html
-    ├── housing/
-    │   ├── housing.html
-    │   ├── moving.html
-    │   ├── paying-guest.html
-    │   └── real-estate.html
-    ├── jobs/
-    │   ├── ai-services.html
-    │   ├── cpa.html
-    │   ├── education.html
-    │   ├── finance.html
-    │   ├── healthcare.html
-    │   ├── immigration.html
-    │   ├── insurance.html
-    │   ├── jobs.html
-    │   ├── legal.html
-    │   ├── rojgar.html
-    │   ├── student.html
-    │   ├── students.html
-    │   ├── tech.html
-    │   └── tutoring.html
-    └── marketplace/
-        ├── auto.html
-        ├── beauty.html
-        ├── business-for-sale.html
-        ├── childcare.html
-        ├── cleaning.html
-        ├── kinbech.html
-        ├── photography.html
-        ├── produce.html
-        ├── restaurants.html
-        ├── services.html
-        ├── shops.html
-        └── translation.html
+│   └── extract-page-css.js
+└── src/
+    ├── config/
+    ├── middleware/
+    ├── models/
+    ├── routes/
+    └── utils/
 ```
 
-## 🚀 Getting Started
+## Important Files
 
-### Prerequisites
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Node.js and npm for the backend
-- MongoDB running locally, or a hosted MongoDB connection string
+- `server.js`: Express app setup, static file serving, route mounting, and port fallback startup.
+- `src/config/env.js`: Environment defaults for port, MongoDB URI, JWT secret, and static root.
+- `src/config/database.js`: MongoDB connection setup.
+- `src/models/User.js`: User schema.
+- `src/models/Listing.js`: Listing schema.
+- `src/routes/auth.js`: Register, login, and profile API routes.
+- `src/routes/listings.js`: Listing CRUD, search, owner listings, and stats routes.
+- `src/middleware/auth.js`: JWT auth middleware.
+- `src/utils/users.js`: User lookup helpers.
+- `src/utils/listings.js`: Listing lookup and normalization helpers.
+- `assets/js/auth.js`: Signup/login frontend logic.
+- `assets/js/biscoon.js`: Shared page behavior, login UI, search, dynamic listings, listing popups, and stats.
+- `assets/js/listing.js`: Post listing page logic, image upload/editing, create/update/delete.
+- `assets/js/profile.js`: Profile page logic, account update, owner listing popups, and popup editing.
+- `assets/css/main.css`: Global shared design system and reusable components.
+- `assets/css/pages/`: Extracted page-specific CSS files.
+- `scripts/extract-page-css.js`: Utility script for extracting inline/page CSS into external CSS files.
 
-### Installation
-1. Clone or download the project files
-2. Install dependencies with `npm install`
-3. Start MongoDB locally or set `MONGODB_URI`
-4. Start the server with `npm start`
-5. Open `http://localhost:4000/index.html`
+## CSS Organization
 
-### Development
-- Edit HTML files in the `pages/` directory
-- Modify global styles in `assets/css/main.css`
-- Modify page-specific styles in `assets/css/pages/`
-- Run `node scripts/extract-page-css.js` if inline/page CSS needs to be extracted again
-- Update JavaScript in `assets/js/biscoon.js`
-- Add backend API routes in `src/routes/`
-- Add Mongoose schemas in `src/models/`
+The project avoids inline CSS in HTML pages.
 
-### Running the backend
-1. Install dependencies with `npm install`
-2. Make sure MongoDB is running
-3. Optionally set environment variables:
-   - `PORT` defaults to `4000`
-   - `MONGODB_URI` defaults to `mongodb://localhost:27017/biscoon`
-   - `JWT_SECRET` defaults to a development-only secret
-4. Start the server with `npm start`
-5. Open the site through `http://localhost:4000/index.html`
+- Global reusable styles live in `assets/css/main.css`.
+- Page-specific styles live in `assets/css/pages/`.
+- Each HTML page links `main.css` first and then its own page stylesheet.
+- If inline styles are introduced again, run:
 
-If port `4000` is already in use, the server automatically tries the next available port, such as `4001`.
+```bash
+node scripts/extract-page-css.js
+```
 
-### Optional sample data
-Run `npm run seed` to reset MongoDB and create one sample user plus sample listings.
+This script extracts `<style>` blocks and `style="..."` attributes into matching CSS files under `assets/css/pages/`.
+
+## Pages
+
+### Top Level
+
+- `index.html`: Homepage with search, category browsing, dynamic listing sections, and stats.
+
+### Auth
+
+- `pages/auth/signup.html`: Account registration.
+- `pages/auth/login.html`: User login.
+- `pages/auth/profile.html`: Profile settings and owner listing management.
+
+### Posting
+
+- `pages/post/listing.html`: Create, edit, delete, and view owned listings.
+- `pages/post/detail.html`: Direct detail page for a listing ID.
+
+### Jobs
+
+- `pages/jobs/jobs.html`
+- `pages/jobs/rojgar.html`
+- `pages/jobs/tech.html`
+- `pages/jobs/healthcare.html`
+- `pages/jobs/insurance.html`
+- `pages/jobs/cpa.html`
+- `pages/jobs/legal.html`
+- `pages/jobs/finance.html`
+- `pages/jobs/education.html`
+- `pages/jobs/student.html`
+- `pages/jobs/students.html`
+- `pages/jobs/tutoring.html`
+- `pages/jobs/ai-services.html`
+- `pages/jobs/immigration.html`
+
+### Housing
+
+- `pages/housing/housing.html`
+- `pages/housing/paying-guest.html`
+- `pages/housing/real-estate.html`
+- `pages/housing/moving.html`
+
+### Marketplace
+
+- `pages/marketplace/kinbech.html`
+- `pages/marketplace/services.html`
+- `pages/marketplace/restaurants.html`
+- `pages/marketplace/shops.html`
+- `pages/marketplace/childcare.html`
+- `pages/marketplace/beauty.html`
+- `pages/marketplace/auto.html`
+- `pages/marketplace/cleaning.html`
+- `pages/marketplace/photography.html`
+- `pages/marketplace/produce.html`
+- `pages/marketplace/business-for-sale.html`
+- `pages/marketplace/translation.html`
+
+### Community
+
+- `pages/community/organizations.html`
+- `pages/community/events.html`
+- `pages/community/literature.html`
+- `pages/community/music.html`
+- `pages/community/art.html`
+- `pages/community/sports.html`
+- `pages/community/yoga.html`
+- `pages/community/jyotish.html`
+- `pages/community/matchmaker.html`
+- `pages/community/matrimony.html`
+- `pages/community/pen-pals.html`
+- `pages/community/travel.html`
+
+## Setup
+
+### Requirements
+
+- Node.js
+- npm
+- MongoDB
+- Modern browser
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Environment Variables
+
+The app works with defaults, but these can be configured:
+
+```bash
+PORT=4000
+MONGODB_URI=mongodb://localhost:27017/biscoon
+JWT_SECRET=biscoon_dev_secret
+```
+
+For production, set a strong `JWT_SECRET`.
+
+### Start MongoDB
+
+Start a local MongoDB service or provide a hosted MongoDB connection string with `MONGODB_URI`.
+
+### Start the App
+
+```bash
+npm start
+```
+
+Open:
+
+```text
+http://localhost:4000/index.html
+```
+
+If port `4000` is busy, the server automatically tries the next available port, such as `4001`.
+
+### Development Mode
+
+```bash
+npm run dev
+```
+
+This uses `nodemon` to restart the backend when files change.
+
+### Seed Sample Data
+
+```bash
+npm run seed
+```
+
+This resets MongoDB sample data and creates a demo user/listings.
 
 Sample login:
-- Email: `john@example.com`
-- Password: `password123`
 
-### Backend and database
-- The backend is built with `Express.js` in `server.js` and route/model modules in `src/`
-- User authentication and listing persistence are stored in MongoDB through Mongoose
-- The default database is `biscoon` at `mongodb://localhost:27017/biscoon`
-- Collections and indexes are created by Mongoose when the server starts and data is written
+```text
+Email: john@example.com
+Password: password123
+```
 
-### MongoDB collections
-- `users`
-  - `id` String, unique
-  - `name` String, required
-  - `email` String, required, unique, lowercase
-  - `phone` String
-  - `password` String, required, bcrypt hash
-  - `createdAt` Date
-- `listings`
-  - `id` String, unique
-  - `userId` String, required
-  - `title` String, required
-  - `description` String, required
-  - `category` String, required, indexed
-  - `subcategory` String
-  - `availability` String
-  - `price` String
-  - `priceNote` String
-  - `location` String, indexed
-  - `locationType` String
-  - `contactEmail` String
-  - `contactPhone` String
-  - `contactPreference` String
-  - `externalLink` String
-  - `tags` Array of strings
-  - `images` Array of strings, up to 6 browser-readable image data URLs or image paths
-  - `createdAt` Date, indexed
-  - `updatedAt` Date
-  - Text index across `title`, `description`, `category`, `subcategory`, `availability`, `location`, and `tags`
+## NPM Scripts
 
-### API endpoints
-- `POST /api/auth/register`
-  - Register a new user
-  - Request body: `name`, `email`, `phone`, `password`, `confirmPassword`
-  - Response: user data and JWT token
-  - Duplicate emails return `409` with `An account with this email already exists.`
-- `POST /api/auth/login`
-  - Login with existing user credentials
-  - Request body: `email`, `password`
-  - Response: user data and JWT token
-- `GET /api/auth/me`
-  - Returns current authenticated user
-  - Requires `Authorization: Bearer <token>` header
-- `POST /api/listings`
-  - Create a new listing for the authenticated user
-  - Request body: `title`, `description`, `category`, `subcategory`, `location`, and optionally `availability`, `price`, `priceNote`, `locationType`, `contactEmail`, `contactPhone`, `contactPreference`, `externalLink`, `tags`, `images`
-  - The posting form builds `location` from area/city and state fields
-  - `images` accepts up to 6 uploaded image data URLs or image paths
-- `GET /api/listings`
-  - Retrieve all listings
-  - Optional query: `?category=<category>&subcategory=<subcategory>&search=<term>&limit=<number>`
-  - Category values line up with page slugs such as `jobs`, `housing`, `services`, `paying-guest`, `restaurants`, `tech`, and `immigration`
-- `GET /api/listings/stats/summary`
-  - Retrieve dynamic counts for total listings, today's listings, this week's listings, cities covered, category counts, and subcategory counts
-- `GET /api/listings/mine`
-  - Retrieve listings created by the current authenticated user
-  - Requires `Authorization: Bearer <token>` header
-- `GET /api/listings/:id`
-  - Retrieve a single listing by ID
-- `PUT /api/listings/:id`
-  - Update a listing owned by the authenticated user
-  - Request body may include `title`, `description`, `category`, `subcategory`, `location`, `availability`, `price`, `priceNote`, `locationType`, `contactEmail`, `contactPhone`, `contactPreference`, `externalLink`, `tags`, `images`
-  - Owners can add, remove, and replace listing images through the profile/listing edit UI
-  - Requires `Authorization: Bearer <token>` header
-- `DELETE /api/listings/:id`
-  - Delete a listing owned by the authenticated user
-  - Requires `Authorization: Bearer <token>` header
+```json
+{
+  "start": "node server.js",
+  "dev": "nodemon server.js",
+  "seed": "node seed.js"
+}
+```
 
-## 🛠️ Technologies Used
+## Data Model
 
-- **HTML5**: Semantic markup and structure
-- **CSS3**: Responsive design and styling
-- **JavaScript**: Interactive functionality
-- **Express.js**: Backend API and static file serving
-- **MongoDB + Mongoose**: User and listing persistence
-- **JWT + bcryptjs**: Authentication tokens and password hashing
+### User
 
-## 🎯 Target Audience
+```text
+id          String, unique
+name        String, required
+email       String, required, unique, lowercase
+phone       String
+password    String, bcrypt hash
+createdAt   Date
+```
+
+### Listing
+
+```text
+id                  String, unique
+userId              String, required
+title               String, required
+description         String, required
+category            String, required, indexed
+subcategory         String
+availability        String
+price               String
+priceNote           String
+location            String, indexed
+locationType        String
+contactEmail        String
+contactPhone        String
+contactPreference   String
+externalLink        String
+tags                Array<String>
+images              Array<String>, max 6
+createdAt           Date, indexed
+updatedAt           Date
+```
+
+Listings have a text index across title, description, category, location, and related searchable fields.
+
+## API Reference
+
+### Auth
+
+#### `POST /api/auth/register`
+
+Creates a new user.
+
+Request body:
+
+```json
+{
+  "name": "Anup",
+  "email": "anup@example.com",
+  "phone": "555-123-4567",
+  "password": "password123",
+  "confirmPassword": "password123"
+}
+```
+
+Duplicate emails return `409`.
+
+#### `POST /api/auth/login`
+
+Logs in an existing user.
+
+Request body:
+
+```json
+{
+  "email": "anup@example.com",
+  "password": "password123"
+}
+```
+
+Returns user data and JWT token.
+
+#### `GET /api/auth/me`
+
+Returns the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+#### `PUT /api/auth/me`
+
+Updates profile details and optionally password.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+### Listings
+
+#### `POST /api/listings`
+
+Creates a listing for the authenticated user.
+
+Required fields:
+
+```text
+title
+description
+category
+subcategory
+location
+```
+
+Optional fields:
+
+```text
+availability
+price
+priceNote
+locationType
+contactEmail
+contactPhone
+contactPreference
+externalLink
+tags
+images
+```
+
+Images accepts up to 6 image data URLs or image paths.
+
+#### `GET /api/listings`
+
+Returns listings.
+
+Optional query parameters:
+
+```text
+category
+subcategory
+search
+limit
+```
+
+Example:
+
+```text
+/api/listings?category=housing&subcategory=room&search=Boston&limit=20
+```
+
+#### `GET /api/listings/mine`
+
+Returns listings owned by the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+#### `GET /api/listings/stats/summary`
+
+Returns dynamic listing stats:
+
+```json
+{
+  "total": 12,
+  "today": 2,
+  "week": 5,
+  "cities": 4,
+  "byCategory": {},
+  "bySubcategory": {}
+}
+```
+
+#### `GET /api/listings/:id`
+
+Returns a single listing by public listing ID.
+
+#### `PUT /api/listings/:id`
+
+Updates a listing owned by the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Owners can update details, tags, contact information, and images.
+
+#### `DELETE /api/listings/:id`
+
+Deletes a listing owned by the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+## Frontend Behavior
+
+### Authentication UI
+
+`assets/js/biscoon.js` checks local login state and updates:
+
+- Desktop navigation
+- Mobile drawer
+- User dropdown
+- Post listing redirects
+- Protected listing actions
+
+### Listing Cards
+
+Listing cards show:
+
+- Thumbnail image or default category visual
+- Title
+- Location
+- Posted date
+- Contact email when available
+- Category/subcategory tags
+- Availability tags
+- Price/rate
+
+Clicking a dynamic listing opens a popup instead of navigating away.
+
+### Profile Listings
+
+The profile page renders owner listing cards. Clicking a card opens a popup with:
+
+- Full listing details
+- Image gallery
+- Contact actions
+- Edit listing action
+
+Editing happens in the same popup.
+
+### Posting Page Listings
+
+The posting page also shows the current user's listings and supports:
+
+- Create listing
+- Edit listing
+- Delete listing
+- Image preview
+- Multiple image upload
+- Remove images before saving
+
+## CSS and HTML Cleanliness
+
+The project intentionally avoids inline CSS in HTML.
+
+To check for inline styles:
+
+```bash
+rg "<style|style=\"" -g "*.html"
+```
+
+To extract inline CSS if it appears again:
+
+```bash
+node scripts/extract-page-css.js
+```
+
+## Validation and Checks
+
+Useful syntax checks:
+
+```bash
+node --check server.js
+node --check assets/js/biscoon.js
+node --check assets/js/auth.js
+node --check assets/js/listing.js
+node --check assets/js/profile.js
+node --check src/routes/auth.js
+node --check src/routes/listings.js
+node --check scripts/extract-page-css.js
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+If port `4000` is busy, the server tries the next available port automatically.
+
+To see what is using a port:
+
+```bash
+lsof -nP -iTCP:4000 -sTCP:LISTEN
+```
+
+To stop a process:
+
+```bash
+kill <PID>
+```
+
+### MongoDB Connection Error
+
+Make sure MongoDB is running, or set:
+
+```bash
+MONGODB_URI=<your connection string>
+```
+
+### Login Issues
+
+- Confirm the backend is running.
+- Confirm MongoDB is running.
+- Clear old browser local storage if token data is stale.
+- Use the seeded account after `npm run seed`.
+
+### Images Are Too Large
+
+Images are resized in the browser before saving. If requests are still too large, reduce image count or size. The backend JSON limit is configured in `server.js`.
+
+## Development Notes
+
+- Do not commit local database files or private `.env` files.
+- Keep global styles in `assets/css/main.css`.
+- Keep page-only styles in `assets/css/pages/`.
+- Keep shared frontend behavior in `assets/js/biscoon.js`.
+- Keep page-specific frontend behavior in `auth.js`, `listing.js`, or `profile.js`.
+- Add new backend routes under `src/routes/`.
+- Add new schemas under `src/models/`.
+
+## Target Audience
 
 - Nepali immigrants in the United States
-- Businesses serving the Nepali community
-- Individuals seeking services, jobs, or housing
-- Community organizers and event planners
+- Nepali-owned businesses
+- Students and professionals
+- People seeking jobs, housing, roommates, or services
+- Community organizers and cultural groups
 
-## 📱 Responsive Design
+## License
 
-The site is fully responsive and optimized for:
-- Desktop computers
-- Tablets
-- Mobile phones
-
-## 🔗 Navigation
-
-- **Homepage**: Overview and featured listings
-- **Categories**: Organized by jobs, housing, marketplace, and community
-- **Authentication**: User login and registration
-- **Posting**: Create new listings with forms and file uploads
-
-## 🤝 Contributing
-
-To contribute:
-1. Fork the repository
-2. Make your changes
-3. Test locally through `npm start`
-4. Submit a pull request
+This project is currently private/internal unless a license is added.
 
 ---
 
-**Built for the Nepali community in the US** 🇳🇵
+Built for the Nepali community.
