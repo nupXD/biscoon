@@ -6,24 +6,73 @@ const { findListingById, normalizeListing } = require('../utils/listings');
 
 const router = express.Router();
 
+function cleanString(value, fallback = '') {
+  if (value === undefined || value === null) return fallback;
+  return String(value).trim();
+}
+
+function cleanTags(tags) {
+  return Array.isArray(tags)
+    ? tags.map(tag => cleanString(tag)).filter(Boolean).slice(0, 8)
+    : [];
+}
+
+function cleanImages(images) {
+  return Array.isArray(images)
+    ? images
+      .map(image => cleanString(image))
+      .filter(image => image.startsWith('data:image/') || /^https?:\/\//i.test(image) || !image.includes(':'))
+      .slice(0, 6)
+    : [];
+}
+
 router.post('/', authMiddleware, async (req, res) => {
-  const { title, description, category, subcategory, price, location, contactEmail, contactPhone, images } = req.body;
-  if (!title || !description || !category) {
-    return res.status(400).json({ error: 'Title, description, and category are required.' });
+  const {
+    title,
+    description,
+    category,
+    subcategory,
+    availability,
+    price,
+    priceNote,
+    location,
+    locationType,
+    contactEmail,
+    contactPhone,
+    contactPreference,
+    externalLink,
+    tags,
+    images,
+  } = req.body;
+
+  const cleanTitle = cleanString(title);
+  const cleanDescription = cleanString(description);
+  const cleanCategory = cleanString(category);
+  const cleanSubcategory = cleanString(subcategory);
+  const cleanLocation = cleanString(location);
+
+  if (!cleanTitle || !cleanDescription || !cleanCategory || !cleanSubcategory || !cleanLocation) {
+    return res.status(400).json({ error: 'Title, description, category, specific type, and location are required.' });
   }
 
   const listing = new Listing({
     id: uuidv4(),
     userId: req.user.id,
-    title: title.trim(),
-    description: description.trim(),
-    category: category.trim(),
-    subcategory: subcategory ? subcategory.trim() : '',
-    price: price ? String(price).trim() : '',
-    location: location ? location.trim() : '',
-    contactEmail: contactEmail ? contactEmail.trim() : '',
-    contactPhone: contactPhone ? contactPhone.trim() : '',
-    images: Array.isArray(images) ? images : [],
+    title: cleanTitle,
+    description: cleanDescription,
+    category: cleanCategory,
+    subcategory: cleanSubcategory,
+    availability: cleanString(availability),
+    price: cleanString(price),
+    priceNote: cleanString(priceNote),
+    location: cleanLocation,
+    locationType: cleanString(locationType),
+    contactEmail: cleanString(contactEmail),
+    contactPhone: cleanString(contactPhone),
+    contactPreference: cleanString(contactPreference),
+    externalLink: cleanString(externalLink),
+    tags: cleanTags(tags),
+    images: cleanImages(images),
   });
 
   await listing.save();
@@ -127,26 +176,44 @@ router.put('/:id', authMiddleware, async (req, res) => {
     description = listing.description,
     category = listing.category,
     subcategory = listing.subcategory,
+    availability = listing.availability,
     price = listing.price,
+    priceNote = listing.priceNote,
     location = listing.location,
+    locationType = listing.locationType,
     contactEmail = listing.contactEmail,
     contactPhone = listing.contactPhone,
+    contactPreference = listing.contactPreference,
+    externalLink = listing.externalLink,
+    tags = listing.tags,
     images = listing.images,
   } = req.body;
 
-  if (!title || !description || !category) {
-    return res.status(400).json({ error: 'Title, description, and category are required.' });
+  const cleanTitle = cleanString(title);
+  const cleanDescription = cleanString(description);
+  const cleanCategory = cleanString(category);
+  const cleanSubcategory = cleanString(subcategory);
+  const cleanLocation = cleanString(location);
+
+  if (!cleanTitle || !cleanDescription || !cleanCategory || !cleanSubcategory || !cleanLocation) {
+    return res.status(400).json({ error: 'Title, description, category, specific type, and location are required.' });
   }
 
-  listing.title = title.trim();
-  listing.description = description.trim();
-  listing.category = category.trim();
-  listing.subcategory = subcategory ? String(subcategory).trim() : '';
-  listing.price = price ? String(price).trim() : '';
-  listing.location = location ? String(location).trim() : '';
-  listing.contactEmail = contactEmail ? String(contactEmail).trim() : '';
-  listing.contactPhone = contactPhone ? String(contactPhone).trim() : '';
-  listing.images = Array.isArray(images) ? images : [];
+  listing.title = cleanTitle;
+  listing.description = cleanDescription;
+  listing.category = cleanCategory;
+  listing.subcategory = cleanSubcategory;
+  listing.availability = cleanString(availability);
+  listing.price = cleanString(price);
+  listing.priceNote = cleanString(priceNote);
+  listing.location = cleanLocation;
+  listing.locationType = cleanString(locationType);
+  listing.contactEmail = cleanString(contactEmail);
+  listing.contactPhone = cleanString(contactPhone);
+  listing.contactPreference = cleanString(contactPreference);
+  listing.externalLink = cleanString(externalLink);
+  listing.tags = cleanTags(tags);
+  listing.images = cleanImages(images);
   listing.updatedAt = new Date();
 
   await listing.save();

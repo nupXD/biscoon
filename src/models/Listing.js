@@ -8,10 +8,16 @@ const listingSchema = new mongoose.Schema({
   description: { type: String, required: true },
   category: { type: String, required: true, index: true },
   subcategory: { type: String },
+  availability: { type: String },
   price: { type: String },
+  priceNote: { type: String },
   location: { type: String, index: true },
+  locationType: { type: String },
   contactEmail: { type: String },
   contactPhone: { type: String },
+  contactPreference: { type: String },
+  externalLink: { type: String },
+  tags: [{ type: String }],
   images: [{ type: String }],
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now },
@@ -21,7 +27,10 @@ listingSchema.index({
   title: 'text',
   description: 'text',
   category: 'text',
+  subcategory: 'text',
+  availability: 'text',
   location: 'text',
+  tags: 'text',
 });
 
 module.exports = mongoose.model('Listing', listingSchema);

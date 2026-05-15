@@ -6,29 +6,10 @@
 <title>🏗️ Real Estate — Biscoon</title>
 <meta name="description" content="Buy, sell or invest in real estate with Nepali agents and community expertise."/>
 <link rel="stylesheet" href="../../assets/css/main.css"/>
-<style>
-.page-layout{display:grid;grid-template-columns:1fr 300px;gap:24px;padding:32px 40px 52px;align-items:start}
-.page-sidebar{display:flex;flex-direction:column;gap:14px;position:sticky;top:74px}
-.filter-sort-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 40px;background:var(--off-white);border-bottom:1px solid var(--border)}
-.filter-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
-.chip{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:white;font-size:12px;cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;color:var(--gray-600);transition:all .15s;white-space:nowrap}
-.chip:hover,.chip.active{background:var(--red);border-color:var(--red);color:white}
-.sort-select{padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--gray-600);background:white;cursor:pointer;outline:none}
-.listing-card{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;background:white;display:flex;gap:14px;align-items:flex-start;transition:border-color .15s,box-shadow .15s,transform .15s;cursor:pointer;margin-bottom:9px;text-decoration:none;color:inherit}
-.listing-card:hover{border-color:var(--red);box-shadow:0 3px 14px rgba(192,57,43,.09);transform:translateX(2px)}
-.listing-thumb{width:50px;height:50px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.listing-body{flex:1;min-width:0}
-.listing-title{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.listing-meta{font-size:11px;color:var(--text-muted);margin-bottom:7px;display:flex;gap:12px;flex-wrap:wrap}
-.listing-price{font-size:13px;font-weight:700;color:var(--navy);margin-left:auto;flex-shrink:0;white-space:nowrap;padding-left:10px}
-.listing-tags{display:flex;gap:5px;flex-wrap:wrap}
-.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
-.tag-green{background:var(--green-light);color:#065f46}.tag-blue{background:var(--blue-light);color:#1e40af}.tag-red{background:var(--red-light);color:var(--red-dark)}.tag-gold{background:var(--gold-light);color:#78350f}.tag-navy{background:#e0e7ff;color:#3730a3}.tag-gray{background:var(--gray-100);color:var(--gray-600)}.tag-purple{background:#ede9fe;color:#5b21b6}
-@media(max-width:1100px){.page-layout{grid-template-columns:1fr}.page-sidebar{display:none}}
-@media(max-width:640px){.page-layout{padding:20px}.filter-sort-bar{padding:12px 20px}}
-</style>
+<link rel="stylesheet" href="../../assets/css/pages/housing/real-estate.css"/>
+
 </head>
-<body><div class="ticker-wrap ticker-markets"><div class="ticker-label">📈 MARKETS</div><div class="ticker-track anim-35"><span class="ticker-item"><span class="sym" style="color:#93c5fd">NASDAQ</span><span class="val up">18,234</span><span class="chg up">▲+1.24%</span></span><span class="ticker-item"><span class="sym" style="color:#93c5fd">S&amp;P 500</span><span class="val up">5,128</span><span class="chg up">▲+0.87%</span></span><span class="ticker-item"><span class="sym" style="color:#93c5fd">Dow</span><span class="val down">38,790</span><span class="chg down">▼-0.32%</span></span><span class="ticker-item"><span class="sym" style="color:#fbbf24">NVDA</span><span class="val up">$884</span><span class="chg up">▲+3.21%</span></span><span class="ticker-item"><span class="sym" style="color:#fbbf24">AAPL</span><span class="val up">$192</span><span class="chg up">▲+0.94%</span></span><span class="ticker-item"><span class="sym" style="color:#86efac">NEPSE</span><span class="val up">2,341</span><span class="chg up">▲+0.63%</span></span><span class="ticker-item"><span class="sym" style="color:#93c5fd">NASDAQ</span><span class="val up">18,234</span><span class="chg up">▲+1.24%</span></span><span class="ticker-item"><span class="sym" style="color:#93c5fd">S&amp;P 500</span><span class="val up">5,128</span><span class="chg up">▲+0.87%</span></span><span class="ticker-item"><span class="sym" style="color:#93c5fd">Dow</span><span class="val down">38,790</span><span class="chg down">▼-0.32%</span></span><span class="ticker-item"><span class="sym" style="color:#fbbf24">NVDA</span><span class="val up">$884</span><span class="chg up">▲+3.21%</span></span><span class="ticker-item"><span class="sym" style="color:#fbbf24">AAPL</span><span class="val up">$192</span><span class="chg up">▲+0.94%</span></span><span class="ticker-item"><span class="sym" style="color:#86efac">NEPSE</span><span class="val up">2,341</span><span class="chg up">▲+0.63%</span></span></div></div>
+<body><div class="ticker-wrap ticker-markets"><div class="ticker-label">📈 MARKETS</div><div class="ticker-track anim-35"><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-1">NASDAQ</span><span class="val up">18,234</span><span class="chg up">▲+1.24%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-1">S&amp;P 500</span><span class="val up">5,128</span><span class="chg up">▲+0.87%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-1">Dow</span><span class="val down">38,790</span><span class="chg down">▼-0.32%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-2">NVDA</span><span class="val up">$884</span><span class="chg up">▲+3.21%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-2">AAPL</span><span class="val up">$192</span><span class="chg up">▲+0.94%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-3">NEPSE</span><span class="val up">2,341</span><span class="chg up">▲+0.63%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-1">NASDAQ</span><span class="val up">18,234</span><span class="chg up">▲+1.24%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-1">S&amp;P 500</span><span class="val up">5,128</span><span class="chg up">▲+0.87%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-1">Dow</span><span class="val down">38,790</span><span class="chg down">▼-0.32%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-2">NVDA</span><span class="val up">$884</span><span class="chg up">▲+3.21%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-2">AAPL</span><span class="val up">$192</span><span class="chg up">▲+0.94%</span></span><span class="ticker-item"><span class="sym pages-housing-real-estate-inline-3">NEPSE</span><span class="val up">2,341</span><span class="chg up">▲+0.63%</span></span></div></div>
 <div class="ticker-wrap ticker-news"><div class="ticker-label">📰 NEWS</div><div class="ticker-track anim-30"><span class="ticker-item">🎉 Biscoon अब १२ नया अमेरिकी शहरमा उपलब्ध — आफ्नो समुदाय खोज्नुहोस्</span><span class="ticker-item">🏡 नि:शुल्क Paying Guest लिस्टिङ — आज नै सूचीबद्ध गर्नुस्</span><span class="ticker-item">📢 TPS धारकहरूलाई नि:शुल्क कानुनी सहायता</span><span class="ticker-item">💼 OPT-Friendly जागिरका नया अवसरहरू</span><span class="ticker-item">🎉 Biscoon अब १२ नया अमेरिकी शहरमा उपलब्ध — आफ्नो समुदाय खोज्नुहोस्</span><span class="ticker-item">🏡 नि:शुल्क Paying Guest लिस्टिङ — आज नै सूचीबद्ध गर्नुस्</span><span class="ticker-item">📢 TPS धारकहरूलाई नि:शुल्क कानुनी सहायता</span><span class="ticker-item">💼 OPT-Friendly जागिरका नया अवसरहरू</span></div></div><nav>
   <a href="../../index.html" class="nav-logo">
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#C0392B" fill-opacity="0.1" stroke="#C0392B" stroke-width="1.5"/><text x="16" y="21.5" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#C0392B">B</text></svg>
@@ -47,7 +28,7 @@
     <a class="btn-ghost" href="../auth/login.html">साइन इन</a>
     <a class="btn-primary" href="../auth/signup.html">साइन अप</a>
   </div>
-  <div class="user-dropdown" id="userDropdown" style="display: none;">
+  <div class="user-dropdown pages-housing-real-estate-inline-4" id="userDropdown">
     <button class="user-btn" id="userBtn">
       <span class="user-avatar">👤</span>
       <span class="user-name" id="userName">Profile</span>
@@ -72,8 +53,8 @@
     <a href="paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   
   <div class="mobile-drawer-btns" id="mobileBtns">
-    <a class="btn-ghost" href="../auth/login.html" style="flex:1;text-align:center;">साइन इन</a>
-    <a class="btn-primary" href="../auth/signup.html" style="flex:1;text-align:center;">साइन अप</a>
+    <a class="btn-ghost pages-housing-real-estate-inline-5" href="../auth/login.html">साइन इन</a>
+    <a class="btn-primary pages-housing-real-estate-inline-5" href="../auth/signup.html">साइन अप</a>
   </div>
   <div class="mobile-user-menu" id="mobileUserMenu">
     <div class="mobile-user-info">
@@ -148,7 +129,7 @@
   <button class="pg-btn active">1</button>
   <button class="pg-btn">2</button>
   <button class="pg-btn">3</button>
-  <span style="color:var(--text-muted);font-size:13px">…</span>
+  <span class="pages-housing-real-estate-inline-6">…</span>
   <button class="pg-btn">12</button>
   <button class="pg-btn">Next →</button>
 </div></div><div class="page-sidebar">
@@ -158,17 +139,17 @@
   </div>
   <div class="sidebar-widget">
     <div class="widget-header">📅 Upcoming Events</div>
-    <div class="widget-body" style="padding:10px 14px;display:flex;flex-direction:column;gap:0">
-      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:9.5px;font-weight:700;color:var(--red);font-family:IBM Plex Mono,monospace">MAY 18, 2026</div><div style="font-size:12px;font-weight:500;margin-top:2px">GBNC Spring Gala 2082</div><div style="font-size:11px;color:var(--text-muted)">📍 Marriott Copley, Boston</div></div>
-      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:9.5px;font-weight:700;color:var(--red);font-family:IBM Plex Mono,monospace">JUN 7, 2026</div><div style="font-size:12px;font-weight:500;margin-top:2px">Haat Bazaar — Nepali Market</div><div style="font-size:11px;color:var(--text-muted)">📍 Lowell, MA</div></div>
-      <div style="padding:8px 0"><div style="font-size:9.5px;font-weight:700;color:var(--red);font-family:IBM Plex Mono,monospace">JUN 21, 2026</div><div style="font-size:12px;font-weight:500;margin-top:2px">Nepali Community Yoga Day</div><div style="font-size:11px;color:var(--text-muted)">📍 Cambridge Common</div></div>
+    <div class="widget-body pages-housing-real-estate-inline-7">
+      <div class="pages-housing-real-estate-inline-8"><div class="pages-housing-real-estate-inline-9">MAY 18, 2026</div><div class="pages-housing-real-estate-inline-10">GBNC Spring Gala 2082</div><div class="pages-housing-real-estate-inline-11">📍 Marriott Copley, Boston</div></div>
+      <div class="pages-housing-real-estate-inline-8"><div class="pages-housing-real-estate-inline-9">JUN 7, 2026</div><div class="pages-housing-real-estate-inline-10">Haat Bazaar — Nepali Market</div><div class="pages-housing-real-estate-inline-11">📍 Lowell, MA</div></div>
+      <div class="pages-housing-real-estate-inline-12"><div class="pages-housing-real-estate-inline-9">JUN 21, 2026</div><div class="pages-housing-real-estate-inline-10">Nepali Community Yoga Day</div><div class="pages-housing-real-estate-inline-11">📍 Cambridge Common</div></div>
     </div>
   </div>
   <div class="sidebar-widget">
     <div class="widget-header">🌐 Facebook Groups</div>
-    <div class="widget-body" style="padding:10px 14px;display:flex;flex-direction:column;gap:0">
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><div style="width:34px;height:34px;border-radius:7px;background:#1877F2;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;flex-shrink:0">GBNC</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Greater Boston Nepali</div><div style="font-size:10px;color:var(--text-muted)">42,800 members</div></div><div style="font-size:10px;color:#1877F2;font-weight:700;flex-shrink:0">Join →</div></div>
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0"><div style="width:34px;height:34px;border-radius:7px;background:#0f5132;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;flex-shrink:0">GNN</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Global Nepali Network</div><div style="font-size:10px;color:var(--text-muted)">54,100 members</div></div><div style="font-size:10px;color:#1877F2;font-weight:700;flex-shrink:0">Join →</div></div>
+    <div class="widget-body pages-housing-real-estate-inline-7">
+      <div class="pages-housing-real-estate-inline-13"><div class="pages-housing-real-estate-inline-14">GBNC</div><div class="pages-housing-real-estate-inline-15"><div class="pages-housing-real-estate-inline-16">Greater Boston Nepali</div><div class="pages-housing-real-estate-inline-17">42,800 members</div></div><div class="pages-housing-real-estate-inline-18">Join →</div></div>
+      <div class="pages-housing-real-estate-inline-19"><div class="pages-housing-real-estate-inline-20">GNN</div><div class="pages-housing-real-estate-inline-15"><div class="pages-housing-real-estate-inline-16">Global Nepali Network</div><div class="pages-housing-real-estate-inline-17">54,100 members</div></div><div class="pages-housing-real-estate-inline-18">Join →</div></div>
     </div>
   </div>
   <div class="post-cta-widget">

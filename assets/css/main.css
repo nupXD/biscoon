@@ -144,6 +144,8 @@ nav {
 .btn-ghost:hover { border-color: var(--red); color: var(--red) }
 .btn-primary { padding: 7px 18px; border: none; border-radius: 8px; background: var(--red); color: white; font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; cursor: pointer; transition: background .15s, transform .1s, box-shadow .15s; white-space: nowrap }
 .btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(192,57,43,.3) }
+.btn-danger { padding: 7px 16px; border: 1.5px solid rgba(192,57,43,.28); border-radius: 8px; background: var(--red-ultra); color: var(--red); font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; white-space: nowrap }
+.btn-danger:hover { background: var(--red); border-color: var(--red); color: white }
 .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 8px; border: none; background: transparent; margin-left: auto }
 .hamburger span { width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all .25s }
 .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg) }
@@ -270,6 +272,8 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 }
 .listing-card:hover { border-color: var(--red); box-shadow: 0 3px 14px rgba(192,57,43,.09); transform: translateX(2px) }
 .listing-thumb { width: 52px; height: 52px; border-radius: 8px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0 }
+.listing-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit }
+.listing-default-image { width: 100%; height: 100%; min-height: 52px; border-radius: inherit; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fff7ed, #fee2e2 55%, #e0f2fe); color: var(--red); font-size: 26px; font-weight: 700 }
 .listing-thumb.lg { width: 80px; height: 80px; border-radius: 10px; font-size: 38px }
 .listing-body { flex: 1; min-width: 0 }
 .listing-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.3 }
@@ -294,6 +298,9 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 .form-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px }
 .form-row--two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px }
 .field-note, .form-helper { font-size: 12px; color: var(--gray-500) }
+.file-input { display: none }
+.file-upload-button { display: inline-flex; align-items: center; justify-content: center; padding: 11px 18px; border-radius: 12px; background: white; color: var(--red); border: 1.5px solid var(--border); cursor: pointer; font-size: 14px; font-weight: 700; transition: background .15s, border-color .15s, transform .15s }
+.file-upload-button:hover { background: #fff5f5; border-color: var(--red); transform: translateY(-1px) }
 .chip-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px }
 .chip-action { display: inline-flex; align-items: center; justify-content: center; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; background: white; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text); transition: background .15s, border-color .15s, color .15s }
 .chip-action:hover, .chip-action.active { background: #fee8e6; border-color: var(--red); color: var(--red) }
@@ -417,6 +424,26 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
 .listing-detail-price { color: var(--red); font-size: 23px; font-weight: 700; margin-bottom: 18px }
 .listing-modal-body p { color: var(--gray-700); line-height: 1.8; font-size: 15px; white-space: pre-wrap; margin-bottom: 24px }
 .listing-detail-contact { display: flex; flex-wrap: wrap; gap: 12px }
+.listing-detail-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px }
+.listing-detail-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); background: var(--gray-100) }
+.listing-detail-gallery .listing-default-image { aspect-ratio: 4 / 3; min-height: 130px; font-size: 42px; border: 1px solid var(--border) }
+.image-preview-list { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px }
+.image-preview-item { position: relative; width: 86px; height: 68px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--gray-100) }
+.image-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block }
+.image-remove-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 999px; background: rgba(13,27,62,.82); color: white; font-size: 15px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center }
+.image-remove-btn:hover { background: var(--red) }
+.owner-listings-grid { display: grid; gap: 12px }
+.owner-listing-card { width: 100%; border: 1.5px solid var(--border); border-radius: 14px; background: white; padding: 14px; display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 14px; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; color: var(--text) }
+.owner-listing-card:hover, .owner-listing-card:focus-visible { border-color: var(--red); box-shadow: 0 8px 24px rgba(192,57,43,.08); transform: translateY(-1px); outline: none }
+.owner-listing-media { width: 76px; height: 76px; border-radius: 10px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 28px }
+.owner-listing-media img { width: 100%; height: 100%; object-fit: cover }
+.owner-listing-media .listing-default-image { min-height: 76px; font-size: 30px }
+.owner-listing-body { min-width: 0; display: grid; gap: 7px }
+.owner-listing-title { font-size: 15px; font-weight: 700; color: var(--navy) }
+.owner-listing-summary { color: var(--gray-600); font-size: 13px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.owner-listing-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px }
+.owner-listing-actions { display: flex; gap: 8px; align-items: flex-start }
+.owner-listing-actions .btn-ghost, .owner-listing-actions .btn-danger { min-width: 0; white-space: nowrap }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) { .page-layout { grid-template-columns: 1fr } .page-sidebar { display: none } }
@@ -425,4 +452,6 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
   .page-layout, .section, .filter-sort-bar, .breadcrumb, .post-cta-strip, footer, .footer-countries, .footer-bottom { padding-left: 20px; padding-right: 20px }
   .footer-grid { grid-template-columns: 1fr }
   .card-grid { grid-template-columns: 1fr }
+  .owner-listing-card { grid-template-columns: 1fr }
+  .owner-listing-actions { justify-content: flex-start }
 }

@@ -534,14 +534,24 @@ function formatCount(value, fallback = '0') {
   return number.toLocaleString();
 }
 
+function getDefaultListingImageMarkup(category = 'other') {
+  return `<span class="listing-default-image">${escapeHtml(getCategoryEmoji(category))}</span>`;
+}
+
 function listingToCard(listing) {
   const category = listing.category || 'other';
   const meta = getCategoryMeta(category);
+  const image = Array.isArray(listing.images) && listing.images.length ? listing.images[0] : '';
+  const thumb = image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">` : getDefaultListingImageMarkup(category);
   const subcategory = listing.subcategory ? `<span class="tag tag-blue">${escapeHtml(listing.subcategory)}</span>` : '';
+  const availability = listing.availability ? `<span class="tag tag-green">${escapeHtml(listing.availability)}</span>` : '';
+  const tags = Array.isArray(listing.tags)
+    ? listing.tags.slice(0, 2).map(tag => `<span class="tag tag-gray">${escapeHtml(tag)}</span>`).join('')
+    : '';
   const contact = listing.contactEmail ? `<span>${escapeHtml(listing.contactEmail)}</span>` : '';
   return `
     <a class="listing-card" data-cat="${escapeHtml(category)}" data-listing-id="${escapeHtml(listing.id || '')}" href="${getListingPageHref(listing.id || '')}">
-      <div class="listing-thumb">${meta.emoji}</div>
+      <div class="listing-thumb">${thumb}</div>
       <div class="listing-body">
         <div class="listing-title">${escapeHtml(listing.title || 'Untitled listing')}</div>
         <div class="listing-meta">
@@ -552,6 +562,8 @@ function listingToCard(listing) {
         <div class="listing-tags">
           <span class="tag tag-gray">${escapeHtml(meta.label)}</span>
           ${subcategory}
+          ${availability}
+          ${tags}
         </div>
       </div>
       <div class="listing-price">${escapeHtml(listing.price || 'Open')}</div>
@@ -588,24 +600,39 @@ function closeListingModal() {
 
 function renderListingModalContent(listing) {
   const meta = getCategoryMeta(listing.category || 'other');
+  const gallery = Array.isArray(listing.images) && listing.images.length
+    ? `<div class="listing-detail-gallery">${listing.images.map(image => `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">`).join('')}</div>`
+    : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
   const contactEmail = listing.contactEmail
     ? `<a class="btn-primary" href="mailto:${escapeHtml(listing.contactEmail)}">Email poster</a>`
     : '';
   const contactPhone = listing.contactPhone
     ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>`
     : '';
+  const externalLink = listing.externalLink
+    ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>`
+    : '';
+  const detailRows = [
+    listing.locationType ? ['Location type', listing.locationType] : null,
+    listing.availability ? ['Availability', listing.availability] : null,
+    listing.priceNote ? ['Price note', listing.priceNote] : null,
+    listing.contactPreference ? ['Contact preference', listing.contactPreference] : null,
+    Array.isArray(listing.tags) && listing.tags.length ? ['Tags', listing.tags.join(', ')] : null,
+  ].filter(Boolean).map(([label, value]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</span>`).join('');
 
   return `
     <div class="listing-detail-kicker">${meta.emoji} ${escapeHtml(meta.label)}</div>
     <h2 id="listingModalTitle">${escapeHtml(listing.title || 'Untitled listing')}</h2>
+    ${gallery}
     <div class="listing-detail-meta">
       <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
       <span>🕐 ${escapeHtml(formatListingDate(listing.createdAt))}</span>
       ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
     </div>
     <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
+    ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
     <p>${escapeHtml(listing.description || 'No description provided.')}</p>
-    <div class="listing-detail-contact">${contactEmail}${contactPhone}</div>
+    <div class="listing-detail-contact">${contactEmail}${contactPhone}${externalLink}</div>
   `;
 }
 
@@ -837,20 +864,36 @@ async function hydrateListingDetail() {
     if (!response.ok) throw new Error('Listing not found');
     const listing = await response.json();
     const meta = getCategoryMeta(listing.category || 'other');
+    const gallery = Array.isArray(listing.images) && listing.images.length
+      ? `<div class="listing-detail-gallery">${listing.images.map(image => `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">`).join('')}</div>`
+      : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
+    const externalLink = listing.externalLink
+      ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>`
+      : '';
+    const detailRows = [
+      listing.locationType ? ['Location type', listing.locationType] : null,
+      listing.availability ? ['Availability', listing.availability] : null,
+      listing.priceNote ? ['Price note', listing.priceNote] : null,
+      listing.contactPreference ? ['Contact preference', listing.contactPreference] : null,
+      Array.isArray(listing.tags) && listing.tags.length ? ['Tags', listing.tags.join(', ')] : null,
+    ].filter(Boolean).map(([label, value]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</span>`).join('');
     target.innerHTML = `
       <article class="listing-detail-card">
         <div class="listing-detail-kicker">${meta.emoji} ${escapeHtml(meta.label)}</div>
         <h1>${escapeHtml(listing.title || 'Untitled listing')}</h1>
+        ${gallery}
         <div class="listing-detail-meta">
           <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
           <span>🕐 ${escapeHtml(formatListingDate(listing.createdAt))}</span>
           ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
         </div>
         <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
+        ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
         <p>${escapeHtml(listing.description || 'No description provided.')}</p>
         <div class="listing-detail-contact">
           ${listing.contactEmail ? `<a class="btn-primary" href="mailto:${escapeHtml(listing.contactEmail)}">Email poster</a>` : ''}
           ${listing.contactPhone ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>` : ''}
+          ${externalLink}
         </div>
       </article>
     `;

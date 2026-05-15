@@ -16,6 +16,8 @@ Biscoon is a comprehensive online marketplace that connects Nepali immigrants an
 - **Dynamic Page Stats**: Hero stats, sidebar stats, and category counts hydrate from live listing data
 - **Listing Creation**: Form-based posting system for jobs, housing, services, marketplace, and community categories
 - **Specific Location Posting**: Listings collect area/city and state, then store a searchable location like `Allston, MA`
+- **Listing Images**: Users can upload, preview, remove, and edit up to 6 listing images; category defaults appear when no images are uploaded
+- **Listing Detail Popups**: Listing cards open detail popups with image galleries, contact actions, and owner edit controls
 - **Category Organization**: Well-structured sections for different service types
 
 ### Categories Available
@@ -29,6 +31,7 @@ Biscoon is a comprehensive online marketplace that connects Nepali immigrants an
 - Clean, modern UI with Nepali language support
 - Express-backed frontend with dynamic MongoDB data
 - Organized file structure with modular CSS and JavaScript
+- Page-specific CSS extracted to `assets/css/pages/` so HTML files stay readable and avoid inline CSS
 
 ## 📁 Project Structure
 
@@ -37,7 +40,8 @@ biscoon-project/
 ├── index.html                    # Homepage
 ├── assets/
 │   ├── css/
-│   │   └── main.css             # Main stylesheet
+│   │   ├── main.css             # Global shared stylesheet
+│   │   └── pages/               # Page-specific extracted stylesheets
 │   └── js/
 │       ├── auth.js              # Login/signup handlers
 │       ├── biscoon.js           # Shared navigation, auth UI, search, dynamic listings
@@ -51,6 +55,8 @@ biscoon-project/
 │   └── utils/                   # Shared backend helpers
 ├── server.js                    # Express app wiring and startup
 ├── seed.js                      # Optional sample MongoDB seed data
+├── scripts/
+│   └── extract-page-css.js      # Helper to extract inline/page CSS into assets/css/pages
 └── pages/
     ├── auth/
     │   ├── login.html           # User login page
@@ -121,7 +127,9 @@ biscoon-project/
 
 ### Development
 - Edit HTML files in the `pages/` directory
-- Modify styles in `assets/css/main.css`
+- Modify global styles in `assets/css/main.css`
+- Modify page-specific styles in `assets/css/pages/`
+- Run `node scripts/extract-page-css.js` if inline/page CSS needs to be extracted again
 - Update JavaScript in `assets/js/biscoon.js`
 - Add backend API routes in `src/routes/`
 - Add Mongoose schemas in `src/models/`
@@ -135,6 +143,8 @@ biscoon-project/
    - `JWT_SECRET` defaults to a development-only secret
 4. Start the server with `npm start`
 5. Open the site through `http://localhost:4000/index.html`
+
+If port `4000` is already in use, the server automatically tries the next available port, such as `4001`.
 
 ### Optional sample data
 Run `npm run seed` to reset MongoDB and create one sample user plus sample listings.
@@ -164,14 +174,20 @@ Sample login:
   - `description` String, required
   - `category` String, required, indexed
   - `subcategory` String
+  - `availability` String
   - `price` String
+  - `priceNote` String
   - `location` String, indexed
+  - `locationType` String
   - `contactEmail` String
   - `contactPhone` String
-  - `images` Array of strings
+  - `contactPreference` String
+  - `externalLink` String
+  - `tags` Array of strings
+  - `images` Array of strings, up to 6 browser-readable image data URLs or image paths
   - `createdAt` Date, indexed
   - `updatedAt` Date
-  - Text index across `title`, `description`, `category`, and `location`
+  - Text index across `title`, `description`, `category`, `subcategory`, `availability`, `location`, and `tags`
 
 ### API endpoints
 - `POST /api/auth/register`
@@ -188,8 +204,9 @@ Sample login:
   - Requires `Authorization: Bearer <token>` header
 - `POST /api/listings`
   - Create a new listing for the authenticated user
-  - Request body: `title`, `description`, `category`, optionally `subcategory`, `price`, `location`, `contactEmail`, `contactPhone`, `images`
+  - Request body: `title`, `description`, `category`, `subcategory`, `location`, and optionally `availability`, `price`, `priceNote`, `locationType`, `contactEmail`, `contactPhone`, `contactPreference`, `externalLink`, `tags`, `images`
   - The posting form builds `location` from area/city and state fields
+  - `images` accepts up to 6 uploaded image data URLs or image paths
 - `GET /api/listings`
   - Retrieve all listings
   - Optional query: `?category=<category>&subcategory=<subcategory>&search=<term>&limit=<number>`
@@ -203,7 +220,8 @@ Sample login:
   - Retrieve a single listing by ID
 - `PUT /api/listings/:id`
   - Update a listing owned by the authenticated user
-  - Request body may include `title`, `description`, `category`, `subcategory`, `price`, `location`, `contactEmail`, `contactPhone`, `images`
+  - Request body may include `title`, `description`, `category`, `subcategory`, `location`, `availability`, `price`, `priceNote`, `locationType`, `contactEmail`, `contactPhone`, `contactPreference`, `externalLink`, `tags`, `images`
+  - Owners can add, remove, and replace listing images through the profile/listing edit UI
   - Requires `Authorization: Bearer <token>` header
 - `DELETE /api/listings/:id`
   - Delete a listing owned by the authenticated user

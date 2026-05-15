@@ -10,6 +10,7 @@ function normalizeListing(listing) {
   return {
     ...listingObj,
     images: listingObj.images || [],
+    tags: listingObj.tags || [],
   };
 }
 

@@ -6,137 +6,8 @@
 <title>Biscoon — The Global Nepali Ecosystem</title>
 <meta name="description" content="Connecting 4.5 million Nepalis worldwide through community, commerce, and culture."/>
 <link rel="stylesheet" href="assets/css/main.css"/>
-<style>
-/* ── Homepage-specific styles ── */
-.hero {
-  background: linear-gradient(160deg, #fff 0%, #fef8f7 55%, #fcedeb 100%);
-  padding: 56px 40px 48px;
-  position: relative;
-  overflow: hidden;
-}
-.hero::before { content:''; position:absolute; top:-80px; right:-100px; width:500px; height:500px; border-radius:50%; background:radial-gradient(circle,rgba(192,57,43,.05) 0%,transparent 70%); pointer-events:none }
-.hero::after { content:'नेपाल'; position:absolute; right:40px; top:40px; font-family:'Noto Sans Devanagari',sans-serif; font-size:120px; font-weight:700; color:rgba(192,57,43,.04); pointer-events:none; user-select:none }
-.hero-eyebrow { font-size:10.5px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.14em; margin-bottom:20px; font-family:'IBM Plex Mono',monospace }
-.biscoon-name { font-family:'Cormorant Garamond',serif; font-size:clamp(60px,8vw,100px); font-style:italic; font-weight:700; color:var(--red); line-height:.95; display:block; letter-spacing:-.02em }
-.biscoon-sub  { font-family:'Cormorant Garamond',serif; font-size:clamp(20px,3vw,34px); font-style:italic; font-weight:400; color:var(--navy); display:block; margin-top:6px }
-.hero-devanagari { font-family:'Noto Sans Devanagari',sans-serif; font-size:15px; color:var(--gray-500); margin:14px 0 6px }
-.hero-desc { font-size:14px; color:var(--text-muted); max-width:520px; line-height:1.7; margin-bottom:28px }
-.location-bar { margin-top:10px; font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px }
-.location-bar a { color:var(--red); text-decoration:none; font-weight:500; border-bottom:1px dashed var(--red-light) }
-.stats-strip { display:flex; margin-top:30px; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; background:white; box-shadow:0 2px 10px rgba(0,0,0,.05); max-width:700px }
-.stat-cell { flex:1; padding:14px 16px; text-align:center; border-right:1.5px solid var(--border); transition:background .15s; cursor:default }
-.stat-cell:hover { background:var(--gray-100) }
-.stat-cell:last-child { border-right:none }
-.stat-num { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:700; color:var(--red); display:block; line-height:1.1 }
-.stat-lbl { font-size:10.5px; color:var(--text-muted); margin-top:3px; display:block }
-.stat-cell.pg-stat { background:var(--red); cursor:pointer; transition:background .15s }
-.stat-cell.pg-stat:hover { background:var(--red-dark) }
-.stat-cell.pg-stat .stat-num, .stat-cell.pg-stat .stat-lbl { color:white }
-/* Category Grid */
-.cat-section { padding:44px 40px; background:var(--off-white); border-top:1px solid var(--border) }
-.cat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:9px; margin-top:22px }
-.cat-card { border:1.5px solid var(--border); border-radius:10px; padding:13px 8px; text-align:center; cursor:pointer; transition:background .15s,border-color .2s,transform .2s,box-shadow .2s; position:relative; background:white; text-decoration:none; display:block; color:inherit }
-.cat-card:hover { background:var(--red-ultra); border-color:var(--red); transform:translateY(-2px); box-shadow:0 4px 14px rgba(192,57,43,.1) }
-.cat-card:hover .cn,.cat-card:hover .ce { color:var(--red) }
-.cat-card.featured { border-color:var(--red); border-width:2px; background:var(--red-ultra) }
-.cat-emoji { font-size:22px; display:block; margin-bottom:5px; line-height:1.3 }
-.cn { font-family:'Noto Sans Devanagari',sans-serif; font-size:10.5px; font-weight:500; color:var(--text); display:block; line-height:1.3; transition:color .15s }
-.ce { font-size:9.5px; color:var(--text-muted); display:block; margin-top:2px; transition:color .15s }
-.badge-new { position:absolute; top:5px; right:5px; background:var(--gold); color:var(--navy); font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
-.badge-feat { position:absolute; top:5px; left:5px; background:var(--red); color:white; font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
-/* Alert banners */
-.alert-banner { padding:13px 40px; display:flex; align-items:center; gap:12px; font-size:13px; line-height:1.4 }
-.alert-arrival { background:#fff5f5; border-top:3px solid var(--red); border-bottom:1px solid #fcc }
-.alert-tps { background:#fffbeb; border-top:3px solid var(--gold); border-bottom:1px solid #fde68a }
-.alert-icon { font-size:18px; flex-shrink:0 }
-.alert-link { margin-left:auto; color:var(--red); text-decoration:none; font-weight:600; font-size:12px; white-space:nowrap; flex-shrink:0; border:1px solid var(--red-light); padding:4px 12px; border-radius:20px; transition:background .15s }
-.alert-link:hover { background:var(--red-light) }
-.alert-link-gold { margin-left:auto; color:var(--gold-dark); text-decoration:none; font-weight:600; font-size:12px; white-space:nowrap; flex-shrink:0; border:1px solid #fde68a; padding:4px 12px; border-radius:20px }
-/* Listings layout */
-.listings-wrap { display:grid; grid-template-columns:1fr 300px; gap:24px; padding:24px 40px 48px; align-items:start }
-.filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border) }
-.filter-btn { padding:5px 13px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:11.5px; cursor:pointer; font-family:'Noto Sans Devanagari',sans-serif; color:var(--gray-600); transition:all .15s; white-space:nowrap }
-.filter-btn:hover { background:var(--red-ultra); border-color:var(--red-light); color:var(--red) }
-.filter-btn.active { background:var(--red); border-color:var(--red); color:white }
-.filter-btn.pg-filter { background:var(--red-ultra); border-color:var(--red); color:var(--red); font-weight:600 }
-.filter-btn.pg-filter:hover,.filter-btn.pg-filter.active { background:var(--red); color:white }
-.search-results-panel { background:white; border:1px solid var(--border); border-radius:20px; padding:24px 28px; margin:0 40px 32px; box-shadow:0 18px 48px rgba(0,0,0,.06); }
-.search-results-header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
-.search-results-header .section-title { margin:0; }
-.search-results-header .section-subtitle { margin:0; color:var(--text-muted); font-size:13px; max-width:760px; }
-.btn-clear { border:1px solid var(--border); background:white; color:var(--navy); padding:10px 18px; border-radius:999px; cursor:pointer; transition:all .15s; font-size:13px; }
-.btn-clear:hover { background:var(--navy); color:white; border-color:var(--navy); }
-.search-results-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
-.search-results-empty { padding:30px 0; color:var(--text-muted); font-size:14px; }
-@media(max-width:900px) { .search-results-panel { margin:0 20px 32px; padding:20px; } .search-results-grid { grid-template-columns:1fr; } }
-/* Sidebar */
-.sidebar { display:flex; flex-direction:column; gap:14px; position:sticky; top:74px }
-.sb-fb-group { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border) }
-.sb-fb-group:last-child { border-bottom:none }
-.sb-avatar { width:36px; height:36px; border-radius:8px; background:var(--navy); display:flex; align-items:center; justify-content:center; font-size:8.5px; color:white; font-weight:700; flex-shrink:0; text-align:center; padding:2px }
-.sb-fb-name { font-size:11.5px; font-weight:500; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.sb-fb-members { font-size:10px; color:var(--text-muted) }
-.sb-fb-join { font-size:10px; color:#1877F2; font-weight:700; flex-shrink:0 }
-.event-item { padding:8px 0; border-bottom:1px solid var(--border) }
-.event-item:last-child { border-bottom:none }
-.event-date { font-size:9.5px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.06em; font-family:'IBM Plex Mono',monospace }
-.event-name { font-size:12px; font-weight:500; color:var(--text); margin-top:2px }
-.event-loc { font-size:10.5px; color:var(--text-muted) }
-/* FB grid */
-.fb-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px }
-.fb-card { border:1.5px solid var(--border); border-radius:10px; padding:16px; background:white; display:flex; flex-direction:column; gap:8px; transition:border-color .2s,transform .2s,box-shadow .2s; cursor:pointer }
-.fb-card:hover { border-color:#1877F2; transform:translateY(-3px); box-shadow:0 6px 20px rgba(24,119,242,.12) }
-.fb-card-icon { font-size:28px }
-.fb-card-name { font-size:13px; font-weight:600; color:var(--navy) }
-.fb-card-members { font-size:11px; color:var(--text-muted) }
-.fb-card-desc { font-size:11.5px; color:var(--gray-600); line-height:1.5; flex:1 }
-.fb-card-btn { margin-top:auto; padding:7px 0; border:1.5px solid #1877F2; border-radius:6px; background:transparent; color:#1877F2; font-size:12px; font-weight:600; cursor:pointer; transition:background .15s,color .15s; width:100% }
-.fb-card-btn:hover { background:#1877F2; color:white }
-/* Heatmap */
-.heatmap-section { background:#0d1117; padding:48px 40px }
-.heatmap-section .section-title { color:white }
-.heatmap-section .section-subtitle { color:#8b949e; margin-bottom:24px }
-.heatmap-box { background:#161b22; border-radius:14px; border:1px solid #30363d; padding:28px }
-.heatmap-dots { position:relative; width:100%; height:280px; background:linear-gradient(180deg,#1c2333 0%,#161b22 100%); border-radius:8px; border:1px solid #21262d; overflow:hidden }
-.heatmap-dot { position:absolute; border-radius:50%; background:var(--red); opacity:.75; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; cursor:pointer; transition:transform .2s,opacity .2s; transform:translate(-50%,-50%); animation:pulse 3s ease-in-out infinite }
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,.4)} 50%{box-shadow:0 0 0 6px rgba(192,57,43,0)} }
-.heatmap-dot:hover { transform:translate(-50%,-50%) scale(1.35); opacity:1; z-index:10; animation:none }
-.heatmap-tooltip { display:none; position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.9); color:white; font-size:10px; padding:5px 10px; border-radius:5px; white-space:nowrap; pointer-events:none; z-index:100 }
-.heatmap-dot:hover .heatmap-tooltip { display:block }
-.heatmap-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:18px }
-.hmap-stat { background:#1c2333; border:1px solid #21262d; border-radius:8px; padding:12px; text-align:center }
-.hmap-num { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:700; color:var(--red) }
-.hmap-lbl { font-size:10px; color:#8b949e; margin-top:3px }
-/* Journal strip */
-.journal-section { background:var(--navy); padding:40px }
-.journal-section .section-title { color:white }
-.journal-section .section-subtitle { color:rgba(255,255,255,.4); margin-bottom:20px }
-.journal-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px }
-.journal-card { background:var(--navy-mid); border-radius:10px; padding:20px; border:1px solid rgba(255,255,255,.08); transition:background .2s,transform .2s; cursor:pointer }
-.journal-card:hover { background:var(--navy-light); transform:translateY(-2px) }
-.journal-cat { font-size:9.5px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; font-family:'IBM Plex Mono',monospace }
-.journal-headline { font-size:15px; font-weight:600; color:white; line-height:1.45; margin-bottom:8px }
-.journal-excerpt { font-size:12px; color:rgba(255,255,255,.45); line-height:1.6; margin-bottom:12px }
-.journal-footer { display:flex; justify-content:space-between; font-size:10.5px; color:rgba(255,255,255,.3); padding-top:12px; border-top:1px solid rgba(255,255,255,.08) }
-.journal-read { color:var(--red); font-weight:600; text-decoration:none; font-size:11px }
-/* Calendar */
-.cal-section { padding:40px; background:var(--off-white) }
-.cal-wrap { border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-top:20px }
-.cal-wrap iframe { display:block; width:100%; border:none }
-.cal-credit { text-align:center; margin-top:10px; font-size:11px; color:var(--text-muted) }
-.cal-credit a { color:var(--red); text-decoration:none; font-weight:500 }
-/* Homepage CTA */
-.home-cta { background:linear-gradient(135deg,var(--red),var(--red-dark)); padding:56px 40px; text-align:center; position:relative; overflow:hidden }
-.home-cta::before { content:''; position:absolute; top:-50%; left:-10%; width:120%; height:200%; background:radial-gradient(ellipse,rgba(255,255,255,.06) 0%,transparent 60%); pointer-events:none }
-.home-cta .sub { font-family:'Noto Sans Devanagari',sans-serif; font-size:12px; color:rgba(255,255,255,.5); margin-bottom:12px }
-.home-cta h2 { font-family:'Cormorant Garamond',serif; font-size:clamp(28px,4vw,46px); font-weight:700; font-style:italic; color:white; margin-bottom:10px }
-.home-cta p { font-size:15px; color:rgba(255,255,255,.8); margin-bottom:28px; max-width:460px; margin-left:auto; margin-right:auto }
-.home-cta-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap }
-/* Responsive overrides */
-@media(max-width:1100px) { .cat-grid{grid-template-columns:repeat(5,1fr)} .fb-grid{grid-template-columns:repeat(2,1fr)} .heatmap-stats{grid-template-columns:repeat(2,1fr)} .journal-cards{grid-template-columns:1fr} }
-@media(max-width:900px) { .listings-wrap{grid-template-columns:1fr} .sidebar{display:none} .hero::after{display:none} }
-@media(max-width:640px) { .cat-grid{grid-template-columns:repeat(3,1fr)} .fb-grid{grid-template-columns:1fr} .hero,.cat-section,.listings-wrap,.heatmap-section,.journal-section,.cal-section,.home-cta,.alert-banner{padding-left:20px;padding-right:20px} .home-cta-btns{flex-direction:column;align-items:center} }
-</style>
+<link rel="stylesheet" href="./assets/css/pages/index.css"/>
+
 </head>
 <body>
 
@@ -144,26 +15,26 @@
 <div class="ticker-wrap ticker-markets">
   <div class="ticker-label">📈 MARKETS</div>
   <div class="ticker-track anim-35">
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Russell 2000</span><span class="val up">2,045.12</span><span class="chg up"> ▲+0.55%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">MU</span><span class="val up">$117.34</span><span class="chg up"> ▲+2.10%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AKAM</span><span class="val down">$92.67</span><span class="chg down"> ▼-0.48%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">NVDA</span><span class="val up">$884.55</span><span class="chg up"> ▲+3.21%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AMD</span><span class="val up">$167.89</span><span class="chg up"> ▲+1.76%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">CSCO</span><span class="val down">$46.23</span><span class="chg down"> ▼-0.12%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AAPL</span><span class="val up">$192.45</span><span class="chg up"> ▲+0.94%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#86efac">NEPSE</span><span class="val up">2,341.87</span><span class="chg up"> ▲+0.63%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#93c5fd">Russell 2000</span><span class="val up">2,045.12</span><span class="chg up"> ▲+0.55%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">MU</span><span class="val up">$117.34</span><span class="chg up"> ▲+2.10%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AKAM</span><span class="val down">$92.67</span><span class="chg down"> ▼-0.48%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">NVDA</span><span class="val up">$884.55</span><span class="chg up"> ▲+3.21%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">AMD</span><span class="val up">$167.89</span><span class="chg up"> ▲+1.76%</span></span>
-    <span class="ticker-item"><span class="sym" style="color:#fbbf24">NEPSE</span><span class="val up">2,341.87</span><span class="chg up"> ▲+0.63%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">Russell 2000</span><span class="val up">2,045.12</span><span class="chg up"> ▲+0.55%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">MU</span><span class="val up">$117.34</span><span class="chg up"> ▲+2.10%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">AKAM</span><span class="val down">$92.67</span><span class="chg down"> ▼-0.48%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">NVDA</span><span class="val up">$884.55</span><span class="chg up"> ▲+3.21%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">AMD</span><span class="val up">$167.89</span><span class="chg up"> ▲+1.76%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">CSCO</span><span class="val down">$46.23</span><span class="chg down"> ▼-0.12%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">AAPL</span><span class="val up">$192.45</span><span class="chg up"> ▲+0.94%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-3">NEPSE</span><span class="val up">2,341.87</span><span class="chg up"> ▲+0.63%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-1">Russell 2000</span><span class="val up">2,045.12</span><span class="chg up"> ▲+0.55%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">MU</span><span class="val up">$117.34</span><span class="chg up"> ▲+2.10%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">AKAM</span><span class="val down">$92.67</span><span class="chg down"> ▼-0.48%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">NVDA</span><span class="val up">$884.55</span><span class="chg up"> ▲+3.21%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">AMD</span><span class="val up">$167.89</span><span class="chg up"> ▲+1.76%</span></span>
+    <span class="ticker-item"><span class="sym index-inline-2">NEPSE</span><span class="val up">2,341.87</span><span class="chg up"> ▲+0.63%</span></span>
   </div>
 </div>
 <!-- TICKER 2 -->
@@ -210,7 +81,7 @@
     <span class="ticker-item"><span class="sym">HKD</span><span class="val">17.07</span></span>
     <span class="ticker-item"><span class="sym">KRW</span><span class="val">0.097</span></span>
     <span class="ticker-item"><span class="sym">MYR</span><span class="val">28.45</span></span>
-    <span class="ticker-item" style="opacity:.4;font-size:10px;color:#8b9ab5">Nepal Rastra Bank · May 11, 2026</span>
+    <span class="ticker-item index-inline-4">Nepal Rastra Bank · May 11, 2026</span>
     <span class="ticker-item"><span class="sym">USD</span><span class="val">133.45</span></span>
     <span class="ticker-item"><span class="sym">EUR</span><span class="val">144.82</span></span>
     <span class="ticker-item"><span class="sym">GBP</span><span class="val">168.34</span></span>
@@ -261,7 +132,7 @@
     <a class="btn-ghost" href="pages/auth/login.html">साइन इन</a>
     <a class="btn-primary" href="pages/auth/signup.html">साइन अप</a>
   </div>
-  <div class="user-dropdown" id="userDropdown" style="display: none;">
+  <div class="user-dropdown index-inline-5" id="userDropdown">
     <button class="user-btn" id="userBtn">
       <span class="user-avatar">👤</span>
       <span class="user-name" id="userName">Profile</span>
@@ -273,7 +144,7 @@
       <a href="#" id="logoutBtn">🚪 Logout</a>
     </div>
   </div>
-  <div class="user-dropdown" id="userDropdown" style="display: none;">
+  <div class="user-dropdown index-inline-5" id="userDropdown">
     <button class="user-btn" id="userBtn">
       <span class="user-avatar">👤</span>
       <span class="user-name" id="userName">User</span>
@@ -297,8 +168,8 @@
     <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   
   <div class="mobile-drawer-btns" id="mobileBtns">
-    <a class="btn-ghost" href="pages/auth/login.html" style="flex:1;text-align:center;">साइन इन</a>
-    <a class="btn-primary" href="pages/auth/signup.html" style="flex:1;text-align:center;">साइन अप</a>
+    <a class="btn-ghost index-inline-6" href="pages/auth/login.html">साइन इन</a>
+    <a class="btn-primary index-inline-6" href="pages/auth/signup.html">साइन अप</a>
   </div>
   <div class="mobile-user-menu" id="mobileUserMenu">
     <div class="mobile-user-info">
@@ -310,7 +181,7 @@
     <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
   </div>
 </div>
-  <div class="mobile-user-menu" id="mobileUserMenu" style="display: none;">
+  <div class="mobile-user-menu index-inline-5" id="mobileUserMenu">
     <div class="mobile-user-info">
       <span class="user-avatar">👤</span>
       <span class="user-name" id="mobileUserName">User</span>
@@ -327,7 +198,7 @@
   <span class="biscoon-sub">The Global Nepali Ecosystem</span>
   <div class="hero-devanagari">नेपाली जलवायु — विश्वभर एकीकृत</div>
   <p class="hero-desc">Connect with 4.5 million Nepalis worldwide — find housing, jobs, services, and community wherever you are.</p>
-  <div class="search-bar" style="max-width:660px">
+  <div class="search-bar index-inline-7">
     <select class="search-select" id="searchCategory">
       <option value="">सबै श्रेणी</option>
       <option value="jobs">💼 रोजगार</option>
@@ -340,7 +211,7 @@
     <input type="text" class="search-input" placeholder="Search jobs, housing, services…" id="searchInput"/>
     <button class="search-btn" onclick="doSearch()">खोज्नुस्</button>
   </div>
-  <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" style="display:none;color:#bbb;font-size:11px"> · Detecting…</span></div>
+  <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" class="index-inline-8"> · Detecting…</span></div>
   <div class="stats-strip">
     <div class="stat-cell"><span class="stat-num">4.5M+</span><span class="stat-lbl">Global Nepalis</span></div>
     <div class="stat-cell"><span class="stat-num">39</span><span class="stat-lbl">Categories</span></div>
@@ -350,7 +221,7 @@
   </div>
 </section>
 
-<section class="search-results-panel" id="searchResultsPanel" style="display:none;">
+<section class="search-results-panel index-inline-9" id="searchResultsPanel">
   <div class="search-results-header">
     <div>
       <div class="section-title">Search results</div>
@@ -476,11 +347,11 @@
     <div class="sidebar-widget">
       <div class="widget-header">🌤 Boston Weather</div>
       <div class="widget-body">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-          <span style="font-size:34px">⛅</span>
+        <div class="index-inline-10">
+          <span class="index-inline-11">⛅</span>
           <div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:var(--navy);line-height:1">62°F</div>
-            <div style="font-size:12px;color:var(--text-muted)">Boston, Massachusetts</div>
+            <div class="index-inline-12">62°F</div>
+            <div class="index-inline-13">Boston, Massachusetts</div>
           </div>
         </div>
         <div class="widget-row"><span class="lbl">Humidity</span><span class="val">58%</span></div>
@@ -490,15 +361,15 @@
     </div>
     <div class="sidebar-widget">
       <div class="widget-header">👥 Nearby Groups</div>
-      <div class="widget-body" style="padding:10px 14px">
-        <div class="sb-fb-group"><div class="sb-avatar" style="background:#1877F2">GBNC</div><div style="flex:1;min-width:0"><div class="sb-fb-name">Greater Boston Nepali Community</div><div class="sb-fb-members">42,800 members</div></div><div class="sb-fb-join">Join →</div></div>
-        <div class="sb-fb-group"><div class="sb-avatar" style="background:#1d5b9e">NYN</div><div style="flex:1;min-width:0"><div class="sb-fb-name">NY Nepali Kaam Post</div><div class="sb-fb-members">38,200 members</div></div><div class="sb-fb-join">Join →</div></div>
-        <div class="sb-fb-group"><div class="sb-avatar" style="background:#7c3aed">NAS</div><div style="flex:1;min-width:0"><div class="sb-fb-name">Nepali Students USA</div><div class="sb-fb-members">31,000 members</div></div><div class="sb-fb-join">Join →</div></div>
+      <div class="widget-body index-inline-14">
+        <div class="sb-fb-group"><div class="sb-avatar index-inline-15">GBNC</div><div class="index-inline-16"><div class="sb-fb-name">Greater Boston Nepali Community</div><div class="sb-fb-members">42,800 members</div></div><div class="sb-fb-join">Join →</div></div>
+        <div class="sb-fb-group"><div class="sb-avatar index-inline-17">NYN</div><div class="index-inline-16"><div class="sb-fb-name">NY Nepali Kaam Post</div><div class="sb-fb-members">38,200 members</div></div><div class="sb-fb-join">Join →</div></div>
+        <div class="sb-fb-group"><div class="sb-avatar index-inline-18">NAS</div><div class="index-inline-16"><div class="sb-fb-name">Nepali Students USA</div><div class="sb-fb-members">31,000 members</div></div><div class="sb-fb-join">Join →</div></div>
       </div>
     </div>
     <div class="sidebar-widget">
       <div class="widget-header">📅 Upcoming Events</div>
-      <div class="widget-body" style="padding:10px 14px">
+      <div class="widget-body index-inline-14">
         <div class="event-item"><div class="event-date">MAY 18, 2026</div><div class="event-name">GBNC Spring Gala</div><div class="event-loc">📍 Marriott Copley, Boston</div></div>
         <div class="event-item"><div class="event-date">JUN 7, 2026</div><div class="event-name">Haat Bazaar — Nepali Market Day</div><div class="event-loc">📍 Lowell, MA</div></div>
         <div class="event-item"><div class="event-date">JUN 21, 2026</div><div class="event-name">Yoga &amp; Wellness Community</div><div class="event-loc">📍 Cambridge Common</div></div>
@@ -538,9 +409,9 @@
 
 <!-- JOURNAL -->
 <section class="journal-section">
-  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px">
+  <div class="index-inline-19">
     <div><div class="section-title">Biscoon Business Journal</div><div class="section-subtitle">News and insights for the global Nepali community</div></div>
-    <a href="#" style="color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:1px;flex-shrink:0">All articles →</a>
+    <a href="#" class="index-inline-20">All articles →</a>
   </div>
   <div class="journal-cards">
     <div class="journal-card"><div class="journal-cat">Finance &amp; Investment</div><div class="journal-headline">How Nepali-Americans are building wealth through US real estate</div><div class="journal-excerpt">A growing cohort of diaspora Nepalis are leveraging tech salaries to build portfolios — reinvesting in Kathmandu's booming market.</div><div class="journal-footer"><span>Boston · May 8, 2026</span><a href="#" class="journal-read">Read →</a></div></div>
@@ -589,7 +460,7 @@
 </div>
 <div class="footer-bottom">
   <p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p>
-  <p style="font-family:'Noto Sans Devanagari',sans-serif;color:rgba(255,255,255,.2)">नेपाली जलवायु — विश्वभर एकीकृत</p>
+  <p class="index-inline-21">नेपाली जलवायु — विश्वभर एकीकृत</p>
 </div>
 
 <script src="assets/js/biscoon.js"></script>
