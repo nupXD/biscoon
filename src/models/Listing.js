@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
+const listingCommentSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4, required: true },
+  userId: { type: String, required: true },
+  authorName: { type: String, required: true },
+  body: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+}, { _id: false });
+
 const listingSchema = new mongoose.Schema({
   id: { type: String, default: uuidv4, unique: true, required: true },
   userId: { type: String, required: true },
@@ -19,6 +28,7 @@ const listingSchema = new mongoose.Schema({
   externalLink: { type: String },
   tags: [{ type: String }],
   images: [{ type: String }],
+  comments: [listingCommentSchema],
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now },
 }, { collection: 'listings' });

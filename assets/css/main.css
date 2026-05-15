@@ -182,6 +182,8 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 .dropdown-menu a:hover { background: var(--red-ultra); color: var(--red) }
 .dropdown-menu a:first-child { border-radius: 7px 7px 0 0 }
 .dropdown-menu a:last-child { border-radius: 0 0 7px 7px }
+.notification-link { display: flex !important; align-items: center; justify-content: space-between; gap: 10px }
+.notification-badge { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--red); color: white; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1 }
 
 /* ── PAGE HERO (category pages) ── */
 .page-hero {
@@ -427,6 +429,17 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
 .listing-detail-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px }
 .listing-detail-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); background: var(--gray-100) }
 .listing-detail-gallery .listing-default-image { aspect-ratio: 4 / 3; min-height: 130px; font-size: 42px; border: 1px solid var(--border) }
+.listing-comments { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 18px }
+.listing-comments-head { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 12px }
+.listing-comment-form { border: 1px solid var(--border); border-radius: 8px; background: var(--off-white); padding: 14px; margin-bottom: 14px }
+.listing-comment-form textarea { min-height: 86px; resize: vertical }
+.listing-comment-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap }
+.listing-comment-list { display: flex; flex-direction: column; gap: 10px }
+.listing-comment-card { border: 1px solid var(--border); border-radius: 8px; background: white; padding: 12px }
+.listing-comment-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: 11px; margin-bottom: 5px }
+.listing-comment-meta strong { color: var(--navy) }
+.listing-comment-body { font-size: 13.5px; line-height: 1.65; color: var(--text) }
+.listing-comments-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0 }
 .image-preview-list { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px }
 .image-preview-item { position: relative; width: 86px; height: 68px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--gray-100) }
 .image-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block }

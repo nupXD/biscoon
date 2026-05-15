@@ -60,6 +60,13 @@
 .btn-clear:hover { background:var(--navy); color:white; border-color:var(--navy); }
 .search-results-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
 .search-results-empty { padding:30px 0; color:var(--text-muted); font-size:14px; }
+.search-discussion-card { border:1.5px solid var(--border); border-radius:10px; padding:16px; background:white; color:inherit; text-decoration:none; transition:border-color .15s,box-shadow .15s,transform .15s; }
+.search-discussion-card:hover { border-color:var(--red); box-shadow:0 3px 14px rgba(192,57,43,.09); transform:translateY(-1px); }
+.search-discussion-kicker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; font-size:11px; color:var(--text-muted); }
+.search-discussion-kicker .discussion-category { display:inline-flex; align-items:center; padding:2px 7px; border-radius:4px; background:var(--gray-100); color:var(--gray-600); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.search-discussion-title { font-size:15px; font-weight:700; color:var(--navy); line-height:1.35; margin-bottom:7px; }
+.search-discussion-body { font-size:13px; color:var(--text-muted); line-height:1.55; margin-bottom:10px; }
+.search-discussion-meta { font-size:11px; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; }
 @media(max-width:900px) { .search-results-panel { margin:0 20px 32px; padding:20px; } .search-results-grid { grid-template-columns:1fr; } }
 /* Sidebar */
 .sidebar { display:flex; flex-direction:column; gap:14px; position:sticky; top:74px }

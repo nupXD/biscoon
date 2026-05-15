@@ -4,6 +4,9 @@ if (profileApiBase.startsWith('file://')) {
 }
 
 function getToken() {
+  if (window.biscoonSession && typeof window.biscoonSession.getToken === 'function') {
+    return window.biscoonSession.getToken();
+  }
   return localStorage.getItem('biscoonToken');
 }
 

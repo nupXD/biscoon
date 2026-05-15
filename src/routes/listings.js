@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const Listing = require('../models/Listing');
 const authMiddleware = require('../middleware/auth');
 const { findListingById, normalizeListing } = require('../utils/listings');
+const { createNotification } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -160,6 +161,44 @@ router.get('/:id', async (req, res) => {
     return res.status(404).json({ error: 'Listing not found.' });
   }
   res.json(normalizeListing(listing));
+});
+
+router.post('/:id/comments', authMiddleware, async (req, res) => {
+  const listing = await findListingById(req.params.id);
+  if (!listing) {
+    return res.status(404).json({ error: 'Listing not found.' });
+  }
+
+  const body = cleanString(req.body.body);
+  if (!body) {
+    return res.status(400).json({ error: 'Comment text is required.' });
+  }
+
+  listing.comments.push({
+    id: uuidv4(),
+    userId: req.user.id,
+    authorName: req.user.name || req.user.email,
+    body,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  listing.updatedAt = new Date();
+  await listing.save();
+
+  await createNotification({
+    userId: listing.userId,
+    actorId: req.user.id,
+    actorName: req.user.name || req.user.email,
+    type: 'listing_comment',
+    title: 'New comment on your listing',
+    body,
+    targetType: 'listing',
+    targetId: listing.id,
+    targetTitle: listing.title,
+    url: `/pages/post/detail.html?id=${encodeURIComponent(listing.id)}`,
+  });
+
+  res.status(201).json({ listing: normalizeListing(listing) });
 });
 
 router.put('/:id', authMiddleware, async (req, res) => {

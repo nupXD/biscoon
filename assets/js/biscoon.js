@@ -10,6 +10,106 @@ function toggleMenu() {
   d.classList.toggle('open');
   h.classList.toggle('open');
 }
+
+const BISCOON_TOKEN_KEY = 'biscoonToken';
+const BISCOON_LAST_ACTIVITY_KEY = 'biscoonLastActivity';
+const BISCOON_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+const BISCOON_ACTIVITY_THROTTLE_MS = 60 * 1000;
+let biscoonLastActivityWrite = 0;
+
+function getSessionLastActivity() {
+  const lastActivity = Number(localStorage.getItem(BISCOON_LAST_ACTIVITY_KEY));
+  return Number.isFinite(lastActivity) ? lastActivity : 0;
+}
+
+function hasSessionExpired() {
+  const token = localStorage.getItem(BISCOON_TOKEN_KEY);
+  if (!token) return false;
+
+  const lastActivity = getSessionLastActivity();
+  if (!lastActivity) {
+    localStorage.setItem(BISCOON_LAST_ACTIVITY_KEY, String(Date.now()));
+    return false;
+  }
+
+  return Date.now() - lastActivity > BISCOON_SESSION_TIMEOUT_MS;
+}
+
+function getBiscoonToken() {
+  if (hasSessionExpired()) {
+    endBiscoonSession({ redirect: shouldRedirectAfterSessionEnd() });
+    return '';
+  }
+  return localStorage.getItem(BISCOON_TOKEN_KEY) || '';
+}
+
+function startBiscoonSession(token) {
+  if (!token) return;
+  localStorage.setItem(BISCOON_TOKEN_KEY, token);
+  localStorage.setItem(BISCOON_LAST_ACTIVITY_KEY, String(Date.now()));
+  biscoonLastActivityWrite = Date.now();
+}
+
+function touchBiscoonSession(force = false) {
+  if (!localStorage.getItem(BISCOON_TOKEN_KEY)) return;
+  if (hasSessionExpired()) {
+    endBiscoonSession({ redirect: shouldRedirectAfterSessionEnd() });
+    return;
+  }
+
+  const now = Date.now();
+  if (!force && now - biscoonLastActivityWrite < BISCOON_ACTIVITY_THROTTLE_MS) return;
+  localStorage.setItem(BISCOON_LAST_ACTIVITY_KEY, String(now));
+  biscoonLastActivityWrite = now;
+}
+
+function shouldRedirectAfterSessionEnd() {
+  return window.location.pathname.endsWith('/pages/auth/profile.html')
+    || window.location.pathname.endsWith('/pages/post/listing.html');
+}
+
+function getCurrentPathWithQuery() {
+  return window.location.pathname + window.location.search + window.location.hash;
+}
+
+function endBiscoonSession(options = {}) {
+  const { redirect = false, destination = '' } = options;
+  localStorage.removeItem(BISCOON_TOKEN_KEY);
+  localStorage.removeItem(BISCOON_LAST_ACTIVITY_KEY);
+
+  if (redirect) {
+    window.location.href = destination || getLoginPath(getCurrentPathWithQuery());
+    return;
+  }
+
+  if (typeof checkAuthState === 'function') checkAuthState();
+}
+
+function bindBiscoonSessionActivity() {
+  ['click', 'keydown', 'pointerdown', 'touchstart', 'scroll'].forEach(eventName => {
+    window.addEventListener(eventName, () => touchBiscoonSession(), { passive: true });
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) touchBiscoonSession(true);
+  });
+
+  window.addEventListener('storage', event => {
+    if (event.key === BISCOON_TOKEN_KEY && !event.newValue) checkAuthState();
+  });
+
+  window.setInterval(() => {
+    if (hasSessionExpired()) endBiscoonSession({ redirect: shouldRedirectAfterSessionEnd() });
+  }, 60 * 1000);
+}
+
+window.biscoonSession = {
+  start: startBiscoonSession,
+  end: endBiscoonSession,
+  getToken: getBiscoonToken,
+  touch: touchBiscoonSession,
+};
+
 document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('click', function (e) {
     const d = document.getElementById('mobileDrawer');
@@ -32,6 +132,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Search enter key ──
   const si = document.getElementById('searchInput');
   if (si) si.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch() });
+  document.querySelectorAll('.nav-search').forEach(form => {
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const navInput = form.querySelector('.nav-search-input');
+      const mainInput = document.getElementById('searchInput');
+      if (navInput && mainInput) mainInput.value = navInput.value;
+      doSearch();
+    });
+  });
 
   // ── Geolocation ──
   const changeLocBtn = document.getElementById('changeLocation');
@@ -57,20 +166,15 @@ document.addEventListener('DOMContentLoaded', function () {
   buildHeatmap();
 
   // ── Filter chips ──
-  document.querySelectorAll('.chip[data-filter]').forEach(chip => {
-    chip.addEventListener('click', function () {
-      const group = this.closest('.filter-chips');
-      if (group) group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      const filter = this.dataset.filter;
-      filterListings(filter);
-    });
-  });
+  bindDynamicFilterChips();
 
   // ── Auth state and user dropdown ──
+  bindBiscoonSessionActivity();
   ensureAuthDropdowns();
+  ensureNotificationLinks();
   checkAuthState();
   bindAuthDropdownEvents();
+  bindNotificationEvents();
   bindProtectedPostActions();
   bindListingDetailModal();
   bindBrowseListingActions();
@@ -91,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ── Auth functions ──
 function checkAuthState() {
-  const token = localStorage.getItem('biscoonToken');
+  const token = getBiscoonToken();
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
   const navCtas = document.querySelectorAll('#navCtas, .nav-ctas');
   const userDropdowns = document.querySelectorAll('.user-dropdown');
@@ -127,8 +231,8 @@ function checkAuthState() {
       return;
     }
 
-    // Fetch user info
     fetchUserInfo(token);
+    fetchNotificationSummary(token);
   } else {
     document.body.classList.add('biscoon-logged-out');
     document.body.classList.remove('biscoon-logged-in');
@@ -156,6 +260,13 @@ function getRelativePostPath(page) {
   return `${prefix}/${page}`;
 }
 
+function getRelativeCommunityPath(page) {
+  const isHome = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
+  const depth = window.location.pathname.split('/').filter(Boolean).length;
+  const prefix = isHome ? 'pages/community' : depth >= 3 ? '../community' : 'community';
+  return `${prefix}/${page}`;
+}
+
 function ensureAuthDropdowns() {
   document.querySelectorAll('nav').forEach(nav => {
     if (nav.querySelector('.user-dropdown')) return;
@@ -172,7 +283,10 @@ function ensureAuthDropdowns() {
       </button>
       <div class="dropdown-menu" id="dropdownMenu">
         <a href="${getRelativeAuthPath('profile.html')}">📋 My Profile</a>
+        <a href="${getRelativeAuthPath('activity.html')}">🧾 My Activity</a>
+        <a href="${getRelativeAuthPath('notifications.html')}" class="notification-link">🔔 Notifications <span class="notification-badge"></span></a>
         <a href="${getRelativePostPath('listing.html')}">➕ Add Listing</a>
+        <a href="${getRelativeCommunityPath('discussions.html')}?create=1">💬 Create Discussion</a>
         <a href="#" id="logoutBtn">🚪 Logout</a>
       </div>
     `;
@@ -197,11 +311,66 @@ function ensureAuthDropdowns() {
         <span class="user-name" id="mobileUserName">Profile</span>
       </div>
       <a href="${getRelativeAuthPath('profile.html')}">📋 My Profile</a>
+      <a href="${getRelativeAuthPath('activity.html')}">🧾 My Activity</a>
+      <a href="${getRelativeAuthPath('notifications.html')}" class="notification-link">🔔 Notifications <span class="notification-badge"></span></a>
       <a href="${getRelativePostPath('listing.html')}">➕ Add Listing</a>
+      <a href="${getRelativeCommunityPath('discussions.html')}?create=1">💬 Create Discussion</a>
       <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
     `;
     drawer.appendChild(menu);
   });
+}
+
+function ensureNotificationLinks() {
+  document.querySelectorAll('.dropdown-menu').forEach(menu => {
+    dedupeMenuLinks(menu, '.activity-link, a[href*="activity.html"]');
+    if (!menu.querySelector('.activity-link')) {
+      const notificationLink = menu.querySelector('.notification-link');
+      const addListingLink = Array.from(menu.querySelectorAll('a')).find(link => link.textContent.toLowerCase().includes('add listing'));
+      const logoutLink = menu.querySelector('#logoutBtn');
+      const link = document.createElement('a');
+      link.href = getRelativeAuthPath('activity.html');
+      link.className = 'activity-link';
+      link.innerHTML = '🧾 My Activity';
+      menu.insertBefore(link, notificationLink || addListingLink || logoutLink || null);
+    }
+
+    if (menu.querySelector('.notification-link')) return;
+    const logoutLink = menu.querySelector('#logoutBtn');
+    const link = document.createElement('a');
+    link.href = getRelativeAuthPath('notifications.html');
+    link.className = 'notification-link';
+    link.innerHTML = '🔔 Notifications <span class="notification-badge"></span>';
+    menu.insertBefore(link, logoutLink || null);
+  });
+
+  document.querySelectorAll('.mobile-user-menu').forEach(menu => {
+    dedupeMenuLinks(menu, '.activity-link, a[href*="activity.html"]');
+    if (!menu.querySelector('.activity-link')) {
+      const notificationLink = menu.querySelector('.notification-link');
+      const addListingLink = Array.from(menu.querySelectorAll('a')).find(link => link.textContent.toLowerCase().includes('add listing'));
+      const logoutLink = menu.querySelector('#mobileLogoutBtn');
+      const link = document.createElement('a');
+      link.href = getRelativeAuthPath('activity.html');
+      link.className = 'activity-link';
+      link.innerHTML = '🧾 My Activity';
+      menu.insertBefore(link, notificationLink || addListingLink || logoutLink || null);
+    }
+
+    if (menu.querySelector('.notification-link')) return;
+    const logoutLink = menu.querySelector('#mobileLogoutBtn');
+    const link = document.createElement('a');
+    link.href = getRelativeAuthPath('notifications.html');
+    link.className = 'notification-link';
+    link.innerHTML = '🔔 Notifications <span class="notification-badge"></span>';
+    menu.insertBefore(link, logoutLink || null);
+  });
+}
+
+function dedupeMenuLinks(menu, selector) {
+  const links = Array.from(menu.querySelectorAll(selector));
+  links.slice(1).forEach(link => link.remove());
+  if (links[0] && selector.includes('activity')) links[0].classList.add('activity-link');
 }
 
 function bindAuthDropdownEvents() {
@@ -240,7 +409,7 @@ function getLoginPath(redirectTo = getPostListingPath()) {
 }
 
 function goToPostOrLogin() {
-  const destination = localStorage.getItem('biscoonToken')
+  const destination = getBiscoonToken()
     ? getPostListingPath()
     : getLoginPath(getPostListingPath());
   window.location.href = destination;
@@ -323,7 +492,7 @@ function bindBrowseListingActions() {
 
 function guardPostingPage() {
   if (!window.location.pathname.endsWith('/pages/post/listing.html')) return;
-  if (localStorage.getItem('biscoonToken')) return;
+  if (getBiscoonToken()) return;
   window.location.href = getLoginPath(getPostListingPath());
 }
 
@@ -348,6 +517,31 @@ async function fetchUserInfo(token) {
   }
 }
 
+async function fetchNotificationSummary(token = getBiscoonToken()) {
+  if (!token) return;
+  try {
+    const response = await fetch(`${getApiBase()}/api/notifications?limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    updateNotificationBadges(data.unread || 0);
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error);
+  }
+}
+
+function updateNotificationBadges(count) {
+  document.querySelectorAll('.notification-badge').forEach(badge => {
+    badge.textContent = count > 0 ? String(count) : '';
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  });
+}
+
+function bindNotificationEvents() {
+  window.addEventListener('biscoon:notifications-updated', () => fetchNotificationSummary());
+}
+
 function toggleDropdown(event) {
   const dropdown = event?.currentTarget?.closest('.user-dropdown');
   const btn = dropdown ? dropdown.querySelector('#userBtn') : document.getElementById('userBtn');
@@ -359,25 +553,22 @@ function toggleDropdown(event) {
 }
 
 function logout() {
-  localStorage.removeItem('biscoonToken');
-  window.location.href = '/index.html';
+  endBiscoonSession({ destination: '/index.html', redirect: true });
 }
 
 // ── Search ──
 function doSearch() {
   const q = (document.getElementById('searchInput') || {}).value || '';
   const cat = (document.getElementById('searchCategory') || {}).value || '';
-  const url = new URL(`${window.location.origin}/api/listings`);
+  const query = q.trim();
 
-  if (q.trim()) url.searchParams.set('search', q.trim());
-  if (cat) url.searchParams.set('category', cat);
-
-  fetch(url.toString())
-    .then(response => response.json())
-    .then(data => {
-      const listings = data.listings || [];
+  Promise.all([
+    cat === 'discussions' ? Promise.resolve([]) : fetchListings(cat, query, 100),
+    !cat || cat === 'all' || cat === 'discussions' ? fetchDiscussions(query, 25) : Promise.resolve([]),
+  ])
+    .then(([listings, discussions]) => {
       if (window.renderSearchResults) {
-        window.renderSearchResults(listings, q.trim(), cat);
+        window.renderSearchResults(listings, query, cat, discussions);
       } else if (window.renderListings) {
         window.renderListings(listings);
       } else {
@@ -500,11 +691,11 @@ function getDynamicListingsContainer() {
   if (homeContainer) return homeContainer;
 
   const pageMain = document.querySelector('.page-main');
-  if (pageMain && pageMain.querySelector('.listing-card')) return pageMain;
+  if (pageMain) return pageMain;
 
   const layout = document.querySelector('.page-layout');
   const firstColumn = layout ? layout.firstElementChild : null;
-  if (firstColumn && firstColumn.querySelector('.listing-card')) return firstColumn;
+  if (firstColumn) return firstColumn;
 
   return null;
 }
@@ -520,6 +711,17 @@ async function fetchListings(category = '', search = '', limit = 0, subcategory 
   if (!response.ok) throw new Error('Unable to load listings');
   const data = await response.json();
   return data.listings || [];
+}
+
+async function fetchDiscussions(search = '', limit = 25) {
+  const url = new URL(`${getApiBase()}/api/discussions`);
+  if (search) url.searchParams.set('search', search);
+  if (limit) url.searchParams.set('limit', String(limit));
+
+  const response = await fetch(url.toString());
+  if (!response.ok) throw new Error('Unable to load discussions');
+  const data = await response.json();
+  return data.discussions || [];
 }
 
 async function fetchListingStats() {
@@ -569,6 +771,81 @@ function listingToCard(listing) {
       <div class="listing-price">${escapeHtml(listing.price || 'Open')}</div>
     </a>
   `;
+}
+
+function getDiscussionPageHref(id) {
+  const prefix = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/' ? 'pages' : '..';
+  return `${prefix}/community/discussions.html?id=${encodeURIComponent(id)}`;
+}
+
+function discussionToSearchCard(discussion) {
+  const body = String(discussion.body || '');
+  const excerpt = body.length > 150 ? `${body.slice(0, 147)}...` : body;
+  return `
+    <a class="search-discussion-card" href="${getDiscussionPageHref(discussion.id || '')}">
+      <div class="search-discussion-kicker">
+        <span class="discussion-category">${escapeHtml(discussion.category || 'general')}</span>
+        <span>Discussion</span>
+      </div>
+      <div class="search-discussion-title">${escapeHtml(discussion.title || 'Untitled discussion')}</div>
+      <div class="search-discussion-body">${escapeHtml(excerpt || 'Open this topic to read the conversation.')}</div>
+      <div class="search-discussion-meta">
+        <span>Started by ${escapeHtml(discussion.authorName || 'Community member')}</span>
+        <span>${Number(discussion.commentCount || 0)} comments</span>
+        <span>${escapeHtml(formatListingDate(discussion.updatedAt || discussion.createdAt))}</span>
+      </div>
+    </a>
+  `;
+}
+
+function renderListingComments(listing) {
+  const comments = Array.isArray(listing.comments) ? listing.comments : [];
+  const token = getBiscoonToken();
+  return `
+    <section class="listing-comments" data-listing-comments="${escapeHtml(listing.id || '')}">
+      <div class="listing-comments-head">${comments.length} comment${comments.length === 1 ? '' : 's'}</div>
+      <form class="listing-comment-form" data-listing-comment-form="${escapeHtml(listing.id || '')}">
+        <label class="form-label" for="listingComment-${escapeHtml(listing.id || '')}">Add a comment</label>
+        <textarea class="form-input" id="listingComment-${escapeHtml(listing.id || '')}" name="body" ${token ? '' : 'disabled'} required></textarea>
+        <div class="listing-comment-actions">
+          <button class="btn-primary" type="submit" ${token ? '' : 'disabled'}>Post comment</button>
+          ${token ? '' : `<a class="discussion-login-link" href="${getRelativeAuthPath('login.html')}?redirect=${encodeURIComponent(getListingPageHref(listing.id || ''))}">Sign in to comment</a>`}
+        </div>
+      </form>
+      <div class="listing-comment-list">
+        ${comments.length ? comments.map(comment => `
+          <article class="listing-comment-card">
+            <div class="listing-comment-meta">
+              <strong>${escapeHtml(comment.authorName || 'Community member')}</strong>
+              <span>${escapeHtml(formatListingDate(comment.createdAt))}</span>
+            </div>
+            <div class="listing-comment-body">${escapeHtml(comment.body || '')}</div>
+          </article>
+        `).join('') : '<div class="listing-comments-empty">No comments yet.</div>'}
+      </div>
+    </section>
+  `;
+}
+
+async function postListingComment(listingId, body) {
+  const token = getBiscoonToken();
+  if (!token) {
+    window.location.href = `${getRelativeAuthPath('login.html')}?redirect=${encodeURIComponent(getListingPageHref(listingId))}`;
+    return;
+  }
+
+  const response = await fetch(`${getApiBase()}/api/listings/${encodeURIComponent(listingId)}/comments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ body }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Unable to post comment.');
+  window.dispatchEvent(new Event('biscoon:notifications-updated'));
+  return data.listing;
 }
 
 function ensureListingModal() {
@@ -633,6 +910,7 @@ function renderListingModalContent(listing) {
     ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
     <p>${escapeHtml(listing.description || 'No description provided.')}</p>
     <div class="listing-detail-contact">${contactEmail}${contactPhone}${externalLink}</div>
+    ${renderListingComments(listing)}
   `;
 }
 
@@ -669,6 +947,28 @@ function bindListingDetailModal() {
     openListingModal(card.dataset.listingId);
   });
 
+  document.addEventListener('submit', async function(e) {
+    const form = e.target.closest('[data-listing-comment-form]');
+    if (!form) return;
+    e.preventDefault();
+    const listingId = form.dataset.listingCommentForm;
+    const textarea = form.querySelector('textarea');
+    const body = textarea ? textarea.value.trim() : '';
+    if (!body) return;
+
+    try {
+      const listing = await postListingComment(listingId, body);
+      const modalBody = document.getElementById('listingModalBody');
+      if (modalBody && document.getElementById('listingModal')?.classList.contains('open')) {
+        modalBody.innerHTML = renderListingModalContent(listing);
+      } else {
+        await hydrateListingDetail();
+      }
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeListingModal();
   });
@@ -677,11 +977,18 @@ function bindListingDetailModal() {
 function renderListings(listings, target = getDynamicListingsContainer()) {
   if (!target) return;
 
+  updateFilterChipsFromListings(listings);
+
   if (!listings.length) {
-    target.dataset.dynamicState = 'sample';
-    if (!target.querySelector('.dynamic-listing-note')) {
-      target.insertAdjacentHTML('afterbegin', '<div class="dynamic-listing-note">Showing sample listings until live posts are added for this section.</div>');
-    }
+    target.dataset.dynamicState = 'empty';
+    target.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">${escapeHtml(getCategoryEmoji(inferPageCategory() || 'other'))}</div>
+        <h3>No live listings yet</h3>
+        <p>Be the first to add a real post for this section.</p>
+        <a class="btn-primary" href="${getPostListingPath()}">Post a Listing</a>
+      </div>
+    `;
     return;
   }
 
@@ -700,6 +1007,36 @@ function renderListings(listings, target = getDynamicListingsContainer()) {
       ${items.map(listingToCard).join('')}
     `;
   }).join('');
+}
+
+function formatDynamicChipLabel(value) {
+  return String(value || '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function updateFilterChipsFromListings(listings) {
+  const group = document.querySelector('.filter-chips');
+  if (!group || group.dataset.staticFilters === 'true') return;
+  if (group.dataset.dynamicFiltersBuilt === 'true') return;
+
+  const subcategories = Array.from(new Set(
+    listings
+      .map(listing => listing.subcategory)
+      .filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+
+  const chips = [
+    '<button class="chip active" data-filter="all">All</button>',
+    ...subcategories.map(subcategory => {
+      const count = listings.filter(listing => listing.subcategory === subcategory).length;
+      return `<button class="chip" data-filter="${escapeHtml(subcategory)}">${escapeHtml(formatDynamicChipLabel(subcategory))} (${count})</button>`;
+    }),
+  ];
+
+  group.innerHTML = chips.join('');
+  group.dataset.dynamicFiltersBuilt = 'true';
+  bindDynamicFilterChips();
 }
 
 function updateHeroStats(stats, category = inferPageCategory()) {
@@ -768,7 +1105,7 @@ async function hydrateDynamicStats(category = inferPageCategory()) {
   }
 }
 
-function renderSearchResults(listings, search = '', category = '') {
+function renderSearchResults(listings, search = '', category = '', discussions = []) {
   const panel = document.getElementById('searchResultsPanel');
   const meta = document.getElementById('searchResultsMeta');
   const container = document.getElementById('searchResultsContainer');
@@ -779,14 +1116,19 @@ function renderSearchResults(listings, search = '', category = '') {
 
   panel.style.display = 'block';
   const queryText = search ? ` for "${search}"` : '';
-  const categoryText = category && category !== 'all' ? ` in ${getCategoryMeta(category).label}` : '';
-  meta.textContent = listings.length
-    ? `Showing ${listings.length} matching listing${listings.length === 1 ? '' : 's'}${queryText}${categoryText}.`
+  const categoryText = category && category !== 'all'
+    ? ` in ${category === 'discussions' ? 'Discussions' : getCategoryMeta(category).label}`
+    : '';
+  const totalResults = listings.length + discussions.length;
+  const listingText = listings.length === 1 ? '1 listing' : `${listings.length} listings`;
+  const discussionText = discussions.length === 1 ? '1 discussion' : `${discussions.length} discussions`;
+  meta.textContent = totalResults
+    ? `Showing ${listingText} and ${discussionText}${queryText}${categoryText}.`
     : `No results found${queryText}${categoryText}. Try a broader keyword or different category.`;
 
-  container.innerHTML = listings.length
-    ? listings.map(listingToCard).join('')
-    : '<div class="search-results-empty">No matching listings. Adjust your search and try again.</div>';
+  container.innerHTML = totalResults
+    ? `${listings.map(listingToCard).join('')}${discussions.map(discussionToSearchCard).join('')}`
+    : '<div class="search-results-empty">No matching listings or discussions. Adjust your search and try again.</div>';
 }
 
 function clearSearch() {
@@ -824,9 +1166,16 @@ async function hydrateDynamicListings(category = inferPageCategory()) {
   if (!target) return;
 
   try {
+    target.dataset.dynamicState = 'loading';
+    target.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">${escapeHtml(getCategoryEmoji(category || 'other'))}</div>
+        <h3>Loading live listings...</h3>
+      </div>
+    `;
     const params = new URLSearchParams(window.location.search);
     const requestedCategory = normalizeCategoryForListings(params.get('category') || '');
-    const requestedSubcategory = params.get('subcategory') || '';
+    const requestedSubcategory = params.get('subcategory') || getActiveChipFilter();
     const requestedSearch = params.get('search') || '';
     const activeHomeFilter = document.querySelector('.filter-btn.active');
     const homeCategory = activeHomeFilter ? normalizeCategoryForListings(getFilterFromButton(activeHomeFilter)) : '';
@@ -847,6 +1196,32 @@ async function hydrateDynamicListings(category = inferPageCategory()) {
   } catch (error) {
     console.error(error);
   }
+}
+
+function getActiveChipFilter() {
+  const activeChip = document.querySelector('.filter-chips .chip.active[data-filter]');
+  const filter = activeChip ? activeChip.dataset.filter : '';
+  return filter && filter !== 'all' ? filter : '';
+}
+
+function bindDynamicFilterChips() {
+  document.querySelectorAll('.chip[data-filter]').forEach(chip => {
+    if (chip.dataset.dynamicFilterBound) return;
+    chip.dataset.dynamicFilterBound = 'true';
+    chip.addEventListener('click', async function () {
+      const group = this.closest('.filter-chips');
+      if (group) group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+
+      const target = getDynamicListingsContainer();
+      if (!target) {
+        filterListings(this.dataset.filter);
+        return;
+      }
+
+      await hydrateDynamicListings(inferPageCategory());
+    });
+  });
 }
 
 async function hydrateListingDetail() {
@@ -895,6 +1270,7 @@ async function hydrateListingDetail() {
           ${listing.contactPhone ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>` : ''}
           ${externalLink}
         </div>
+        ${renderListingComments(listing)}
       </article>
     `;
   } catch (error) {
@@ -907,24 +1283,7 @@ document.addEventListener('DOMContentLoaded', function () {
   hydrateListingDetail();
   hydrateDynamicStats();
 
-  document.querySelectorAll('.chip[data-filter]').forEach(chip => {
-    chip.addEventListener('click', async function () {
-      const category = inferPageCategory();
-      const filter = this.dataset.filter;
-      if (!category || filter === 'all') {
-        await hydrateDynamicListings(category);
-        return;
-      }
-
-      try {
-        const listings = await fetchListings(category, filter);
-        const filtered = listings.filter(listing => listing.subcategory === filter || listing.category === filter);
-        renderListings(filtered.length ? filtered : listings);
-      } catch (error) {
-        console.error(error);
-      }
-    });
-  });
+  bindDynamicFilterChips();
 });
 
 // ── Heatmap ──

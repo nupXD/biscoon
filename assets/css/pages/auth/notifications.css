@@ -1,0 +1,15 @@
+.notifications-page{max-width:960px;margin:0 auto;padding:32px 40px 56px}
+.notifications-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;border:1.5px solid var(--border);border-radius:8px;background:white;padding:22px;margin-bottom:18px}
+.notifications-head h1{font-family:"Cormorant Garamond",serif;font-size:38px;line-height:1.05;color:var(--navy);margin-bottom:6px}
+.notifications-head p{font-size:14px;color:var(--text-muted)}
+.notifications-list{display:flex;flex-direction:column;gap:10px}
+.notification-card{display:block;border:1.5px solid var(--border);border-radius:8px;background:white;padding:16px;color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+.notification-card:hover{border-color:var(--red);box-shadow:0 4px 18px rgba(192,57,43,.08)}
+.notification-card.unread{border-left:4px solid var(--red);background:var(--red-ultra)}
+.notification-title{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:5px}
+.notification-time{font-size:11px;color:var(--text-muted);font-weight:500;white-space:nowrap}
+.notification-body{font-size:13px;color:var(--text);line-height:1.55;margin-bottom:8px}
+.notification-target{font-size:12px;color:var(--text-muted)}
+.notifications-empty{border:1.5px solid var(--border);border-radius:8px;padding:32px;text-align:center;color:var(--text-muted);background:white}
+.notifications-inline-1{flex:1;text-align:center}
+@media(max-width:640px){.notifications-page{padding:24px 20px 48px}.notifications-head{align-items:flex-start;flex-direction:column}.notifications-head h1{font-size:32px}}

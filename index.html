@@ -122,12 +122,9 @@
     <a href="pages/marketplace/services.html">सेवाहरू</a>
     <a href="pages/community/organizations.html">संगठन</a>
     <a href="pages/community/literature.html">साहित्य</a>
+    <a href="pages/community/discussions.html">Discussions</a>
     <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
-  <form class="nav-search" action="#" onsubmit="return false;">
-    <input type="search" class="nav-search-input" placeholder="Search Biscoon…" aria-label="Search Biscoon"/>
-    <button type="submit" class="nav-search-btn">🔍</button>
-  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="pages/auth/login.html">साइन इन</a>
     <a class="btn-primary" href="pages/auth/signup.html">साइन अप</a>
@@ -140,6 +137,7 @@
     </button>
     <div class="dropdown-menu" id="dropdownMenu">
       <a href="pages/auth/profile.html">📋 My Profile</a>
+      <a href="pages/auth/activity.html">🧾 My Activity</a>
       <a href="pages/post/listing.html">➕ Add Listing</a>
       <a href="#" id="logoutBtn">🚪 Logout</a>
     </div>
@@ -152,6 +150,7 @@
     </button>
     <div class="dropdown-menu" id="dropdownMenu">
       <a href="pages/auth/profile.html">प्रोफाइल</a>
+      <a href="pages/auth/activity.html">🧾 My Activity</a>
       <a href="#" id="logoutBtn">लग आउट</a>
     </div>
   </div>
@@ -165,6 +164,7 @@
     <a href="pages/marketplace/services.html">सेवाहरू</a>
     <a href="pages/community/organizations.html">संगठन</a>
     <a href="pages/community/literature.html">साहित्य</a>
+    <a href="pages/community/discussions.html">Discussions</a>
     <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   
   <div class="mobile-drawer-btns" id="mobileBtns">
@@ -177,6 +177,7 @@
       <span class="user-name" id="mobileUserName">Profile</span>
     </div>
     <a href="pages/auth/profile.html">📋 My Profile</a>
+    <a href="pages/auth/activity.html">🧾 My Activity</a>
     <a href="pages/post/listing.html">➕ Add Listing</a>
     <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
   </div>
@@ -187,6 +188,7 @@
       <span class="user-name" id="mobileUserName">User</span>
     </div>
     <a href="pages/auth/profile.html">प्रोफाइल</a>
+    <a href="pages/auth/activity.html">🧾 My Activity</a>
     <a href="#" id="mobileLogoutBtn">लग आउट</a>
   </div>
 </div>
@@ -207,8 +209,9 @@
       <option value="services">🔧 सेवाहरू</option>
       <option value="student">🎓 विद्यार्थी</option>
       <option value="immigration">🛂 Immigration</option>
+      <option value="discussions">💬 Discussions</option>
     </select>
-    <input type="text" class="search-input" placeholder="Search jobs, housing, services…" id="searchInput"/>
+    <input type="text" class="search-input" placeholder="Search jobs, housing, services, discussions…" id="searchInput"/>
     <button class="search-btn" onclick="doSearch()">खोज्नुस्</button>
   </div>
   <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" class="index-inline-8"> · Detecting…</span></div>
@@ -274,6 +277,7 @@
     <a class="cat-card" href="pages/marketplace/cleaning.html"><span class="cat-emoji">🧹</span><span class="cn">सफाई</span><span class="ce">Cleaning</span></a>
     <a class="cat-card" href="pages/housing/moving.html"><span class="cat-emoji">📦</span><span class="cn">सामान सार्ने</span><span class="ce">Moving</span></a>
     <a class="cat-card" href="pages/community/literature.html"><span class="badge-new">New</span><span class="cat-emoji">📖</span><span class="cn">साहित्य</span><span class="ce">Literature</span></a>
+    <a class="cat-card" href="pages/community/discussions.html"><span class="badge-new">New</span><span class="cat-emoji">💬</span><span class="cn">छलफल</span><span class="ce">Discussions</span></a>
     <a class="cat-card" href="pages/community/pen-pals.html"><span class="badge-new">New</span><span class="cat-emoji">✉️</span><span class="cn">पत्रमित्रता</span><span class="ce">Pen Pals</span></a>
     <a class="cat-card" href="pages/community/jyotish.html"><span class="cat-emoji">🔮</span><span class="cn">हस्तरेखा</span><span class="ce">Jyotish</span></a>
     <a class="cat-card" href="pages/community/matchmaker.html"><span class="cat-emoji">💑</span><span class="cn">लमी</span><span class="ce">Matchmaker</span></a>
@@ -450,7 +454,7 @@
       <p>The Global Nepali Ecosystem — connecting 4.5 million Nepalis across 90+ countries.</p>
     </div>
     <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="pages/marketplace/kinbech.html">किनबेच</a></li><li><a href="pages/jobs/jobs.html">रोजगार</a></li><li><a href="pages/housing/housing.html">घर / कोठा</a></li><li><a href="pages/marketplace/services.html">सेवाहरू</a></li><li><a href="pages/housing/paying-guest.html">Paying Guest</a></li></ul></div>
-    <div class="footer-col"><h5>Community</h5><ul><li><a href="pages/community/organizations.html">संगठन</a></li><li><a href="pages/community/literature.html">साहित्य</a></li><li><a href="pages/community/matchmaker.html">लमी</a></li><li><a href="pages/community/pen-pals.html">पत्रमित्रता</a></li><li><a href="pages/community/events.html">Events</a></li></ul></div>
+    <div class="footer-col"><h5>Community</h5><ul><li><a href="pages/community/organizations.html">संगठन</a></li><li><a href="pages/community/literature.html">साहित्य</a></li><li><a href="pages/community/discussions.html">Discussions</a></li><li><a href="pages/community/matchmaker.html">लमी</a></li><li><a href="pages/community/pen-pals.html">पत्रमित्रता</a></li><li><a href="pages/community/events.html">Events</a></li></ul></div>
     <div class="footer-col"><h5>Biscoon</h5><ul><li><a href="#">About</a></li><li><a href="#">Advertise</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Contact</a></li></ul></div>
   </div>
 </footer>

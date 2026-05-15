@@ -21,7 +21,13 @@ async function postJson(url, body) {
 }
 
 function saveToken(token) {
-  if (token) localStorage.setItem('biscoonToken', token);
+  if (!token) return;
+  if (window.biscoonSession && typeof window.biscoonSession.start === 'function') {
+    window.biscoonSession.start(token);
+    return;
+  }
+  localStorage.setItem('biscoonToken', token);
+  localStorage.setItem('biscoonLastActivity', String(Date.now()));
 }
 
 function getRedirectTarget() {

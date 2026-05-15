@@ -11,6 +11,8 @@ function normalizeListing(listing) {
     ...listingObj,
     images: listingObj.images || [],
     tags: listingObj.tags || [],
+    comments: listingObj.comments || [],
+    commentCount: Array.isArray(listingObj.comments) ? listingObj.comments.length : 0,
   };
 }
 

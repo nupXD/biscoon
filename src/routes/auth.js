@@ -10,7 +10,7 @@ const { findUserByEmail, findUserById, sanitizeUser } = require('../utils/users'
 const router = express.Router();
 
 function createToken(user) {
-  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
 }
 
 router.post('/register', async (req, res) => {
