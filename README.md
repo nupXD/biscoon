@@ -2,14 +2,15 @@
 
 Biscoon is a dynamic community marketplace for Nepalis in the United States. It brings together listings for jobs, housing, paying guests, services, shops, restaurants, events, community organizations, and cultural connections in one searchable platform.
 
-The project is built as a static HTML/CSS/JavaScript frontend served by an Express backend, with MongoDB/Mongoose for user accounts and live listing data.
+The project is built as a static HTML/CSS/JavaScript frontend served by an Express backend, with MongoDB/Mongoose for user accounts, live listing data, discussion topics, notifications, and activity history.
 
 ## Project Goals
 
 - Help Nepali community members find relevant listings by category, location, and search terms.
 - Allow registered users to create, edit, delete, and manage their own listings.
-- Keep users logged in across all pages and hide sign-in/sign-up actions once authenticated.
+- Keep users logged in across all pages, expire inactive sessions after one day, and hide sign-in/sign-up actions once authenticated.
 - Make listings dynamic across the homepage, category pages, search results, profile, and post pages.
+- Support discussion topics, comments, replies, notifications, and user activity history.
 - Keep the codebase readable by separating global CSS, page CSS, JavaScript, routes, models, and helpers.
 
 ## Main Features
@@ -18,18 +19,22 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 
 - User signup and login with JWT authentication.
 - Duplicate email validation prevents the same email from registering more than once.
-- Login state is persisted in `localStorage`.
-- Logged-in users see profile/add-listing/logout dropdowns across pages.
+- Login state is persisted in `localStorage` with an inactivity timestamp.
+- Sessions expire after one day of inactivity, matching the one-day JWT expiry.
+- Logged-in users see profile, activity, notifications, add-listing, create-discussion, and logout dropdowns across pages.
 - Logged-out users are redirected to login before creating or managing listings.
 
 ### Dynamic Listings
 
 - Listings are stored in MongoDB.
-- Homepage and category pages can render live listing data.
-- Search supports keywords and category filtering.
+- Homepage and category pages render live listing data from the API.
+- Static sample listing cards are replaced at runtime with loading, empty, or live listing states.
+- Search supports keywords, category filtering, and discussion results.
 - Browse/load-more actions preserve the selected category or subcategory.
+- Category filter chips are rebuilt from live listing subcategories.
 - Listing cards open detail popups instead of redirecting away.
 - Detail pages still exist for direct listing URLs.
+- Listing detail views support authenticated comments.
 
 ### Listing Posting
 
@@ -74,6 +79,36 @@ The profile page lets authenticated users:
 - Edit a listing inside the same popup.
 - Add/remove listing images from the popup editor.
 - Delete owned listings.
+
+### Discussions
+
+- Authenticated users can create discussion topics from the discussion page or user dropdown.
+- The discussion page is optimized for browsing topics first.
+- Creating a discussion opens a modal for logged-in users.
+- Logged-out users are sent to login before creating topics, comments, or replies.
+- Discussion topics support comments and nested replies.
+- Homepage search can include discussions, and the search category dropdown can search only discussions.
+
+### Notifications
+
+Authenticated users receive notifications when:
+
+- Someone comments on their discussion topic.
+- Someone replies to one of their discussion comments.
+- Someone comments on their listing.
+
+The notification dropdown badge shows unread notifications. The notifications page lets users view notifications and mark them read.
+
+### My Activity
+
+The activity page shows a user's:
+
+- Discussion topics posted.
+- Discussion comments.
+- Discussion replies.
+- Listing comments.
+
+Listings posted by the user are intentionally not included in My Activity.
 
 ### Dynamic Stats
 
@@ -121,8 +156,11 @@ biscoon-project/
 │   │       └── post/
 │   └── js/
 │       ├── auth.js
+│       ├── activity.js
 │       ├── biscoon.js
+│       ├── discussions.js
 │       ├── listing.js
+│       ├── notifications.js
 │       └── profile.js
 ├── pages/
 │   ├── auth/
@@ -148,14 +186,24 @@ biscoon-project/
 - `src/config/database.js`: MongoDB connection setup.
 - `src/models/User.js`: User schema.
 - `src/models/Listing.js`: Listing schema.
+- `src/models/Discussion.js`: Discussion topic and comment schema.
+- `src/models/Notification.js`: User notification schema.
 - `src/routes/auth.js`: Register, login, and profile API routes.
 - `src/routes/listings.js`: Listing CRUD, search, owner listings, and stats routes.
+- `src/routes/discussions.js`: Discussion topic, comment, and reply routes.
+- `src/routes/notifications.js`: Notification listing and read-state routes.
+- `src/routes/activity.js`: Authenticated user activity aggregation route.
 - `src/middleware/auth.js`: JWT auth middleware.
 - `src/utils/users.js`: User lookup helpers.
 - `src/utils/listings.js`: Listing lookup and normalization helpers.
+- `src/utils/discussions.js`: Discussion lookup and normalization helpers.
+- `src/utils/notifications.js`: Notification creation and normalization helpers.
+- `assets/js/activity.js`: My Activity frontend logic.
 - `assets/js/auth.js`: Signup/login frontend logic.
-- `assets/js/biscoon.js`: Shared page behavior, login UI, search, dynamic listings, listing popups, and stats.
+- `assets/js/biscoon.js`: Shared page behavior, session handling, login UI, search, dynamic listings, listing popups, comments, notifications, and stats.
+- `assets/js/discussions.js`: Discussion page topic/comment/reply logic.
 - `assets/js/listing.js`: Post listing page logic, image upload/editing, create/update/delete.
+- `assets/js/notifications.js`: Notifications page logic.
 - `assets/js/profile.js`: Profile page logic, account update, owner listing popups, and popup editing.
 - `assets/css/main.css`: Global shared design system and reusable components.
 - `assets/css/pages/`: Extracted page-specific CSS files.
@@ -187,6 +235,8 @@ This script extracts `<style>` blocks and `style="..."` attributes into matching
 - `pages/auth/signup.html`: Account registration.
 - `pages/auth/login.html`: User login.
 - `pages/auth/profile.html`: Profile settings and owner listing management.
+- `pages/auth/activity.html`: User discussion and comment activity history.
+- `pages/auth/notifications.html`: User notifications.
 
 ### Posting
 
@@ -235,6 +285,7 @@ This script extracts `<style>` blocks and `style="..."` attributes into matching
 ### Community
 
 - `pages/community/organizations.html`
+- `pages/community/discussions.html`
 - `pages/community/events.html`
 - `pages/community/literature.html`
 - `pages/community/music.html`
@@ -358,11 +409,45 @@ contactPreference   String
 externalLink        String
 tags                Array<String>
 images              Array<String>, max 6
+comments            Array<Comment>
 createdAt           Date, indexed
 updatedAt           Date
 ```
 
 Listings have a text index across title, description, category, location, and related searchable fields.
+
+### Discussion
+
+```text
+id          String, unique
+userId      String, required
+authorName  String, required
+title       String, required
+body        String, required
+category    String, indexed
+tags        Array<String>
+comments    Array<Comment>
+createdAt   Date, indexed
+updatedAt   Date
+```
+
+### Notification
+
+```text
+id            String, unique
+userId        String, indexed
+actorId       String
+actorName     String
+type          String
+title         String
+body          String
+targetType    String
+targetId      String
+targetTitle   String
+url           String
+read          Boolean, indexed
+createdAt     Date, indexed
+```
 
 ## API Reference
 
@@ -399,7 +484,7 @@ Request body:
 }
 ```
 
-Returns user data and JWT token.
+Returns user data and a JWT token. Tokens expire after one day.
 
 #### `GET /api/auth/me`
 
@@ -502,6 +587,26 @@ Returns dynamic listing stats:
 
 Returns a single listing by public listing ID.
 
+#### `POST /api/listings/:id/comments`
+
+Adds a comment to a listing.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "body": "Is this still available?"
+}
+```
+
+If the commenter is not the listing owner, the owner receives a notification.
+
 #### `PUT /api/listings/:id`
 
 Updates a listing owned by the authenticated user.
@@ -524,6 +629,123 @@ Requires:
 Authorization: Bearer <token>
 ```
 
+### Discussions
+
+#### `GET /api/discussions`
+
+Returns discussion topics.
+
+Optional query parameters:
+
+```text
+category
+search
+limit
+```
+
+#### `POST /api/discussions`
+
+Creates a discussion topic for the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "title": "Best Nepali grocery stores in Boston?",
+  "body": "Looking for recommendations near public transit.",
+  "category": "general",
+  "tags": "boston, grocery"
+}
+```
+
+#### `GET /api/discussions/:id`
+
+Returns one discussion topic with comments and replies.
+
+#### `POST /api/discussions/:id/comments`
+
+Adds a comment or reply to a discussion topic.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "body": "Try Somerville and Malden.",
+  "parentId": ""
+}
+```
+
+`parentId` is optional. When provided, the comment is treated as a reply.
+
+Notifications are created for the discussion owner and, for replies, the parent comment author when they are different from the actor.
+
+### Notifications
+
+#### `GET /api/notifications`
+
+Returns notifications for the authenticated user and unread count.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+#### `PUT /api/notifications/:id/read`
+
+Marks one notification as read.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+#### `PUT /api/notifications/read-all`
+
+Marks all notifications as read for the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+### Activity
+
+#### `GET /api/activity/mine`
+
+Returns activity for the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Included activity:
+
+```text
+discussion_topic
+discussion_comment
+discussion_reply
+listing_comment
+```
+
+Listings posted by the user are not included.
+
 ## Frontend Behavior
 
 ### Authentication UI
@@ -533,8 +755,11 @@ Authorization: Bearer <token>
 - Desktop navigation
 - Mobile drawer
 - User dropdown
+- My Activity and Notifications dropdown links
+- Notification unread badges
 - Post listing redirects
 - Protected listing actions
+- One-day inactivity logout
 
 ### Listing Cards
 
@@ -550,6 +775,20 @@ Listing cards show:
 - Price/rate
 
 Clicking a dynamic listing opens a popup instead of navigating away.
+
+Listing detail views also support authenticated comments. Commenting on someone else's listing creates a notification for the listing owner.
+
+### Discussions UI
+
+The discussion page displays topics first. Logged-in users can click Create Discussion to open a modal. Logged-out users see sign-in prompts for creating topics, comments, and replies.
+
+### Notifications UI
+
+The notifications page shows unread and read notifications. Clicking a notification marks it read and opens the related listing or discussion.
+
+### My Activity UI
+
+The activity page filters user activity by discussion posts, discussion comments, discussion replies, and listing comments.
 
 ### Profile Listings
 
@@ -597,10 +836,16 @@ Useful syntax checks:
 node --check server.js
 node --check assets/js/biscoon.js
 node --check assets/js/auth.js
+node --check assets/js/activity.js
+node --check assets/js/discussions.js
 node --check assets/js/listing.js
+node --check assets/js/notifications.js
 node --check assets/js/profile.js
+node --check src/routes/activity.js
 node --check src/routes/auth.js
+node --check src/routes/discussions.js
 node --check src/routes/listings.js
+node --check src/routes/notifications.js
 node --check scripts/extract-page-css.js
 ```
 
@@ -635,6 +880,7 @@ MONGODB_URI=<your connection string>
 - Confirm the backend is running.
 - Confirm MongoDB is running.
 - Clear old browser local storage if token data is stale.
+- Sessions expire after one day of inactivity.
 - Use the seeded account after `npm run seed`.
 
 ### Images Are Too Large
@@ -647,7 +893,7 @@ Images are resized in the browser before saving. If requests are still too large
 - Keep global styles in `assets/css/main.css`.
 - Keep page-only styles in `assets/css/pages/`.
 - Keep shared frontend behavior in `assets/js/biscoon.js`.
-- Keep page-specific frontend behavior in `auth.js`, `listing.js`, or `profile.js`.
+- Keep page-specific frontend behavior in `auth.js`, `activity.js`, `discussions.js`, `listing.js`, `notifications.js`, or `profile.js`.
 - Add new backend routes under `src/routes/`.
 - Add new schemas under `src/models/`.
 
