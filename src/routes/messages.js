@@ -24,7 +24,9 @@ function normalizeConversationSummary(conv, currentUserId) {
     lastMessage: lastMessage ? {
       senderId: lastMessage.senderId,
       senderName: lastMessage.senderName,
-      body: decrypt(lastMessage.body),
+      body: lastMessage.body ? decrypt(lastMessage.body) : '',
+      hasAttachments: Array.isArray(lastMessage.attachments) && lastMessage.attachments.length > 0,
+      attachmentCount: Array.isArray(lastMessage.attachments) ? lastMessage.attachments.length : 0,
       createdAt: lastMessage.createdAt,
     } : null,
     unreadCount,
@@ -51,10 +53,20 @@ router.get('/unread', authMiddleware, async (req, res) => {
   res.json({ unread });
 });
 
+function validateAttachments(attachments) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.filter(a => a && a.name && a.mimeType && a.data).slice(0, 5);
+}
+
 router.post('/', authMiddleware, async (req, res) => {
-  const { listingId, recipientId, body } = req.body;
-  if (!listingId || !recipientId || !String(body || '').trim()) {
-    return res.status(400).json({ error: 'listingId, recipientId, and body are required.' });
+  const { listingId, recipientId, body, attachments } = req.body;
+  const cleanBody = String(body || '').trim();
+  const cleanAttachments = validateAttachments(attachments);
+  if (!listingId || !recipientId) {
+    return res.status(400).json({ error: 'listingId and recipientId are required.' });
+  }
+  if (!cleanBody && !cleanAttachments.length) {
+    return res.status(400).json({ error: 'A message body or at least one attachment is required.' });
   }
   if (recipientId === req.user.id) {
     return res.status(400).json({ error: 'You cannot message yourself.' });
@@ -88,7 +100,8 @@ router.post('/', authMiddleware, async (req, res) => {
     id: uuidv4(),
     senderId: req.user.id,
     senderName: req.user.name || req.user.email,
-    body: encrypt(String(body).trim()),
+    body: cleanBody ? encrypt(cleanBody) : '',
+    attachments: cleanAttachments,
     readBy: [req.user.id],
     createdAt: new Date(),
   });
@@ -124,7 +137,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
       id: m.id,
       senderId: m.senderId,
       senderName: m.senderName,
-      body: decrypt(m.body),
+      body: m.body ? decrypt(m.body) : '',
+      attachments: m.attachments || [],
       createdAt: m.createdAt,
       isOwn: m.senderId === req.user.id,
     })),
@@ -134,7 +148,10 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 router.post('/:id/reply', authMiddleware, async (req, res) => {
   const body = String(req.body.body || '').trim();
-  if (!body) return res.status(400).json({ error: 'Message body is required.' });
+  const attachments = validateAttachments(req.body.attachments);
+  if (!body && !attachments.length) {
+    return res.status(400).json({ error: 'A message body or at least one attachment is required.' });
+  }
 
   const conv = await Conversation.findOne({ id: req.params.id, participantIds: req.user.id });
   if (!conv) return res.status(404).json({ error: 'Conversation not found.' });
@@ -143,7 +160,8 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
     id: uuidv4(),
     senderId: req.user.id,
     senderName: req.user.name || req.user.email,
-    body: encrypt(body),
+    body: body ? encrypt(body) : '',
+    attachments,
     readBy: [req.user.id],
     createdAt: new Date(),
   });

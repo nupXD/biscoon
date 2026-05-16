@@ -1,11 +1,19 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
+const attachmentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  mimeType: { type: String, required: true },
+  size: { type: Number, default: 0 },
+  data: { type: String, required: true },
+}, { _id: false });
+
 const messageSchema = new mongoose.Schema({
   id: { type: String, default: uuidv4, required: true },
   senderId: { type: String, required: true },
   senderName: { type: String, required: true },
-  body: { type: String, required: true },
+  body: { type: String, default: '' },
+  attachments: [attachmentSchema],
   readBy: [{ type: String }],
   createdAt: { type: Date, default: Date.now },
 }, { _id: false });

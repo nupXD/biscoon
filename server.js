@@ -12,7 +12,7 @@ const messageRoutes = require('./src/routes/messages');
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '8mb' }));
+app.use(express.json({ limit: '25mb' }));
 app.use(express.static(STATIC_ROOT));
 
 app.use('/api/auth', authRoutes);

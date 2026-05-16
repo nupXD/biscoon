@@ -93,6 +93,7 @@ The profile page lets authenticated users:
 - Selecting a conversation shows the full thread with chat-style bubbles (own messages in red, received in grey).
 - Users can reply inline from the thread view.
 - All message bodies are encrypted at rest using AES-256-GCM before being stored in MongoDB. The database never stores readable message text.
+- Users can attach images, videos, and files to any message (up to 5 attachments per message). Images are compressed in the browser before sending.
 - A combined unread badge on the user dropdown button shows the total of unread notifications plus unread messages at a glance.
 
 ### Discussions
@@ -526,12 +527,22 @@ createdAt         Date
 Each embedded `Message`:
 
 ```text
-id          String
-senderId    String
-senderName  String
-body        String   — AES-256-GCM encrypted ciphertext (iv:tag:ciphertext in hex)
-readBy      Array<String>   — user IDs who have read this message
-createdAt   Date
+id            String
+senderId      String
+senderName    String
+body          String            — AES-256-GCM encrypted ciphertext (iv:tag:ciphertext in hex); empty if attachments only
+attachments   Array<Attachment> — up to 5
+readBy        Array<String>     — user IDs who have read this message
+createdAt     Date
+```
+
+Each embedded `Attachment`:
+
+```text
+name      String   — original filename
+mimeType  String   — e.g. image/jpeg, video/mp4, application/pdf
+size      Number   — bytes
+data      String   — base64 data URL
 ```
 
 Compound indexes: `{ participantIds, updatedAt }` for inbox queries, `{ listingId, participantIds }` unique for deduplication.
@@ -665,7 +676,7 @@ Returns the total unread message count across all conversations.
 
 #### `POST /api/messages`
 
-Starts a new message or adds to an existing conversation.
+Starts a new message or adds to an existing conversation. Either `body` or at least one attachment is required.
 
 Request body:
 
@@ -673,7 +684,10 @@ Request body:
 {
   "listingId": "<listing id>",
   "recipientId": "<recipient user id>",
-  "body": "Hi, is this still available?"
+  "body": "Hi, is this still available?",
+  "attachments": [
+    { "name": "photo.jpg", "mimeType": "image/jpeg", "size": 45000, "data": "data:image/jpeg;base64,..." }
+  ]
 }
 ```
 
@@ -681,17 +695,18 @@ Returns `{ conversationId }`.
 
 #### `GET /api/messages/:id`
 
-Returns a full conversation thread with all decrypted messages. Marks received messages as read.
+Returns a full conversation thread with all decrypted messages and attachment data. Marks received messages as read.
 
 #### `POST /api/messages/:id/reply`
 
-Adds a reply to an existing conversation.
+Adds a reply to an existing conversation. Either `body` or at least one attachment is required.
 
 Request body:
 
 ```json
 {
-  "body": "Yes, still available!"
+  "body": "Yes, still available!",
+  "attachments": []
 }
 ```
 
@@ -736,6 +751,10 @@ Listing detail views (popup and direct page) show:
 - The inbox shows conversation cards with the other person's name, listing title, message preview, and unread badge.
 - Clicking a conversation loads the full thread with chat-style bubbles.
 - Users reply from the thread view.
+- The reply box has an attachment button (📎) to add images, videos, or files to any message.
+- Images are compressed client-side (1200px max side, JPEG quality 0.78). Videos are capped at 20 MB. Files are capped at 10 MB. Maximum 5 attachments per message.
+- Attached images appear inline in the chat bubble. Videos play inline. Other files appear as a download link.
+- Clicking an inline image opens a fullscreen lightbox.
 
 ### Discussions UI
 
@@ -822,7 +841,7 @@ Make sure MongoDB is running, or set `MONGODB_URI` to a hosted connection string
 
 ### Images Are Too Large
 
-Images are resized in the browser before saving. The backend JSON limit is `8mb` (configured in `server.js`).
+Images are resized in the browser before saving. The backend JSON limit is `25mb` (configured in `server.js`) to accommodate video and file attachments in messages.
 
 ### Messages Not Decrypting
 
