@@ -233,6 +233,7 @@ function checkAuthState() {
 
     fetchUserInfo(token);
     fetchNotificationSummary(token);
+    fetchMessageSummary(token);
   } else {
     document.body.classList.add('biscoon-logged-out');
     document.body.classList.remove('biscoon-logged-in');
@@ -279,12 +280,14 @@ function ensureAuthDropdowns() {
       <button class="user-btn" id="userBtn" type="button">
         <span class="user-avatar">👤</span>
         <span class="user-name" id="userName">Profile</span>
+        <span class="user-total-badge"></span>
         <span class="dropdown-arrow">▼</span>
       </button>
       <div class="dropdown-menu" id="dropdownMenu">
         <a href="${getRelativeAuthPath('profile.html')}">📋 My Profile</a>
         <a href="${getRelativeAuthPath('activity.html')}">🧾 My Activity</a>
         <a href="${getRelativeAuthPath('notifications.html')}" class="notification-link">🔔 Notifications <span class="notification-badge"></span></a>
+        <a href="${getRelativeAuthPath('messages.html')}" class="messages-nav-link">✉️ Messages <span class="messages-badge" style="display:none"></span></a>
         <a href="${getRelativePostPath('listing.html')}">➕ Add Listing</a>
         <a href="${getRelativeCommunityPath('discussions.html')}?create=1">💬 Create Discussion</a>
         <a href="#" id="logoutBtn">🚪 Logout</a>
@@ -313,6 +316,7 @@ function ensureAuthDropdowns() {
       <a href="${getRelativeAuthPath('profile.html')}">📋 My Profile</a>
       <a href="${getRelativeAuthPath('activity.html')}">🧾 My Activity</a>
       <a href="${getRelativeAuthPath('notifications.html')}" class="notification-link">🔔 Notifications <span class="notification-badge"></span></a>
+      <a href="${getRelativeAuthPath('messages.html')}" class="messages-nav-link">✉️ Messages <span class="messages-badge" style="display:none"></span></a>
       <a href="${getRelativePostPath('listing.html')}">➕ Add Listing</a>
       <a href="${getRelativeCommunityPath('discussions.html')}?create=1">💬 Create Discussion</a>
       <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
@@ -335,13 +339,25 @@ function ensureNotificationLinks() {
       menu.insertBefore(link, notificationLink || addListingLink || logoutLink || null);
     }
 
-    if (menu.querySelector('.notification-link')) return;
-    const logoutLink = menu.querySelector('#logoutBtn');
-    const link = document.createElement('a');
-    link.href = getRelativeAuthPath('notifications.html');
-    link.className = 'notification-link';
-    link.innerHTML = '🔔 Notifications <span class="notification-badge"></span>';
-    menu.insertBefore(link, logoutLink || null);
+    if (!menu.querySelector('.notification-link')) {
+      const addListingLink = Array.from(menu.querySelectorAll('a')).find(link => link.textContent.toLowerCase().includes('add listing'));
+      const logoutLink = menu.querySelector('#logoutBtn');
+      const link = document.createElement('a');
+      link.href = getRelativeAuthPath('notifications.html');
+      link.className = 'notification-link';
+      link.innerHTML = '🔔 Notifications <span class="notification-badge"></span>';
+      menu.insertBefore(link, addListingLink || logoutLink || null);
+    }
+
+    if (!menu.querySelector('.messages-nav-link')) {
+      const addListingLink = Array.from(menu.querySelectorAll('a')).find(link => link.textContent.toLowerCase().includes('add listing'));
+      const logoutLink = menu.querySelector('#logoutBtn');
+      const link = document.createElement('a');
+      link.href = getRelativeAuthPath('messages.html');
+      link.className = 'messages-nav-link';
+      link.innerHTML = '✉️ Messages <span class="messages-badge" style="display:none"></span>';
+      menu.insertBefore(link, addListingLink || logoutLink || null);
+    }
   });
 
   document.querySelectorAll('.mobile-user-menu').forEach(menu => {
@@ -357,13 +373,25 @@ function ensureNotificationLinks() {
       menu.insertBefore(link, notificationLink || addListingLink || logoutLink || null);
     }
 
-    if (menu.querySelector('.notification-link')) return;
-    const logoutLink = menu.querySelector('#mobileLogoutBtn');
-    const link = document.createElement('a');
-    link.href = getRelativeAuthPath('notifications.html');
-    link.className = 'notification-link';
-    link.innerHTML = '🔔 Notifications <span class="notification-badge"></span>';
-    menu.insertBefore(link, logoutLink || null);
+    if (!menu.querySelector('.notification-link')) {
+      const addListingLink = Array.from(menu.querySelectorAll('a')).find(link => link.textContent.toLowerCase().includes('add listing'));
+      const logoutLink = menu.querySelector('#mobileLogoutBtn');
+      const link = document.createElement('a');
+      link.href = getRelativeAuthPath('notifications.html');
+      link.className = 'notification-link';
+      link.innerHTML = '🔔 Notifications <span class="notification-badge"></span>';
+      menu.insertBefore(link, addListingLink || logoutLink || null);
+    }
+
+    if (!menu.querySelector('.messages-nav-link')) {
+      const addListingLink = Array.from(menu.querySelectorAll('a')).find(link => link.textContent.toLowerCase().includes('add listing'));
+      const logoutLink = menu.querySelector('#mobileLogoutBtn');
+      const link = document.createElement('a');
+      link.href = getRelativeAuthPath('messages.html');
+      link.className = 'messages-nav-link';
+      link.innerHTML = '✉️ Messages <span class="messages-badge" style="display:none"></span>';
+      menu.insertBefore(link, addListingLink || logoutLink || null);
+    }
   });
 }
 
@@ -390,8 +418,9 @@ function bindAuthDropdownEvents() {
   });
 }
 
-function getPostListingPath() {
-  return '/pages/post/listing.html';
+function getPostListingPath(category = '') {
+  const base = '/pages/post/listing.html';
+  return category ? `${base}?category=${encodeURIComponent(category)}` : base;
 }
 
 function getHomeListingsPath(category = '', subcategory = '') {
@@ -409,9 +438,9 @@ function getLoginPath(redirectTo = getPostListingPath()) {
 }
 
 function goToPostOrLogin() {
-  const destination = getBiscoonToken()
-    ? getPostListingPath()
-    : getLoginPath(getPostListingPath());
+  const category = inferPageCategory();
+  const postPath = getPostListingPath(category);
+  const destination = getBiscoonToken() ? postPath : getLoginPath(postPath);
   window.location.href = destination;
 }
 
@@ -476,6 +505,7 @@ function isBrowseListingAction(element) {
   const text = element.textContent.trim().toLowerCase();
   return text.includes('browse all listings')
     || text.includes('browse all categories')
+    || text.includes('view all categories')
     || text.includes('view all listings')
     || text.includes('load more listings');
 }
@@ -485,8 +515,12 @@ function bindBrowseListingActions() {
     const action = e.target.closest('button, a');
     if (!isBrowseListingAction(action)) return;
     e.preventDefault();
-    const { category, subcategory } = getSelectedBrowseScope();
-    window.location.href = getHomeListingsPath(category, subcategory);
+    const categoriesSection = document.getElementById('categories');
+    if (categoriesSection) {
+      categoriesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.location.href = '/index.html#categories';
+    }
   });
 }
 
@@ -531,15 +565,52 @@ async function fetchNotificationSummary(token = getBiscoonToken()) {
   }
 }
 
+async function fetchMessageSummary(token = getBiscoonToken()) {
+  if (!token) return;
+  try {
+    const response = await fetch(`${getApiBase()}/api/messages/unread`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    updateMessageBadges(data.unread || 0);
+  } catch (error) {
+    console.error('Failed to fetch message count:', error);
+  }
+}
+
+function updateMessageBadges(count) {
+  _biscoonUnreadMessages = count;
+  document.querySelectorAll('.messages-badge').forEach(badge => {
+    badge.textContent = count > 0 ? String(count) : '';
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  });
+  updateUserTotalBadge();
+}
+
+let _biscoonUnreadNotifications = 0;
+let _biscoonUnreadMessages = 0;
+
+function updateUserTotalBadge() {
+  const total = _biscoonUnreadNotifications + _biscoonUnreadMessages;
+  document.querySelectorAll('.user-total-badge').forEach(badge => {
+    badge.textContent = total > 0 ? String(total > 99 ? '99+' : total) : '';
+    badge.style.display = total > 0 ? 'inline-flex' : 'none';
+  });
+}
+
 function updateNotificationBadges(count) {
+  _biscoonUnreadNotifications = count;
   document.querySelectorAll('.notification-badge').forEach(badge => {
     badge.textContent = count > 0 ? String(count) : '';
     badge.style.display = count > 0 ? 'inline-flex' : 'none';
   });
+  updateUserTotalBadge();
 }
 
 function bindNotificationEvents() {
   window.addEventListener('biscoon:notifications-updated', () => fetchNotificationSummary());
+  window.addEventListener('biscoon:messages-updated', () => fetchMessageSummary());
 }
 
 function toggleDropdown(event) {
@@ -801,6 +872,41 @@ function discussionToSearchCard(discussion) {
 function renderListingComments(listing) {
   const comments = Array.isArray(listing.comments) ? listing.comments : [];
   const token = getBiscoonToken();
+  const currentUserId = getCurrentUserIdFromToken();
+  const isOwner = token && currentUserId && listing.userId === currentUserId;
+  const topLevelComments = comments.filter(comment => !comment.parentId);
+  const repliesByParent = comments.reduce((groups, comment) => {
+    if (!comment.parentId) return groups;
+    if (!groups[comment.parentId]) groups[comment.parentId] = [];
+    groups[comment.parentId].push(comment);
+    return groups;
+  }, {});
+  const renderReplyForm = comment => `
+    <button class="reply-toggle" type="button" data-listing-reply-target="${escapeHtml(comment.id)}">Reply</button>
+    <form class="reply-form" data-listing-reply-form="${escapeHtml(comment.id)}" data-listing-comment-form="${escapeHtml(listing.id || '')}">
+      <textarea class="form-input" name="body" placeholder="Write a reply" required></textarea>
+      <input type="hidden" name="parentId" value="${escapeHtml(comment.id)}" />
+      <div class="listing-comment-actions">
+        <button class="btn-primary" type="submit">Post reply</button>
+        <button class="btn-ghost" type="button" data-cancel-listing-reply="${escapeHtml(comment.id)}">Cancel</button>
+      </div>
+    </form>
+  `;
+  const renderThreadReplies = (parentId, rootUserId, depth = 1) => {
+    const replies = repliesByParent[parentId] || [];
+    const canReplyInThread = token && currentUserId && (isOwner || currentUserId === rootUserId);
+    return replies.map(reply => `
+      <article class="listing-comment-card listing-comment-reply" style="--reply-depth:${Math.min(depth, 4)}">
+        <div class="listing-comment-meta">
+          <strong>${escapeHtml(reply.authorName || 'Community member')}</strong>
+          <span>${escapeHtml(formatListingDate(reply.createdAt))}</span>
+        </div>
+        <div class="listing-comment-body">${escapeHtml(reply.body || '')}</div>
+        ${canReplyInThread ? renderReplyForm(reply) : ''}
+        ${renderThreadReplies(reply.id, rootUserId, depth + 1)}
+      </article>
+    `).join('');
+  };
   return `
     <section class="listing-comments" data-listing-comments="${escapeHtml(listing.id || '')}">
       <div class="listing-comments-head">${comments.length} comment${comments.length === 1 ? '' : 's'}</div>
@@ -813,21 +919,37 @@ function renderListingComments(listing) {
         </div>
       </form>
       <div class="listing-comment-list">
-        ${comments.length ? comments.map(comment => `
+        ${topLevelComments.length ? topLevelComments.map(comment => {
+          const canReplyInThread = token && currentUserId && (isOwner || currentUserId === comment.userId);
+          return `
           <article class="listing-comment-card">
             <div class="listing-comment-meta">
               <strong>${escapeHtml(comment.authorName || 'Community member')}</strong>
               <span>${escapeHtml(formatListingDate(comment.createdAt))}</span>
             </div>
             <div class="listing-comment-body">${escapeHtml(comment.body || '')}</div>
+            ${canReplyInThread ? renderReplyForm(comment) : ''}
+            ${renderThreadReplies(comment.id, comment.userId)}
           </article>
-        `).join('') : '<div class="listing-comments-empty">No comments yet.</div>'}
+        `;
+        }).join('') : '<div class="listing-comments-empty">No comments yet.</div>'}
       </div>
     </section>
   `;
 }
 
-async function postListingComment(listingId, body) {
+function getCurrentUserIdFromToken() {
+  const token = getBiscoonToken();
+  if (!token) return '';
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] || ''));
+    return payload.id || '';
+  } catch (error) {
+    return '';
+  }
+}
+
+async function postListingComment(listingId, body, parentId = '') {
   const token = getBiscoonToken();
   if (!token) {
     window.location.href = `${getRelativeAuthPath('login.html')}?redirect=${encodeURIComponent(getListingPageHref(listingId))}`;
@@ -840,7 +962,7 @@ async function postListingComment(listingId, body) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, parentId }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Unable to post comment.');
@@ -880,14 +1002,17 @@ function renderListingModalContent(listing) {
   const gallery = Array.isArray(listing.images) && listing.images.length
     ? `<div class="listing-detail-gallery">${listing.images.map(image => `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">`).join('')}</div>`
     : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
-  const contactEmail = listing.contactEmail
-    ? `<a class="btn-primary" href="mailto:${escapeHtml(listing.contactEmail)}">Email poster</a>`
-    : '';
   const contactPhone = listing.contactPhone
     ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>`
     : '';
   const externalLink = listing.externalLink
     ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>`
+    : '';
+  const token = getBiscoonToken();
+  const currentUserId = getCurrentUserIdFromToken();
+  const isOwner = token && currentUserId && listing.userId === currentUserId;
+  const messageBtn = !isOwner && listing.userId
+    ? `<button class="${token ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listing.id || '')}" data-msg-recipient-id="${escapeHtml(listing.userId)}" data-msg-listing-title="${escapeHtml(listing.title || '')}" onclick="window._openMsgModal(this)">✉️ Message Poster</button>`
     : '';
   const detailRows = [
     listing.locationType ? ['Location type', listing.locationType] : null,
@@ -903,13 +1028,14 @@ function renderListingModalContent(listing) {
     ${gallery}
     <div class="listing-detail-meta">
       <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
-      <span>🕐 ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+      <span>🕐 Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+      ${listing.authorName ? `<span>👤 ${escapeHtml(listing.authorName)}</span>` : ''}
       ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
     </div>
     <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
     ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
     <p>${escapeHtml(listing.description || 'No description provided.')}</p>
-    <div class="listing-detail-contact">${contactEmail}${contactPhone}${externalLink}</div>
+    <div class="listing-detail-contact">${messageBtn}${contactPhone}${externalLink}</div>
     ${renderListingComments(listing)}
   `;
 }
@@ -953,11 +1079,12 @@ function bindListingDetailModal() {
     e.preventDefault();
     const listingId = form.dataset.listingCommentForm;
     const textarea = form.querySelector('textarea');
+    const parentId = form.querySelector('[name="parentId"]')?.value || '';
     const body = textarea ? textarea.value.trim() : '';
     if (!body) return;
 
     try {
-      const listing = await postListingComment(listingId, body);
+      const listing = await postListingComment(listingId, body, parentId);
       const modalBody = document.getElementById('listingModalBody');
       if (modalBody && document.getElementById('listingModal')?.classList.contains('open')) {
         modalBody.innerHTML = renderListingModalContent(listing);
@@ -969,8 +1096,30 @@ function bindListingDetailModal() {
     }
   });
 
+  document.addEventListener('click', function(e) {
+    const replyButton = e.target.closest('[data-listing-reply-target]');
+    if (replyButton) {
+      const form = document.querySelector(`[data-listing-reply-form="${CSS.escape(replyButton.dataset.listingReplyTarget)}"]`);
+      document.querySelectorAll('[data-listing-reply-form].open').forEach(openForm => {
+        if (openForm !== form) openForm.classList.remove('open');
+      });
+      if (form) form.classList.toggle('open');
+      return;
+    }
+
+    const cancelButton = e.target.closest('[data-cancel-listing-reply]');
+    if (cancelButton) {
+      const form = document.querySelector(`[data-listing-reply-form="${CSS.escape(cancelButton.dataset.cancelListingReply)}"]`);
+      if (form) form.classList.remove('open');
+    }
+  });
+
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeListingModal();
+    if (e.key === 'Escape') {
+      const sendModal = document.getElementById('biscoonSendMsgModal');
+      if (sendModal) { sendModal.remove(); return; }
+      closeListingModal();
+    }
   });
 }
 
@@ -986,7 +1135,7 @@ function renderListings(listings, target = getDynamicListingsContainer()) {
         <div class="icon">${escapeHtml(getCategoryEmoji(inferPageCategory() || 'other'))}</div>
         <h3>No live listings yet</h3>
         <p>Be the first to add a real post for this section.</p>
-        <a class="btn-primary" href="${getPostListingPath()}">Post a Listing</a>
+        <a class="btn-primary" href="${getPostListingPath(inferPageCategory())}">Post a Listing</a>
       </div>
     `;
     return;
@@ -1045,19 +1194,22 @@ function updateHeroStats(stats, category = inferPageCategory()) {
 
   const normalizedCategory = normalizeCategoryForListings(category);
   const categoryCount = normalizedCategory ? stats.byCategory?.[normalizedCategory] || 0 : stats.total;
-  const values = [
-    { num: formatCount(categoryCount), label: normalizedCategory ? `${getCategoryMeta(normalizedCategory).label} Listings` : 'Active Listings' },
-    { num: formatCount(stats.week), label: 'New This Week' },
-    { num: formatCount(stats.cities), label: 'Cities Covered' },
-  ];
 
-  heroStats.forEach((stat, index) => {
-    const value = values[index];
-    if (!value) return;
-    const num = stat.querySelector('.num');
-    const label = stat.querySelector('.lbl');
-    if (num) num.textContent = value.num;
-    if (label) label.textContent = value.label;
+  heroStats.forEach(stat => {
+    const numEl = stat.querySelector('.num');
+    const labelEl = stat.querySelector('.lbl');
+    if (!numEl || !labelEl) return;
+    const currentLabel = labelEl.textContent.toLowerCase();
+    if (currentLabel.includes('active listing') || currentLabel.includes('listings')) {
+      numEl.textContent = formatCount(categoryCount);
+      if (normalizedCategory) labelEl.textContent = `${getCategoryMeta(normalizedCategory).label} Listings`;
+    } else if (currentLabel.includes('new this week') || currentLabel.includes('this week')) {
+      numEl.textContent = formatCount(stats.week);
+    } else if (currentLabel.includes('new today') || currentLabel.includes('today')) {
+      numEl.textContent = formatCount(stats.today);
+    } else if (currentLabel.includes('cities')) {
+      numEl.textContent = formatCount(stats.cities);
+    }
   });
 }
 
@@ -1245,6 +1397,12 @@ async function hydrateListingDetail() {
     const externalLink = listing.externalLink
       ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>`
       : '';
+    const detailToken = getBiscoonToken();
+    const detailUserId = getCurrentUserIdFromToken();
+    const isDetailOwner = detailToken && detailUserId && listing.userId === detailUserId;
+    const detailMessageBtn = !isDetailOwner && listing.userId
+      ? `<button class="${detailToken ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listing.id || '')}" data-msg-recipient-id="${escapeHtml(listing.userId)}" data-msg-listing-title="${escapeHtml(listing.title || '')}" onclick="window._openMsgModal(this)">✉️ Message Poster</button>`
+      : '';
     const detailRows = [
       listing.locationType ? ['Location type', listing.locationType] : null,
       listing.availability ? ['Availability', listing.availability] : null,
@@ -1259,14 +1417,15 @@ async function hydrateListingDetail() {
         ${gallery}
         <div class="listing-detail-meta">
           <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
-          <span>🕐 ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+          <span>🕐 Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+          ${listing.authorName ? `<span>👤 ${escapeHtml(listing.authorName)}</span>` : ''}
           ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
         </div>
         <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
         ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
         <p>${escapeHtml(listing.description || 'No description provided.')}</p>
         <div class="listing-detail-contact">
-          ${listing.contactEmail ? `<a class="btn-primary" href="mailto:${escapeHtml(listing.contactEmail)}">Email poster</a>` : ''}
+          ${detailMessageBtn}
           ${listing.contactPhone ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>` : ''}
           ${externalLink}
         </div>
@@ -1323,4 +1482,72 @@ function buildHeatmap() {
 function scrollTo(id) {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Message Poster button handler ──
+window._openMsgModal = function(btn) {
+  const listingId = btn.dataset.msgListingId || '';
+  const recipientId = btn.dataset.msgRecipientId || '';
+  const listingTitle = btn.dataset.msgListingTitle || '';
+  if (!getBiscoonToken()) {
+    window.location.href = getLoginPath(window.location.href);
+    return;
+  }
+  biscoonOpenSendMessageModal({ listingId, recipientId, listingTitle });
+};
+
+function biscoonOpenSendMessageModal({ listingId, recipientId, listingTitle }) {
+  const existing = document.getElementById('biscoonSendMsgModal');
+  if (existing) existing.remove();
+
+  function esc(v) { return escapeHtml(v); }
+  const modal = document.createElement('div');
+  modal.id = 'biscoonSendMsgModal';
+  modal.className = 'messages-send-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45)" id="biscoonSendMsgBackdrop"></div>
+    <div style="position:relative;z-index:1;background:white;border-radius:12px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.18);margin:0 16px" role="dialog" aria-modal="true">
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin-bottom:6px">Message Poster</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">About: ${esc(listingTitle || 'this listing')}</p>
+      <div id="biscoonSendMsgError" style="display:none;font-size:13px;color:var(--red);margin-bottom:10px"></div>
+      <textarea id="biscoonSendMsgBody" placeholder="Write your message…" rows="4" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;min-height:90px;outline:none;margin-bottom:14px;transition:border-color .15s"></textarea>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-ghost" type="button" id="biscoonSendMsgCancel">Cancel</button>
+        <button class="btn-primary" type="button" id="biscoonSendMsgSubmit">Send Message</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const closeModal = () => { const m = document.getElementById('biscoonSendMsgModal'); if (m) m.remove(); };
+  document.getElementById('biscoonSendMsgBackdrop').addEventListener('click', closeModal);
+  document.getElementById('biscoonSendMsgCancel').addEventListener('click', closeModal);
+
+  const textarea = document.getElementById('biscoonSendMsgBody');
+  if (textarea) textarea.focus();
+
+  document.getElementById('biscoonSendMsgSubmit').addEventListener('click', async function() {
+    const body = (document.getElementById('biscoonSendMsgBody')?.value || '').trim();
+    const errEl = document.getElementById('biscoonSendMsgError');
+    if (!body) { if (errEl) { errEl.textContent = 'Please write a message.'; errEl.style.display = ''; } return; }
+    this.disabled = true;
+    this.textContent = 'Sending…';
+    try {
+      const token = getBiscoonToken();
+      const response = await fetch(`${getApiBase()}/api/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ listingId, recipientId, body }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to send message.');
+      closeModal();
+      window.location.href = `${getRelativeAuthPath('messages.html')}?id=${encodeURIComponent(data.conversationId)}`;
+    } catch (err) {
+      if (errEl) { errEl.textContent = err.message; errEl.style.display = ''; }
+      this.disabled = false;
+      this.textContent = 'Send Message';
+    }
+  });
 }

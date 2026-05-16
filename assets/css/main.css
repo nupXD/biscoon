@@ -183,7 +183,10 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 .dropdown-menu a:first-child { border-radius: 7px 7px 0 0 }
 .dropdown-menu a:last-child { border-radius: 0 0 7px 7px }
 .notification-link { display: flex !important; align-items: center; justify-content: space-between; gap: 10px }
+.messages-nav-link { display: flex !important; align-items: center; justify-content: space-between; gap: 10px }
 .notification-badge { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--red); color: white; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1 }
+.messages-badge { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--red); color: white; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1 }
+.user-total-badge { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--red); color: white; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1 }
 
 /* ── PAGE HERO (category pages) ── */
 .page-hero {
@@ -436,9 +439,15 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
 .listing-comment-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap }
 .listing-comment-list { display: flex; flex-direction: column; gap: 10px }
 .listing-comment-card { border: 1px solid var(--border); border-radius: 8px; background: white; padding: 12px }
+.listing-comment-reply { margin-top: 10px; margin-left: calc(18px * var(--reply-depth, 1)); background: #fbfcff }
 .listing-comment-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-muted); font-size: 11px; margin-bottom: 5px }
 .listing-comment-meta strong { color: var(--navy) }
 .listing-comment-body { font-size: 13.5px; line-height: 1.65; color: var(--text) }
+.listing-comments .reply-toggle { border: 0; background: transparent; color: var(--red); font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 8px; padding: 0 }
+.listing-comments .reply-toggle:hover { color: var(--red-dark) }
+.listing-comments .reply-form { display: none; border: 1px solid var(--border); border-radius: 8px; background: var(--off-white); padding: 12px; margin-top: 10px }
+.listing-comments .reply-form.open { display: block }
+.listing-comments .reply-form textarea { min-height: 72px; resize: vertical }
 .listing-comments-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0 }
 .image-preview-list { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px }
 .image-preview-item { position: relative; width: 86px; height: 68px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--gray-100) }

@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const listingCommentSchema = new mongoose.Schema({
   id: { type: String, default: uuidv4, required: true },
+  parentId: { type: String, default: '' },
   userId: { type: String, required: true },
   authorName: { type: String, required: true },
   body: { type: String, required: true },
@@ -15,12 +16,12 @@ const listingSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
-  category: { type: String, required: true, index: true },
+  category: { type: String, required: true },
   subcategory: { type: String },
   availability: { type: String },
   price: { type: String },
   priceNote: { type: String },
-  location: { type: String, index: true },
+  location: { type: String },
   locationType: { type: String },
   contactEmail: { type: String },
   contactPhone: { type: String },
@@ -29,9 +30,15 @@ const listingSchema = new mongoose.Schema({
   tags: [{ type: String }],
   images: [{ type: String }],
   comments: [listingCommentSchema],
-  createdAt: { type: Date, default: Date.now, index: true },
+  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { collection: 'listings' });
+
+// Compound indexes: the most common queries are category (sorted by date) and category+subcategory
+listingSchema.index({ category: 1, createdAt: -1 });
+listingSchema.index({ category: 1, subcategory: 1, createdAt: -1 });
+// userId index for "my listings" queries
+listingSchema.index({ userId: 1, createdAt: -1 });
 
 listingSchema.index({
   title: 'text',

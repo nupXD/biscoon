@@ -4,6 +4,7 @@ const Listing = require('../models/Listing');
 const authMiddleware = require('../middleware/auth');
 const { findListingById, normalizeListing } = require('../utils/listings');
 const { createNotification } = require('../utils/notifications');
+const { findUserById } = require('../utils/users');
 
 const router = express.Router();
 
@@ -25,6 +26,18 @@ function cleanImages(images) {
       .filter(image => image.startsWith('data:image/') || /^https?:\/\//i.test(image) || !image.includes(':'))
       .slice(0, 6)
     : [];
+}
+
+function findRootListingComment(comments, comment) {
+  let current = comment;
+  const seen = new Set();
+  while (current && current.parentId && !seen.has(current.id)) {
+    seen.add(current.id);
+    const parent = comments.find(item => item.id === current.parentId);
+    if (!parent) break;
+    current = parent;
+  }
+  return current;
 }
 
 router.post('/', authMiddleware, async (req, res) => {
@@ -160,7 +173,12 @@ router.get('/:id', async (req, res) => {
   if (!listing) {
     return res.status(404).json({ error: 'Listing not found.' });
   }
-  res.json(normalizeListing(listing));
+  const normalized = normalizeListing(listing);
+  if (listing.userId) {
+    const author = await findUserById(listing.userId);
+    if (author) normalized.authorName = author.name || author.email;
+  }
+  res.json(normalized);
 });
 
 router.post('/:id/comments', authMiddleware, async (req, res) => {
@@ -170,12 +188,26 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
   }
 
   const body = cleanString(req.body.body);
+  const parentId = cleanString(req.body.parentId);
   if (!body) {
     return res.status(400).json({ error: 'Comment text is required.' });
   }
 
+  const parentComment = parentId ? listing.comments.find(comment => comment.id === parentId) : null;
+  if (parentId) {
+    if (!parentComment) {
+      return res.status(400).json({ error: 'Reply target was not found.' });
+    }
+    const rootComment = findRootListingComment(listing.comments, parentComment);
+    const canReply = listing.userId === req.user.id || rootComment?.userId === req.user.id;
+    if (!canReply) {
+      return res.status(403).json({ error: 'Only the listing owner and original commenter can reply in this thread.' });
+    }
+  }
+
   listing.comments.push({
     id: uuidv4(),
+    parentId,
     userId: req.user.id,
     authorName: req.user.name || req.user.email,
     body,
@@ -186,11 +218,11 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
   await listing.save();
 
   await createNotification({
-    userId: listing.userId,
+    userId: parentComment ? parentComment.userId : listing.userId,
     actorId: req.user.id,
     actorName: req.user.name || req.user.email,
-    type: 'listing_comment',
-    title: 'New comment on your listing',
+    type: parentComment ? 'listing_comment_reply' : 'listing_comment',
+    title: parentComment ? 'New reply to your listing comment' : 'New comment on your listing',
     body,
     targetType: 'listing',
     targetId: listing.id,

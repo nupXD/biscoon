@@ -7,6 +7,7 @@ const listingRoutes = require('./src/routes/listings');
 const discussionRoutes = require('./src/routes/discussions');
 const notificationRoutes = require('./src/routes/notifications');
 const activityRoutes = require('./src/routes/activity');
+const messageRoutes = require('./src/routes/messages');
 
 const app = express();
 
@@ -19,9 +20,22 @@ app.use('/api/listings', listingRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/messages', messageRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found.' });
+});
+
+// Global error handler — catches any error passed via next(err) or thrown in async routes
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  console.error('✗ Unhandled error:', err.message || err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ error: err.message || 'An unexpected server error occurred.' });
+});
+
+// Catch unhandled promise rejections from async route handlers (Express 4 does not forward these)
+process.on('unhandledRejection', (reason) => {
+  console.error('✗ Unhandled promise rejection:', reason);
 });
 
 function listenWithFallback(port, attemptsLeft = 10) {
