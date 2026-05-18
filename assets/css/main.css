@@ -467,6 +467,21 @@ footer { background: #050d1f; padding: 48px 40px 0; color: rgba(255,255,255,.55)
 .owner-listing-actions { display: flex; gap: 8px; align-items: flex-start }
 .owner-listing-actions .btn-ghost, .owner-listing-actions .btn-danger { min-width: 0; white-space: nowrap }
 
+/* ── ADMIN BADGE & LINK ── */
+.admin-nav-badge { font-size: 9px; font-weight: 800; background: var(--red); color: #fff; padding: 2px 5px; border-radius: 3px; letter-spacing: .4px; vertical-align: middle; margin-left: 4px; }
+.dropdown-menu .admin-panel-link { color: var(--red) !important; font-weight: 600; border-top: 1px solid var(--border); margin-top: 2px; padding-top: 10px !important; }
+.dropdown-menu .admin-panel-link:hover { background: var(--red-ultra) !important; }
+
+/* ── ANNOUNCEMENT BANNER ── */
+.site-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px; font-size: 13.5px; gap: 12px; line-height: 1.45; }
+.site-banner-info { background: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1e40af; }
+.site-banner-warning { background: #fffbeb; border-bottom: 1px solid #fcd34d; color: #92400e; }
+.site-banner-success { background: #f0fdf4; border-bottom: 1px solid #86efac; color: #14532d; }
+.site-banner-text { flex: 1; }
+.site-banner-title { font-weight: 600; margin-right: 6px; }
+.site-banner-close { background: none; border: none; cursor: pointer; font-size: 18px; opacity: 0.6; line-height: 1; padding: 2px 4px; color: inherit; }
+.site-banner-close:hover { opacity: 1; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) { .page-layout { grid-template-columns: 1fr } .page-sidebar { display: none } }
 @media (max-width: 900px) { .nav-links { display: none } .nav-search { display: none } .hamburger { display: flex } .nav-ctas { display: none } .footer-grid { grid-template-columns: 1fr 1fr } }

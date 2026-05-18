@@ -22,6 +22,7 @@ const conversationSchema = new mongoose.Schema({
   id: { type: String, default: uuidv4, unique: true, required: true },
   listingId: { type: String, required: true },
   listingTitle: { type: String, default: '' },
+  participantKey: { type: String, required: true, index: true },
   participantIds: [{ type: String }],
   participantNames: { type: Map, of: String },
   messages: [messageSchema],
@@ -32,6 +33,6 @@ const conversationSchema = new mongoose.Schema({
 // Compound index: look up conversations by participant (inbox query)
 conversationSchema.index({ participantIds: 1, updatedAt: -1 });
 // Compound index: dedup check — find existing conversation for a listing between two users
-conversationSchema.index({ listingId: 1, participantIds: 1 }, { unique: true });
+conversationSchema.index({ listingId: 1, participantKey: 1 }, { unique: true });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

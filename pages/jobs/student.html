@@ -16,7 +16,7 @@
   </a>
   <div class="nav-links">
     <a href="../marketplace/kinbech.html">किनबेच</a>
-    <a href="rojgar.html">रोजगार</a>
+    <a href="jobs.html">रोजगार</a>
     <a href="../housing/housing.html">घर / कोठा</a>
     <a href="../marketplace/services.html">सेवाहरू</a>
     <a href="../community/organizations.html">संगठन</a>
@@ -45,7 +45,7 @@
 <div class="mobile-drawer" id="mobileDrawer">
   
     <a href="../marketplace/kinbech.html">किनबेच</a>
-    <a href="rojgar.html">रोजगार</a>
+    <a href="jobs.html">रोजगार</a>
     <a href="../housing/housing.html">घर / कोठा</a>
     <a href="../marketplace/services.html">सेवाहरू</a>
     <a href="../community/organizations.html">संगठन</a>
@@ -78,8 +78,17 @@
 </div>
 <div class="breadcrumb"><a href="../../index.html">🏠 Biscoon</a><span class="sep">›</span><span>Student Network — विद्यार्थी नेटवर्क</span></div>
 <div class="filter-sort-bar pages-jobs-student-inline-3">
-  <input type="text" class="search-input pages-jobs-student-inline-4" placeholder="Search Student Network…" onkeydown="if(event.key==='Enter')alert('Searching…')"/>
-  <button class="chip" data-filter="all">All</button><button class="chip" data-filter="opt">OPT Network</button><button class="chip" data-filter="cpt">CPT/Internship</button><button class="chip" data-filter="housing">Student Housing</button><button class="chip" data-filter="tutoring">Tutoring</button><button class="chip" data-filter="groups">Study Groups</button><button class="chip" data-filter="scholarships">Scholarships</button>
+  <input type="text" class="search-input pages-jobs-student-inline-4" id="searchInput" placeholder="Search Student Network…"/>
+  <input type="hidden" id="searchCategory" value="student"/>
+  <div class="filter-chips">
+    <button class="chip active" data-filter="all">All</button>
+    <button class="chip" data-filter="opt">OPT Network</button>
+    <button class="chip" data-filter="cpt">CPT/Internship</button>
+    <button class="chip" data-filter="housing">Student Housing</button>
+    <button class="chip" data-filter="tutoring">Tutoring</button>
+    <button class="chip" data-filter="groups">Study Groups</button>
+    <button class="chip" data-filter="scholarships">Scholarships</button>
+  </div>
   <select class="sort-select"><option>Newest first</option><option>Price: Low</option><option>Price: High</option></select>
 </div>
 <div class="page-layout">
@@ -140,7 +149,7 @@
       <div class="footer-tagline">नेपाली जलवायु — विश्वभर एकीकृत</div>
       <p>The Global Nepali Ecosystem — connecting 4.5 million Nepalis across 90+ countries.</p>
     </div>
-    <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="../marketplace/kinbech.html">किनबेच</a></li><li><a href="rojgar.html">रोजगार</a></li><li><a href="../housing/housing.html">घर / कोठा</a></li><li><a href="../marketplace/services.html">सेवाहरू</a></li><li><a href="../housing/paying-guest.html">Paying Guest</a></li></ul></div>
+    <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="../marketplace/kinbech.html">किनबेच</a></li><li><a href="jobs.html">रोजगार</a></li><li><a href="../housing/housing.html">घर / कोठा</a></li><li><a href="../marketplace/services.html">सेवाहरू</a></li><li><a href="../housing/paying-guest.html">Paying Guest</a></li></ul></div>
     <div class="footer-col"><h5>Community</h5><ul><li><a href="../community/organizations.html">संगठन</a></li><li><a href="../community/literature.html">साहित्य</a></li><li><a href="../community/matchmaker.html">लमी</a></li><li><a href="../community/pen-pals.html">पत्रमित्रता</a></li><li><a href="../community/events.html">Events</a></li></ul></div>
     <div class="footer-col"><h5>Biscoon</h5><ul><li><a href="#">About</a></li><li><a href="#">Advertise</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Contact</a></li></ul></div>
   </div>

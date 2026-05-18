@@ -1,8 +1,10 @@
 const express = require('express');
+const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const Listing = require('../models/Listing');
 const Discussion = require('../models/Discussion');
 const Conversation = require('../models/Conversation');
+const Announcement = require('../models/Announcement');
 const adminMiddleware = require('../middleware/admin');
 
 const router = express.Router();
@@ -52,7 +54,7 @@ router.get('/stats', async (req, res) => {
     conversations: { total: totalConversations },
     byCategory: byCategory.map(c => ({ category: c._id || 'other', count: c.count })),
     recentUsers: recentUsers.map(u => ({
-      id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt,
+      id: u.id, name: u.name, email: u.email, role: u.role || 'user', createdAt: u.createdAt,
     })),
     recentListings: recentListings.map(l => ({
       id: l.id, title: l.title, category: l.category, location: l.location, createdAt: l.createdAt,
@@ -83,7 +85,15 @@ router.get('/users', async (req, res) => {
   const countMap = Object.fromEntries(counts.map(c => [c._id, c.count]));
 
   res.json({
-    users: users.map(u => ({ ...u.toObject(), listingCount: countMap[u.id] || 0 })),
+    users: users.map(u => ({
+      id:          u.id,
+      name:        u.name,
+      email:       u.email,
+      phone:       u.phone || '',
+      role:        u.role || 'user',
+      createdAt:   u.createdAt,
+      listingCount: countMap[u.id] || 0,
+    })),
     total,
     page,
     pages: Math.ceil(total / limit),
@@ -196,7 +206,11 @@ router.get('/discussions/:id', async (req, res) => {
   if (!d) return res.status(404).json({ error: 'Discussion not found.' });
   res.json({
     id: d.id, title: d.title, body: d.body, authorName: d.authorName,
-    category: d.category, tags: d.tags, commentCount: d.comments?.length || 0,
+    category: d.category, tags: d.tags,
+    commentCount: d.comments?.length || 0,
+    comments: (d.comments || []).map(c => ({
+      id: c.id, authorName: c.authorName, body: c.body, createdAt: c.createdAt,
+    })),
     createdAt: d.createdAt, updatedAt: d.updatedAt,
   });
 });
@@ -253,6 +267,110 @@ router.get('/conversations', async (req, res) => {
     page,
     pages: Math.ceil(total / limit),
   });
+});
+
+/* ── Activity Feed ── */
+router.get('/feed', async (req, res) => {
+  const [users, listings, discussions] = await Promise.all([
+    User.find({}, { id: 1, name: 1, email: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(10),
+    Listing.find({}, { id: 1, title: 1, category: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(10),
+    Discussion.find({}, { id: 1, title: 1, authorName: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(10),
+  ]);
+
+  const feed = [
+    ...users.map(u => ({ type: 'user', icon: '👤', title: u.name, sub: u.email, date: u.createdAt })),
+    ...listings.map(l => ({ type: 'listing', icon: '📋', title: l.title, sub: l.category, date: l.createdAt })),
+    ...discussions.map(d => ({ type: 'discussion', icon: '💬', title: d.title, sub: `by ${d.authorName}`, date: d.createdAt })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
+
+  res.json({ feed });
+});
+
+/* ── User detail ── */
+router.get('/users/:id/content', async (req, res) => {
+  const [listings, discussions] = await Promise.all([
+    Listing.find({ userId: req.params.id }, { images: 0, comments: 0 }).sort({ createdAt: -1 }).limit(20),
+    Discussion.find({ userId: req.params.id }, { body: 0 }).sort({ createdAt: -1 }).limit(20),
+  ]);
+  res.json({
+    listings:    listings.map(l => l.toObject()),
+    discussions: discussions.map(d => ({ id: d.id, title: d.title, category: d.category, commentCount: d.comments?.length || 0, createdAt: d.createdAt })),
+  });
+});
+
+/* ── Comments moderation ── */
+router.get('/comments', async (req, res) => {
+  const type  = req.query.type || 'all';
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, parseInt(req.query.limit) || 25);
+
+  const results = [];
+
+  if (type !== 'discussion') {
+    const listings = await Listing.find({ 'comments.0': { $exists: true } }, { id: 1, title: 1, comments: 1 });
+    for (const l of listings) {
+      for (const c of (l.comments || [])) {
+        results.push({ id: c.id, parentId: l.id, parentTitle: l.title, parentType: 'listing', authorName: c.authorName || '—', body: c.body, createdAt: c.createdAt });
+      }
+    }
+  }
+
+  if (type !== 'listing') {
+    const discussions = await Discussion.find({ 'comments.0': { $exists: true } }, { id: 1, title: 1, comments: 1 });
+    for (const d of discussions) {
+      for (const c of (d.comments || [])) {
+        results.push({ id: c.id, parentId: d.id, parentTitle: d.title, parentType: 'discussion', authorName: c.authorName || '—', body: c.body, createdAt: c.createdAt });
+      }
+    }
+  }
+
+  results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const total = results.length;
+  res.json({ comments: results.slice((page - 1) * limit, page * limit), total, page, pages: Math.ceil(total / limit) });
+});
+
+router.delete('/listings/:listingId/comments/:commentId', async (req, res) => {
+  await Listing.updateOne({ id: req.params.listingId }, { $pull: { comments: { id: req.params.commentId } } });
+  res.json({ ok: true });
+});
+
+router.delete('/discussions/:discussionId/comments/:commentId', async (req, res) => {
+  await Discussion.updateOne({ id: req.params.discussionId }, { $pull: { comments: { id: req.params.commentId } } });
+  res.json({ ok: true });
+});
+
+/* ── Announcements ── */
+router.get('/announcements', async (req, res) => {
+  const items = await Announcement.find().sort({ createdAt: -1 });
+  res.json({ announcements: items });
+});
+
+router.post('/announcements', async (req, res) => {
+  const { title, body, type, expiresAt } = req.body;
+  if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: 'Title and body are required.' });
+  const ann = new Announcement({
+    id: uuidv4(),
+    title: title.trim(),
+    body: body.trim(),
+    type: type || 'info',
+    expiresAt: expiresAt ? new Date(expiresAt) : null,
+    createdBy: req.user.name || req.user.email,
+  });
+  await ann.save();
+  res.json({ ok: true, id: ann.id });
+});
+
+router.put('/announcements/:id/toggle', async (req, res) => {
+  const ann = await Announcement.findOne({ id: req.params.id });
+  if (!ann) return res.status(404).json({ error: 'Not found.' });
+  ann.active = !ann.active;
+  await ann.save();
+  res.json({ ok: true, active: ann.active });
+});
+
+router.delete('/announcements/:id', async (req, res) => {
+  await Announcement.findOneAndDelete({ id: req.params.id });
+  res.json({ ok: true });
 });
 
 module.exports = router;

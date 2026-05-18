@@ -6,6 +6,8 @@ const { findDiscussionById, normalizeDiscussion } = require('../utils/discussion
 const { createNotification } = require('../utils/notifications');
 
 const router = express.Router();
+const MAX_DISCUSSION_COMMENTS = 300;
+const MAX_DISCUSSION_BODY_LENGTH = 5000;
 
 function cleanString(value, fallback = '') {
   if (value === undefined || value === null) return fallback;
@@ -14,11 +16,11 @@ function cleanString(value, fallback = '') {
 
 function cleanTags(tags) {
   if (Array.isArray(tags)) {
-    return tags.map(tag => cleanString(tag)).filter(Boolean).slice(0, 8);
+    return tags.map(tag => cleanString(tag).slice(0, 40)).filter(Boolean).slice(0, 8);
   }
   return cleanString(tags)
     .split(',')
-    .map(tag => tag.trim())
+    .map(tag => tag.trim().slice(0, 40))
     .filter(Boolean)
     .slice(0, 8);
 }
@@ -45,8 +47,8 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', authMiddleware, async (req, res) => {
-  const title = cleanString(req.body.title);
-  const body = cleanString(req.body.body);
+  const title = cleanString(req.body.title).slice(0, 200);
+  const body = cleanString(req.body.body).slice(0, MAX_DISCUSSION_BODY_LENGTH);
   const category = cleanString(req.body.category, 'general') || 'general';
   const tags = cleanTags(req.body.tags);
 
@@ -84,11 +86,14 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
     return res.status(404).json({ error: 'Discussion topic not found.' });
   }
 
-  const body = cleanString(req.body.body);
+  const body = cleanString(req.body.body).slice(0, MAX_DISCUSSION_BODY_LENGTH);
   const parentId = cleanString(req.body.parentId);
 
   if (!body) {
     return res.status(400).json({ error: 'Comment text is required.' });
+  }
+  if (discussion.comments.length >= MAX_DISCUSSION_COMMENTS) {
+    return res.status(413).json({ error: 'This discussion has reached its maximum comment capacity.' });
   }
 
   const parentComment = parentId ? discussion.comments.find(comment => comment.id === parentId) : null;

@@ -144,6 +144,23 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 - Shows who is talking, about which listing, message count, and last activity time.
 - Message content is never shown — it is encrypted at rest and intentionally excluded.
 
+**Interactive dashboard:**
+- Clickable stat cards that navigate directly to the relevant section.
+- Horizontal bar chart showing listing counts by category.
+- Clickable recent users and recent listings mini-cards.
+- Clickable activity feed items.
+- Quick action buttons for common admin tasks.
+
+**Full view modals:**
+- Click any listing title or "View" button to see full listing details, contact info, tags, comments, and Edit/Delete actions.
+- Click any discussion title or "View" button to see the full body, tags, author info, all comments, and Edit/Delete actions.
+- Click any user row to see a full profile header (avatar, role badge, join date, listing/discussion counts, Promote/Delete buttons) and all of their content.
+
+**Separate admin and user login:**
+- Admin login (`/pages/admin/login.html`) only accepts accounts with `role: "admin"`. Regular users are blocked.
+- Regular user login (`/pages/auth/login.html`) blocks admin accounts and directs them to the admin panel.
+- Cross-links are shown between the two pages.
+
 **Setting up the first admin:**
 
 Run `npm run seed` to create a ready-to-use admin account:
@@ -170,6 +187,17 @@ The backend exposes listing stats used by page UI:
 - Cities covered
 - Counts by category
 - Counts by subcategory
+
+### Real-Time Market Tickers
+
+The homepage displays four live scrolling tickers:
+
+- **Markets** — NASDAQ 100, S&P 500, Dow Jones, and individual stocks (NVDA, AMD, AAPL, MU, CSCO, AKAM) sourced from Stooq.com.
+- **Crypto** — BTC, ETH, XRP, SOL, BNB, DOGE, ADA, AVAX, LINK, DOT, USDT sourced from CoinGecko.
+- **NPR Forex** — 15 currencies (USD, EUR, GBP, AUD, CAD, CHF, CNY, JPY, SAR, QAR, AED, SGD, HKD, KRW, MYR) relative to NPR, sourced from open.er-api.com.
+- **News** — Static Biscoon community announcements.
+
+Data is fetched via the backend proxy at `/api/market` and cached for 60 seconds. The frontend polls every 60 seconds and updates the ticker values in place. If the API is unavailable, the static fallback values in the HTML remain visible.
 
 ## Technology Stack
 
@@ -255,6 +283,11 @@ biscoon-project/
 - `assets/js/listing.js`: Post listing page logic, image upload/editing, create/update/delete.
 - `assets/js/notifications.js`: Notifications page logic.
 - `assets/js/profile.js`: Profile page logic, account update, owner listing popups, and popup editing.
+- `src/routes/market.js`: Backend proxy for live market data (stocks, crypto, NPR forex) with 60-second in-memory cache.
+- `src/routes/announcements.js`: Public and admin routes for site-wide announcement banners.
+- `src/models/Announcement.js`: Announcement schema with title, body, type, active flag, and expiry.
+- `assets/js/ticker.js`: Polls `/api/market` every 60 seconds and updates the homepage ticker tracks in place.
+- `assets/js/admin.js`: Full single-page admin panel — dashboard, users, listings, discussions, comments, announcements.
 - `assets/css/main.css`: Global shared design system and reusable components.
 - `assets/css/pages/`: Extracted page-specific CSS files.
 - `scripts/extract-page-css.js`: Utility script for extracting inline/page CSS into external CSS files.

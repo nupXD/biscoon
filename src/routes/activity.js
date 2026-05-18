@@ -66,8 +66,8 @@ router.get('/mine', authMiddleware, async (req, res) => {
         const cleaned = cleanComment(comment);
         activities.push({
           id: `listing-comment-${listing.id}-${cleaned.id}`,
-          type: 'listing_comment',
-          label: 'Listing comment',
+          type: cleaned.parentId ? 'listing_reply' : 'listing_comment',
+          label: cleaned.parentId ? 'Listing reply' : 'Listing comment',
           title: listing.title,
           body: cleaned.body,
           targetType: 'listing',

@@ -180,6 +180,9 @@ document.addEventListener('DOMContentLoaded', function () {
   bindBrowseListingActions();
   guardPostingPage();
 
+  // ── Announcement banner ──
+  checkSiteAnnouncement();
+
   // Close dropdown when clicking outside
   document.addEventListener('click', function(e) {
     document.querySelectorAll('#userDropdown').forEach(dropdown => {
@@ -192,6 +195,37 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+
+// ── Announcement banner ──
+async function checkSiteAnnouncement() {
+  const DISMISS_KEY = 'biscoonDismissedAnnouncement';
+  try {
+    const res = await fetch('/api/announcements/active');
+    if (!res.ok) return;
+    const { announcement } = await res.json();
+    if (!announcement) return;
+    if (sessionStorage.getItem(DISMISS_KEY) === announcement.id) return;
+
+    const nav = document.querySelector('nav');
+    if (!nav) return;
+
+    const typeClass = `site-banner-${announcement.type || 'info'}`;
+    const banner = document.createElement('div');
+    banner.className = `site-banner ${typeClass}`;
+    banner.id = 'siteBanner';
+    banner.innerHTML = `
+      <span class="site-banner-text">
+        <span class="site-banner-title">${announcement.title}</span>${announcement.body}
+      </span>
+      <button class="site-banner-close" aria-label="Dismiss">×</button>`;
+    nav.insertAdjacentElement('afterend', banner);
+
+    banner.querySelector('.site-banner-close').addEventListener('click', () => {
+      sessionStorage.setItem(DISMISS_KEY, announcement.id);
+      banner.remove();
+    });
+  } catch (_) {}
+}
 
 // ── Auth functions ──
 function checkAuthState() {
@@ -546,9 +580,55 @@ async function fetchUserInfo(token) {
       const userNameEls = document.querySelectorAll('#userName, #mobileUserName');
       userNameEls.forEach(el => el.textContent = data.user.name);
     }
+    if (data.user && data.user.role === 'admin') {
+      injectAdminLink();
+    }
   } catch (error) {
     console.error('Failed to fetch user info:', error);
   }
+}
+
+function getRelativeAdminPath() {
+  const isHome = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
+  const depth = window.location.pathname.split('/').filter(Boolean).length;
+  const prefix = isHome ? 'pages/admin' : depth >= 3 ? '../admin' : 'admin';
+  return `${prefix}/dashboard.html`;
+}
+
+function injectAdminLink() {
+  const adminPath = getRelativeAdminPath();
+
+  // Desktop dropdown — insert before logout
+  document.querySelectorAll('#dropdownMenu').forEach(menu => {
+    if (menu.querySelector('.admin-panel-link')) return;
+    const a = document.createElement('a');
+    a.href = adminPath;
+    a.className = 'admin-panel-link';
+    a.innerHTML = '🛡 Admin Panel <span class="admin-nav-badge">ADMIN</span>';
+    const logout = menu.querySelector('#logoutBtn');
+    logout ? menu.insertBefore(a, logout) : menu.appendChild(a);
+  });
+
+  // Mobile menu — insert before logout
+  document.querySelectorAll('.mobile-user-menu').forEach(menu => {
+    if (menu.querySelector('.admin-panel-link')) return;
+    const a = document.createElement('a');
+    a.href = adminPath;
+    a.className = 'admin-panel-link';
+    a.innerHTML = '🛡 Admin Panel';
+    const logout = menu.querySelector('#mobileLogoutBtn');
+    logout ? menu.insertBefore(a, logout) : menu.appendChild(a);
+  });
+
+  // Badge on the user button
+  document.querySelectorAll('.user-btn').forEach(btn => {
+    if (btn.querySelector('.admin-nav-badge')) return;
+    const badge = document.createElement('span');
+    badge.className = 'admin-nav-badge';
+    badge.textContent = 'ADMIN';
+    const arrow = btn.querySelector('.dropdown-arrow');
+    arrow ? btn.insertBefore(badge, arrow) : btn.appendChild(badge);
+  });
 }
 
 async function fetchNotificationSummary(token = getBiscoonToken()) {
@@ -723,6 +803,74 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;',
   }[char]));
+}
+
+function safeExternalHref(value) {
+  const candidate = String(value || '').trim();
+  if (!candidate) return '';
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.toString();
+  } catch {
+    return '';
+  }
+}
+
+const _biscoonConversationStatusCache = new Map();
+
+function getConversationStatusCacheKey(listingId = '', recipientId = '') {
+  return `${String(listingId)}::${String(recipientId)}`;
+}
+
+function cacheConversationStatus(listingId = '', recipientId = '', conversationId = '') {
+  if (!listingId || !recipientId) return;
+  _biscoonConversationStatusCache.set(getConversationStatusCacheKey(listingId, recipientId), conversationId || '');
+}
+
+async function fetchExistingConversationId(listingId = '', recipientId = '') {
+  const token = getBiscoonToken();
+  if (!token || !listingId || !recipientId) return '';
+
+  const key = getConversationStatusCacheKey(listingId, recipientId);
+  if (_biscoonConversationStatusCache.has(key)) {
+    return _biscoonConversationStatusCache.get(key) || '';
+  }
+
+  try {
+    const params = new URLSearchParams({
+      listingId: String(listingId),
+      recipientId: String(recipientId),
+    });
+    const response = await fetch(`${getApiBase()}/api/messages/status?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      cacheConversationStatus(listingId, recipientId, '');
+      return '';
+    }
+    const data = await response.json();
+    const conversationId = data && data.exists ? String(data.conversationId || '') : '';
+    cacheConversationStatus(listingId, recipientId, conversationId);
+    return conversationId;
+  } catch {
+    cacheConversationStatus(listingId, recipientId, '');
+    return '';
+  }
+}
+
+function getMessagePosterActionMarkup({ listingId = '', recipientId = '', listingTitle = '', token = '', isOwner = false, conversationId = '' }) {
+  if (isOwner || !recipientId) return '';
+  const cleanConversationId = String(conversationId || '');
+  if (token && cleanConversationId) {
+    return `
+      <span class="tag tag-green">Already messaged</span>
+      <a class="btn-ghost" href="${getRelativeAuthPath('messages.html')}?id=${encodeURIComponent(cleanConversationId)}">Open chat</a>
+    `;
+  }
+  return `
+    <button class="${token ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listingId)}" data-msg-recipient-id="${escapeHtml(recipientId)}" data-msg-listing-title="${escapeHtml(listingTitle)}" onclick="window._openMsgModal(this)">✉️ Message Poster</button>
+  `;
 }
 
 function getCategoryMeta(category) {
@@ -1005,15 +1153,21 @@ function renderListingModalContent(listing) {
   const contactPhone = listing.contactPhone
     ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>`
     : '';
-  const externalLink = listing.externalLink
-    ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>`
+  const externalHref = safeExternalHref(listing.externalLink);
+  const externalLink = externalHref
+    ? `<a class="btn-ghost" href="${escapeHtml(externalHref)}" target="_blank" rel="noopener">Open link</a>`
     : '';
   const token = getBiscoonToken();
   const currentUserId = getCurrentUserIdFromToken();
   const isOwner = token && currentUserId && listing.userId === currentUserId;
-  const messageBtn = !isOwner && listing.userId
-    ? `<button class="${token ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listing.id || '')}" data-msg-recipient-id="${escapeHtml(listing.userId)}" data-msg-listing-title="${escapeHtml(listing.title || '')}" onclick="window._openMsgModal(this)">✉️ Message Poster</button>`
-    : '';
+  const messageBtn = getMessagePosterActionMarkup({
+    listingId: listing.id || '',
+    recipientId: listing.userId || '',
+    listingTitle: listing.title || '',
+    token,
+    isOwner,
+    conversationId: listing.existingConversationId || '',
+  });
   const detailRows = [
     listing.locationType ? ['Location type', listing.locationType] : null,
     listing.availability ? ['Availability', listing.availability] : null,
@@ -1052,6 +1206,11 @@ async function openListingModal(id) {
     const response = await fetch(`${getApiBase()}/api/listings/${encodeURIComponent(id)}`);
     if (!response.ok) throw new Error('Listing not found');
     const listing = await response.json();
+    const token = getBiscoonToken();
+    const currentUserId = getCurrentUserIdFromToken();
+    if (token && listing.userId && listing.userId !== currentUserId) {
+      listing.existingConversationId = await fetchExistingConversationId(listing.id, listing.userId);
+    }
     body.innerHTML = renderListingModalContent(listing);
   } catch (error) {
     body.innerHTML = '<div class="empty-state"><div class="icon">📄</div><h3>Listing not found</h3><p>This listing may have been removed.</p></div>';
@@ -1085,6 +1244,11 @@ function bindListingDetailModal() {
 
     try {
       const listing = await postListingComment(listingId, body, parentId);
+      const token = getBiscoonToken();
+      const currentUserId = getCurrentUserIdFromToken();
+      if (token && listing.userId && listing.userId !== currentUserId) {
+        listing.existingConversationId = await fetchExistingConversationId(listing.id, listing.userId);
+      }
       const modalBody = document.getElementById('listingModalBody');
       if (modalBody && document.getElementById('listingModal')?.classList.contains('open')) {
         modalBody.innerHTML = renderListingModalContent(listing);
@@ -1394,15 +1558,24 @@ async function hydrateListingDetail() {
     const gallery = Array.isArray(listing.images) && listing.images.length
       ? `<div class="listing-detail-gallery">${listing.images.map(image => `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">`).join('')}</div>`
       : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
-    const externalLink = listing.externalLink
-      ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>`
+    const externalHref = safeExternalHref(listing.externalLink);
+    const externalLink = externalHref
+      ? `<a class="btn-ghost" href="${escapeHtml(externalHref)}" target="_blank" rel="noopener">Open link</a>`
       : '';
     const detailToken = getBiscoonToken();
     const detailUserId = getCurrentUserIdFromToken();
     const isDetailOwner = detailToken && detailUserId && listing.userId === detailUserId;
-    const detailMessageBtn = !isDetailOwner && listing.userId
-      ? `<button class="${detailToken ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listing.id || '')}" data-msg-recipient-id="${escapeHtml(listing.userId)}" data-msg-listing-title="${escapeHtml(listing.title || '')}" onclick="window._openMsgModal(this)">✉️ Message Poster</button>`
-      : '';
+    if (detailToken && listing.userId && !isDetailOwner) {
+      listing.existingConversationId = await fetchExistingConversationId(listing.id, listing.userId);
+    }
+    const detailMessageBtn = getMessagePosterActionMarkup({
+      listingId: listing.id || '',
+      recipientId: listing.userId || '',
+      listingTitle: listing.title || '',
+      token: detailToken,
+      isOwner: isDetailOwner,
+      conversationId: listing.existingConversationId || '',
+    });
     const detailRows = [
       listing.locationType ? ['Location type', listing.locationType] : null,
       listing.availability ? ['Availability', listing.availability] : null,
@@ -1542,6 +1715,7 @@ function biscoonOpenSendMessageModal({ listingId, recipientId, listingTitle }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Unable to send message.');
+      cacheConversationStatus(listingId, recipientId, data.conversationId || '');
       closeModal();
       window.location.href = `${getRelativeAuthPath('messages.html')}?id=${encodeURIComponent(data.conversationId)}`;
     } catch (err) {

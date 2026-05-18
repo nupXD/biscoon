@@ -9,7 +9,9 @@ const discussionRoutes = require('./src/routes/discussions');
 const notificationRoutes = require('./src/routes/notifications');
 const activityRoutes = require('./src/routes/activity');
 const messageRoutes = require('./src/routes/messages');
-const adminRoutes   = require('./src/routes/admin');
+const adminRoutes         = require('./src/routes/admin');
+const announcementRoutes  = require('./src/routes/announcements');
+const marketRoutes        = require('./src/routes/market');
 
 const app = express();
 
@@ -24,6 +26,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/market', marketRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found.' });

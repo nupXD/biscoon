@@ -14,7 +14,7 @@
 <!-- TICKER 1 -->
 <div class="ticker-wrap ticker-markets">
   <div class="ticker-label">📈 MARKETS</div>
-  <div class="ticker-track anim-35">
+  <div class="ticker-track anim-35" id="tickerMarkets">
     <span class="ticker-item"><span class="sym index-inline-1">NASDAQ</span><span class="val up">18,234.56</span><span class="chg up"> ▲+1.24%</span></span>
     <span class="ticker-item"><span class="sym index-inline-1">S&amp;P 500</span><span class="val up">5,128.90</span><span class="chg up"> ▲+0.87%</span></span>
     <span class="ticker-item"><span class="sym index-inline-1">Dow Jones</span><span class="val down">38,790.43</span><span class="chg down"> ▼-0.32%</span></span>
@@ -40,7 +40,7 @@
 <!-- TICKER 2 -->
 <div class="ticker-wrap ticker-crypto">
   <div class="ticker-label">₿ CRYPTO</div>
-  <div class="ticker-track anim-42">
+  <div class="ticker-track anim-42" id="tickerCrypto">
     <span class="ticker-item"><span class="sym">BTC</span><span class="val up">$67,420</span><span class="chg up"> ▲+2.4%</span></span>
     <span class="ticker-item"><span class="sym">ETH</span><span class="val up">$3,187</span><span class="chg up"> ▲+1.8%</span></span>
     <span class="ticker-item"><span class="sym">XRP</span><span class="val down">$0.582</span><span class="chg down"> ▼-0.7%</span></span>
@@ -65,7 +65,7 @@
 <!-- TICKER 3 -->
 <div class="ticker-wrap ticker-npr">
   <div class="ticker-label">🇳🇵 NPR</div>
-  <div class="ticker-track anim-48">
+  <div class="ticker-track anim-48" id="tickerNpr">
     <span class="ticker-item"><span class="sym">USD</span><span class="val">133.45</span></span>
     <span class="ticker-item"><span class="sym">EUR</span><span class="val">144.82</span></span>
     <span class="ticker-item"><span class="sym">GBP</span><span class="val">168.34</span></span>
@@ -238,7 +238,7 @@
 </section>
 
 <!-- CATEGORY GRID -->
-<section class="cat-section">
+<section class="cat-section" id="categories">
   <div class="section-title">Browse All Categories</div>
   <div class="section-subtitle">39 categories covering every Nepali need — click to explore each section</div>
   <div class="cat-grid">
@@ -343,7 +343,7 @@
       <div class="section-divider" data-group="restaurants">🍛 Restaurants <span class="count">2 new</span></div>
       <a class="listing-card" data-cat="restaurants" href="pages/marketplace/restaurants.html"><div class="listing-thumb">🍛</div><div class="listing-body"><div class="listing-title">Himalayan Kitchen — Authentic Nepali &amp; Tibetan cuisine</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>Open 11am–10pm</span><span>⭐ 4.8</span></div><div class="listing-tags"><span class="tag tag-gold">Nepali-owned</span><span class="tag tag-green">Dine-in &amp; Takeout</span></div></div><div class="listing-price">$$</div></a>
     </div>
-    <button class="load-more" onclick="location.href='pages/kinbech.html'">View all listings →</button>
+    <button class="load-more">View all categories →</button>
   </div>
 
   <!-- SIDEBAR -->
@@ -431,7 +431,7 @@
   <p>Post your job, room, service, or business today — completely free. No fees, no commission.</p>
   <div class="home-cta-btns">
     <a class="btn-white" href="pages/post/listing.html">+ Post a Free Listing</a>
-    <button class="btn-outline-white" onclick="location.href='pages/kinbech.html'">Browse All Listings</button>
+    <button class="btn-outline-white">Browse All Categories</button>
   </div>
 </section>
 
@@ -468,5 +468,6 @@
 </div>
 
 <script src="assets/js/biscoon.js"></script>
+<script src="assets/js/ticker.js"></script>
 </body>
 </html>

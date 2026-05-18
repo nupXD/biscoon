@@ -9,8 +9,8 @@ let activeConversationId = null;
 let pendingAttachments = [];   // [{ name, mimeType, size, data }]
 
 const MAX_ATTACHMENTS = 5;
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024;   // 20 MB
-const MAX_FILE_BYTES  = 10 * 1024 * 1024;   // 10 MB
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024;   // 12 MB
+const MAX_FILE_BYTES  = 6 * 1024 * 1024;    // 6 MB
 
 function msgEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -262,7 +262,7 @@ async function openConversation(id) {
   thread.innerHTML = '<div class="messages-thread-empty"><div class="messages-thread-empty-icon">⏳</div><h3>Loading…</h3></div>';
 
   try {
-    const conv = await msgRequest(`/api/messages/${encodeURIComponent(id)}`);
+    const conv = await msgRequest(`/api/messages/${encodeURIComponent(id)}?limit=100`);
     const detailUrl = `../../pages/post/detail.html?id=${encodeURIComponent(conv.listingId)}`;
 
     thread.innerHTML = `

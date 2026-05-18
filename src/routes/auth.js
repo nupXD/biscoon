@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
+const { authLoginLimiter, authRegisterLimiter } = require('../middleware/rateLimit');
 const { JWT_SECRET } = require('../config/env');
 const { findUserByEmail, findUserById, sanitizeUser } = require('../utils/users');
 
@@ -13,7 +14,7 @@ function createToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRegisterLimiter, async (req, res) => {
   const { name, email, phone, password, confirmPassword } = req.body;
   if (!name || !email || !password || !confirmPassword) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
@@ -55,7 +56,7 @@ router.post('/register', async (req, res) => {
   });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLoginLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });

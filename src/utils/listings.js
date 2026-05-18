@@ -11,7 +11,10 @@ function normalizeListing(listing) {
     ...listingObj,
     images: listingObj.images || [],
     tags: listingObj.tags || [],
-    comments: listingObj.comments || [],
+    comments: (listingObj.comments || []).map(comment => ({
+      ...(comment.toObject ? comment.toObject() : comment),
+      parentId: comment.parentId || '',
+    })),
     commentCount: Array.isArray(listingObj.comments) ? listingObj.comments.length : 0,
   };
 }

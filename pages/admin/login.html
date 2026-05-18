@@ -48,6 +48,8 @@
 
   <div class="admin-login-footer">
     <a class="admin-login-back" href="../../index.html">← Back to Biscoon</a>
+    <span style="color:#d1d5db;margin:0 10px">·</span>
+    <a class="admin-login-back" href="../auth/login.html">Regular user login →</a>
   </div>
 
 </div>
@@ -65,7 +67,7 @@
         headers: { Authorization: 'Bearer ' + existingToken }
       })
         .then(r => r.json())
-        .then(u => { if (u.role === 'admin') window.location.href = 'dashboard.html'; })
+        .then(d => { if ((d.user || d).role === 'admin') window.location.href = 'dashboard.html'; })
         .catch(() => {});
     }
 
@@ -75,7 +77,7 @@
 
     function showError(msg) {
       errEl.textContent = msg;
-      errEl.style.display = '';
+      errEl.style.display = 'block';
     }
 
     form.addEventListener('submit', async function (e) {

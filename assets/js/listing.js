@@ -151,6 +151,18 @@ function escapeHtml(value = '') {
   })[char]);
 }
 
+function safeExternalHref(value) {
+  const candidate = String(value || '').trim();
+  if (!candidate) return '';
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.toString();
+  } catch {
+    return '';
+  }
+}
+
 function formatSpecificLocation(area, state) {
   return [area, state].map(value => value.trim()).filter(Boolean).join(', ');
 }
@@ -345,7 +357,8 @@ function renderListingDetail(listing) {
     ['Tags', Array.isArray(listing.tags) ? listing.tags.join(', ') : ''],
     ['Contact preference', listing.contactPreference],
   ].filter(([, value]) => value).map(([label, value]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</span>`).join('');
-  const externalLink = listing.externalLink ? `<a class="btn-ghost" href="${escapeHtml(listing.externalLink)}" target="_blank" rel="noopener">Open link</a>` : '';
+  const externalHref = safeExternalHref(listing.externalLink);
+  const externalLink = externalHref ? `<a class="btn-ghost" href="${escapeHtml(externalHref)}" target="_blank" rel="noopener">Open link</a>` : '';
 
   return `
     <div class="listing-detail-kicker">${escapeHtml(listing.category || 'Listing')}</div>
@@ -491,4 +504,10 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   setListingAuthState();
   fetchMyListings();
+
+  const urlCategory = new URLSearchParams(window.location.search).get('category');
+  if (urlCategory) {
+    const categorySelect = document.getElementById('category');
+    if (categorySelect) categorySelect.value = urlCategory;
+  }
 });
