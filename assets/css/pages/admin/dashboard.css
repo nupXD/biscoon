@@ -109,3 +109,26 @@
   .admin-two-col{grid-template-columns:1fr}
   .admin-stats-grid{grid-template-columns:1fr 1fr}
 }
+
+/* ── Admin Login Page ── */
+.admin-login-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#1a2332;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.admin-login-card{background:#fff;border-radius:14px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.admin-login-brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px}
+.admin-login-brand-name{font-size:20px;font-weight:700;color:#1a2332}
+.admin-login-brand-tag{font-size:10px;font-weight:800;background:#C0392B;color:#fff;padding:3px 8px;border-radius:4px;letter-spacing:.6px}
+.admin-login-title{font-size:22px;font-weight:700;color:#1a2332;margin-bottom:6px;text-align:center}
+.admin-login-sub{font-size:13px;color:#6b7a8d;text-align:center;margin-bottom:28px}
+.admin-login-field{margin-bottom:16px}
+.admin-login-label{display:block;font-size:12.5px;font-weight:600;color:#1a2332;margin-bottom:6px}
+.admin-login-input{width:100%;border:1.5px solid #e5e9ef;border-radius:8px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;color:#1a2332}
+.admin-login-input:focus{border-color:#C0392B;box-shadow:0 0 0 3px rgba(192,57,43,.08)}
+.admin-login-btn{width:100%;background:#C0392B;color:#fff;border:none;border-radius:8px;padding:13px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:8px;transition:background .15s}
+.admin-login-btn:hover{background:#a93226}
+.admin-login-btn:disabled{background:#ccc;cursor:not-allowed}
+.admin-login-error{background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:16px;display:none}
+.admin-login-footer{margin-top:24px;text-align:center}
+.admin-login-back{font-size:12.5px;color:#6b7a8d;text-decoration:none}
+.admin-login-back:hover{color:#1a2332}
+.admin-login-divider{height:1px;background:#f0f2f5;margin:24px 0}
+.admin-login-hint{font-size:12px;color:#6b7a8d;background:#f8f9fb;border-radius:8px;padding:10px 14px;text-align:left}
+.admin-login-hint strong{color:#1a2332}

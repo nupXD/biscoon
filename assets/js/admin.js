@@ -46,7 +46,7 @@ async function api(path, opts = {}) {
 }
 
 function goLogin() {
-  window.location.href = '../auth/login.html?redirect=/pages/admin/dashboard.html';
+  window.location.href = 'login.html';
 }
 
 /* ── Navigation ── */
@@ -428,6 +428,6 @@ document.addEventListener('click', async e => {
   if (e.target.closest('#adminLogout')) {
     localStorage.removeItem('biscoonToken');
     localStorage.removeItem('biscoonSession');
-    window.location.href = '../../index.html';
+    window.location.href = 'login.html';
   }
 });
