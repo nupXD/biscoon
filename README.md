@@ -2,7 +2,7 @@
 
 Biscoon is a dynamic community marketplace for Nepalis in the United States. It brings together listings for jobs, housing, paying guests, services, shops, restaurants, events, community organizations, and cultural connections in one searchable platform.
 
-The project is built as a static HTML/CSS/JavaScript frontend served by an Express backend, with MongoDB/Mongoose for user accounts, live listing data, discussion topics, notifications, activity history, and private messaging.
+The project is built as a static HTML/CSS/JavaScript frontend served by an Express backend, with MongoDB/Mongoose for user accounts, live listing data, discussion topics, notifications, activity history, private messaging, and a super-admin panel.
 
 ## Project Goals
 
@@ -11,8 +11,8 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 - Keep users logged in across all pages, expire inactive sessions after one day, and hide sign-in/sign-up actions once authenticated.
 - Make listings dynamic across the homepage, category pages, search results, profile, and post pages.
 - Support discussion topics, comments, replies, notifications, and user activity history.
-- Allow users to privately message listing posters directly from the listing view.
 - Keep the codebase readable by separating global CSS, page CSS, JavaScript, routes, models, and helpers.
+- Provide a super-admin panel so platform operators can monitor analytics and manage all content.
 
 ## Main Features
 
@@ -22,9 +22,8 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 - Duplicate email validation prevents the same email from registering more than once.
 - Login state is persisted in `localStorage` with an inactivity timestamp.
 - Sessions expire after one day of inactivity, matching the one-day JWT expiry.
-- Logged-in users see profile, activity, notifications, messages, add-listing, create-discussion, and logout dropdowns across pages.
+- Logged-in users see profile, activity, notifications, add-listing, create-discussion, and logout dropdowns across pages.
 - Logged-out users are redirected to login before creating or managing listings.
-- Passwords are hashed with bcryptjs (cost factor 10) and never stored in plain text.
 
 ### Dynamic Listings
 
@@ -36,8 +35,7 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 - Category filter chips are rebuilt from live listing subcategories.
 - Listing cards open detail popups instead of redirecting away.
 - Detail pages still exist for direct listing URLs.
-- Listing detail views show the poster's name and post date.
-- Listing detail views support authenticated comments and private messaging.
+- Listing detail views support authenticated comments.
 
 ### Listing Posting
 
@@ -52,7 +50,7 @@ Users can create meaningful listings with:
 - Availability/timing
 - Price/rate
 - Price note
-- Contact phone
+- Contact email and phone
 - Contact preference
 - External link
 - Tags
@@ -83,19 +81,6 @@ The profile page lets authenticated users:
 - Add/remove listing images from the popup editor.
 - Delete owned listings.
 
-### Private Messaging
-
-- Any logged-in user who is not the listing owner can message the poster directly from the listing detail view or popup.
-- The "Message Poster" button is the primary contact action on every listing.
-- Clicking it opens a send-message modal. Unauthenticated users are redirected to login first.
-- Conversations are deduplicated per listing and per pair of users. Sending a second message adds to the existing conversation.
-- The messages inbox at `/pages/auth/messages.html` shows all conversations sorted by most recent, with unread counts per conversation.
-- Selecting a conversation shows the full thread with chat-style bubbles (own messages in red, received in grey).
-- Users can reply inline from the thread view.
-- All message bodies are encrypted at rest using AES-256-GCM before being stored in MongoDB. The database never stores readable message text.
-- Users can attach images, videos, and files to any message (up to 5 attachments per message). Images are compressed in the browser before sending.
-- A combined unread badge on the user dropdown button shows the total of unread notifications plus unread messages at a glance.
-
 ### Discussions
 
 - Authenticated users can create discussion topics from the discussion page or user dropdown.
@@ -116,10 +101,6 @@ Authenticated users receive notifications when:
 
 The notification dropdown badge shows unread notifications. The notifications page lets users view notifications and mark them read.
 
-### Unread Badge
-
-The user dropdown button shows a combined red badge with the total count of unread notifications plus unread messages. Individual badges also appear next to the Notifications and Messages links inside the dropdown.
-
 ### My Activity
 
 The activity page shows a user's:
@@ -132,6 +113,53 @@ The activity page shows a user's:
 
 Listings posted by the user are intentionally not included in My Activity.
 
+### Super Admin Panel
+
+A protected admin panel at `/pages/admin/dashboard.html` gives operators full visibility into the platform.
+
+**Access:** Only users with `role: "admin"` in the database can access the panel. Regular users see a 403 error.
+
+**Dashboard — Analytics:**
+- Total users, listings, discussions, and active conversation threads.
+- Growth metrics: new users and listings posted today, this week, and this month.
+- Listings broken down by category.
+- Recent users and recent listings tables.
+
+**Users section:**
+- Paginated list of all registered users with name, email, phone, role, listing count, and join date.
+- Live search by name or email.
+- Promote any user to admin or demote back to user.
+- Delete a user (removes their listings too). Admins cannot delete themselves.
+
+**Listings section:**
+- Paginated list of all listings across all users.
+- Filter by category and search by keyword.
+- Delete any listing.
+
+**Discussions section:**
+- Paginated list of all discussion topics with author, category, and comment count.
+- Delete any discussion.
+
+**Conversations section (read-only metadata):**
+- Shows who is talking, about which listing, message count, and last activity time.
+- Message content is never shown — it is encrypted at rest and intentionally excluded.
+
+**Setting up the first admin:**
+
+Run `npm run seed` to create a ready-to-use admin account:
+
+```text
+Email:    admin@biscoon.com
+Password: admin123
+```
+
+To promote an existing user manually:
+
+```js
+// In a MongoDB shell:
+db.users.updateOne({ email: "your@email.com" }, { $set: { role: "admin" } })
+```
+
 ### Dynamic Stats
 
 The backend exposes listing stats used by page UI:
@@ -142,13 +170,6 @@ The backend exposes listing stats used by page UI:
 - Cities covered
 - Counts by category
 - Counts by subcategory
-
-## Security
-
-- **Passwords** are hashed with bcryptjs and never stored in plain text.
-- **Messages** are encrypted at rest with AES-256-GCM. The body stored in MongoDB is a hex-encoded `iv:tag:ciphertext` string. It is only decryptable with the server's `MSG_ENCRYPTION_KEY`.
-- **Sessions** are JWT tokens (1-day expiry) stored in `localStorage` with an inactivity timestamp.
-- **Auth middleware** validates every protected API route.
 
 ## Technology Stack
 
@@ -161,7 +182,6 @@ The backend exposes listing stats used by page UI:
 - Mongoose
 - JWT
 - bcryptjs
-- Node.js built-in `crypto` (AES-256-GCM for message encryption)
 
 ## Project Structure
 
@@ -190,17 +210,10 @@ biscoon-project/
 │       ├── biscoon.js
 │       ├── discussions.js
 │       ├── listing.js
-│       ├── messages.js
 │       ├── notifications.js
 │       └── profile.js
 ├── pages/
 │   ├── auth/
-│   │   ├── login.html
-│   │   ├── signup.html
-│   │   ├── profile.html
-│   │   ├── activity.html
-│   │   ├── notifications.html
-│   │   └── messages.html
 │   ├── community/
 │   ├── housing/
 │   ├── jobs/
@@ -210,59 +223,36 @@ biscoon-project/
 │   └── extract-page-css.js
 └── src/
     ├── config/
-    │   ├── database.js
-    │   └── env.js
     ├── middleware/
-    │   └── auth.js
     ├── models/
-    │   ├── Conversation.js
-    │   ├── Discussion.js
-    │   ├── Listing.js
-    │   ├── Notification.js
-    │   └── User.js
     ├── routes/
-    │   ├── activity.js
-    │   ├── auth.js
-    │   ├── discussions.js
-    │   ├── listings.js
-    │   ├── messages.js
-    │   └── notifications.js
     └── utils/
-        ├── crypto.js
-        ├── discussions.js
-        ├── listings.js
-        ├── notifications.js
-        └── users.js
 ```
 
 ## Important Files
 
-- `server.js`: Express app setup, static file serving, route mounting, global error handler, and port fallback startup.
-- `src/config/env.js`: Environment defaults for port, MongoDB URI, JWT secret, message encryption key, and static root.
-- `src/config/database.js`: MongoDB connection with reconnection event listeners.
+- `server.js`: Express app setup, static file serving, route mounting, and port fallback startup.
+- `src/config/env.js`: Environment defaults for port, MongoDB URI, JWT secret, and static root.
+- `src/config/database.js`: MongoDB connection setup.
 - `src/models/User.js`: User schema.
-- `src/models/Listing.js`: Listing schema with compound indexes.
+- `src/models/Listing.js`: Listing schema.
 - `src/models/Discussion.js`: Discussion topic and comment schema.
-- `src/models/Notification.js`: User notification schema with compound indexes.
-- `src/models/Conversation.js`: Private message conversation schema with compound indexes.
+- `src/models/Notification.js`: User notification schema.
 - `src/routes/auth.js`: Register, login, and profile API routes.
-- `src/routes/listings.js`: Listing CRUD, search, owner listings, stats, and author name lookup.
+- `src/routes/listings.js`: Listing CRUD, search, owner listings, and stats routes.
 - `src/routes/discussions.js`: Discussion topic, comment, and reply routes.
 - `src/routes/notifications.js`: Notification listing and read-state routes.
 - `src/routes/activity.js`: Authenticated user activity aggregation route.
-- `src/routes/messages.js`: Private messaging routes with AES-256-GCM encryption/decryption.
 - `src/middleware/auth.js`: JWT auth middleware.
 - `src/utils/users.js`: User lookup helpers.
 - `src/utils/listings.js`: Listing lookup and normalization helpers.
 - `src/utils/discussions.js`: Discussion lookup and normalization helpers.
 - `src/utils/notifications.js`: Notification creation and normalization helpers.
-- `src/utils/crypto.js`: AES-256-GCM encrypt and decrypt helpers for message bodies.
 - `assets/js/activity.js`: My Activity frontend logic.
 - `assets/js/auth.js`: Signup/login frontend logic.
-- `assets/js/biscoon.js`: Shared page behavior, session handling, login UI, search, dynamic listings, listing popups, comments, notifications, messages badge, and stats.
+- `assets/js/biscoon.js`: Shared page behavior, session handling, login UI, search, dynamic listings, listing popups, comments, notifications, and stats.
 - `assets/js/discussions.js`: Discussion page topic/comment/reply logic.
 - `assets/js/listing.js`: Post listing page logic, image upload/editing, create/update/delete.
-- `assets/js/messages.js`: Messages inbox page logic, conversation selection, reply, and send-message modal.
 - `assets/js/notifications.js`: Notifications page logic.
 - `assets/js/profile.js`: Profile page logic, account update, owner listing popups, and popup editing.
 - `assets/css/main.css`: Global shared design system and reusable components.
@@ -297,7 +287,6 @@ This script extracts `<style>` blocks and `style="..."` attributes into matching
 - `pages/auth/profile.html`: Profile settings and owner listing management.
 - `pages/auth/activity.html`: User discussion and comment activity history.
 - `pages/auth/notifications.html`: User notifications.
-- `pages/auth/messages.html`: Private message inbox and conversation threads.
 
 ### Posting
 
@@ -374,16 +363,17 @@ npm install
 
 ### Environment Variables
 
-The app works with defaults, but these can be configured:
+Configure these environment variables:
 
 ```bash
 PORT=4000
 MONGODB_URI=mongodb://localhost:27017/biscoon
-JWT_SECRET=biscoon_dev_secret
-MSG_ENCRYPTION_KEY=biscoon_msg_encryption_key_dev_32
+JWT_SECRET=<strong-random-secret>
+MSG_ENCRYPTION_KEY=<strong-random-secret>
+NODE_ENV=development
 ```
 
-For production, set strong unique values for both `JWT_SECRET` and `MSG_ENCRYPTION_KEY`. The `MSG_ENCRYPTION_KEY` is used to derive the AES-256 key that encrypts all message bodies. Changing it after messages exist will make old messages unreadable.
+In `production`, both `JWT_SECRET` and `MSG_ENCRYPTION_KEY` are required and the server will fail fast if they are missing.
 
 ### Start MongoDB
 
@@ -394,6 +384,16 @@ Start a local MongoDB service or provide a hosted MongoDB connection string with
 ```bash
 npm start
 ```
+
+### Conversation Migration (Required After Upgrading)
+
+Run this once after pulling the latest backend changes:
+
+```bash
+npm run migrate:conversations
+```
+
+This backfills deterministic conversation participant keys and syncs conversation indexes.
 
 Open:
 
@@ -456,25 +456,25 @@ id                  String, unique
 userId              String, required
 title               String, required
 description         String, required
-category            String, required
+category            String, required, indexed
 subcategory         String
 availability        String
 price               String
 priceNote           String
-location            String
+location            String, indexed
 locationType        String
+contactEmail        String
 contactPhone        String
 contactPreference   String
 externalLink        String
 tags                Array<String>
 images              Array<String>, max 6
 comments            Array<Comment>
-createdAt           Date
+createdAt           Date, indexed
 updatedAt           Date
 ```
 
-Compound indexes: `{ category, createdAt }`, `{ category, subcategory, createdAt }`, `{ userId, createdAt }`.
-Text index across title, description, category, location, and related searchable fields.
+Listings have a text index across title, description, category, location, and related searchable fields.
 
 ### Discussion
 
@@ -495,7 +495,7 @@ updatedAt   Date
 
 ```text
 id            String, unique
-userId        String
+userId        String, indexed
 actorId       String
 actorName     String
 type          String
@@ -505,47 +505,9 @@ targetType    String
 targetId      String
 targetTitle   String
 url           String
-read          Boolean
-createdAt     Date
+read          Boolean, indexed
+createdAt     Date, indexed
 ```
-
-Compound indexes: `{ userId, createdAt }`, `{ userId, read }`.
-
-### Conversation
-
-```text
-id                String, unique
-listingId         String, required
-listingTitle      String
-participantIds    Array<String>   — sorted pair of user IDs
-participantNames  Map<userId, name>
-messages          Array<Message>
-updatedAt         Date
-createdAt         Date
-```
-
-Each embedded `Message`:
-
-```text
-id            String
-senderId      String
-senderName    String
-body          String            — AES-256-GCM encrypted ciphertext (iv:tag:ciphertext in hex); empty if attachments only
-attachments   Array<Attachment> — up to 5
-readBy        Array<String>     — user IDs who have read this message
-createdAt     Date
-```
-
-Each embedded `Attachment`:
-
-```text
-name      String   — original filename
-mimeType  String   — e.g. image/jpeg, video/mp4, application/pdf
-size      Number   — bytes
-data      String   — base64 data URL
-```
-
-Compound indexes: `{ participantIds, updatedAt }` for inbox queries, `{ listingId, participantIds }` unique for deduplication.
 
 ## API Reference
 
@@ -588,13 +550,21 @@ Returns user data and a JWT token. Tokens expire after one day.
 
 Returns the authenticated user.
 
-Requires: `Authorization: Bearer <token>`
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
 
 #### `PUT /api/auth/me`
 
 Updates profile details and optionally password.
 
-Requires: `Authorization: Bearer <token>`
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
 
 ### Listings
 
@@ -602,119 +572,240 @@ Requires: `Authorization: Bearer <token>`
 
 Creates a listing for the authenticated user.
 
+Required fields:
+
+```text
+title
+description
+category
+subcategory
+location
+```
+
+Optional fields:
+
+```text
+availability
+price
+priceNote
+locationType
+contactEmail
+contactPhone
+contactPreference
+externalLink
+tags
+images
+```
+
+Images accepts up to 6 image data URLs or image paths.
+
 #### `GET /api/listings`
 
-Returns listings. Optional query parameters: `category`, `subcategory`, `search`, `limit`.
+Returns listings.
+
+Optional query parameters:
+
+```text
+category
+subcategory
+search
+limit
+```
+
+Example:
+
+```text
+/api/listings?category=housing&subcategory=room&search=Boston&limit=20
+```
 
 #### `GET /api/listings/mine`
 
-Returns listings owned by the authenticated user. Requires auth.
+Returns listings owned by the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
 
 #### `GET /api/listings/stats/summary`
 
-Returns dynamic listing stats.
+Returns dynamic listing stats:
+
+```json
+{
+  "total": 12,
+  "today": 2,
+  "week": 5,
+  "cities": 4,
+  "byCategory": {},
+  "bySubcategory": {}
+}
+```
 
 #### `GET /api/listings/:id`
 
-Returns a single listing by public listing ID, including `authorName` from the poster's user record.
+Returns a single listing by public listing ID.
 
 #### `POST /api/listings/:id/comments`
 
-Adds a comment to a listing. Requires auth.
+Adds a comment to a listing.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "body": "Is this still available?"
+}
+```
+
+If the commenter is not the listing owner, the owner receives a notification. Replies inside a listing comment thread are limited to the listing owner and the original commenter.
 
 #### `PUT /api/listings/:id`
 
-Updates a listing owned by the authenticated user. Requires auth.
+Updates a listing owned by the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Owners can update details, tags, contact information, and images.
 
 #### `DELETE /api/listings/:id`
 
-Deletes a listing owned by the authenticated user. Requires auth.
+Deletes a listing owned by the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
 
 ### Discussions
 
 #### `GET /api/discussions`
 
-Returns discussion topics. Optional: `category`, `search`, `limit`.
+Returns discussion topics.
+
+Optional query parameters:
+
+```text
+category
+search
+limit
+```
 
 #### `POST /api/discussions`
 
-Creates a discussion topic. Requires auth.
+Creates a discussion topic for the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "title": "Best Nepali grocery stores in Boston?",
+  "body": "Looking for recommendations near public transit.",
+  "category": "general",
+  "tags": "boston, grocery"
+}
+```
 
 #### `GET /api/discussions/:id`
 
-Returns one discussion with comments and replies.
+Returns one discussion topic with comments and replies.
 
 #### `POST /api/discussions/:id/comments`
 
-Adds a comment or reply. Requires auth.
+Adds a comment or reply to a discussion topic.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "body": "Try Somerville and Malden.",
+  "parentId": ""
+}
+```
+
+`parentId` is optional. When provided, the comment is treated as a reply.
+
+Notifications are created for the discussion owner and, for replies, the parent comment author when they are different from the actor.
 
 ### Notifications
 
 #### `GET /api/notifications`
 
-Returns notifications and unread count for the authenticated user.
+Returns notifications for the authenticated user and unread count.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
 
 #### `PUT /api/notifications/:id/read`
 
 Marks one notification as read.
 
-#### `PUT /api/notifications/read-all`
+Requires:
 
-Marks all notifications as read.
-
-### Messages
-
-All message routes require `Authorization: Bearer <token>`.
-
-#### `GET /api/messages`
-
-Returns all conversations for the authenticated user, sorted by most recent. Includes unread count per conversation and a decrypted last-message preview.
-
-#### `GET /api/messages/unread`
-
-Returns the total unread message count across all conversations.
-
-#### `POST /api/messages`
-
-Starts a new message or adds to an existing conversation. Either `body` or at least one attachment is required.
-
-Request body:
-
-```json
-{
-  "listingId": "<listing id>",
-  "recipientId": "<recipient user id>",
-  "body": "Hi, is this still available?",
-  "attachments": [
-    { "name": "photo.jpg", "mimeType": "image/jpeg", "size": 45000, "data": "data:image/jpeg;base64,..." }
-  ]
-}
+```text
+Authorization: Bearer <token>
 ```
 
-Returns `{ conversationId }`.
+#### `PUT /api/notifications/read-all`
 
-#### `GET /api/messages/:id`
+Marks all notifications as read for the authenticated user.
 
-Returns a full conversation thread with all decrypted messages and attachment data. Marks received messages as read.
+Requires:
 
-#### `POST /api/messages/:id/reply`
-
-Adds a reply to an existing conversation. Either `body` or at least one attachment is required.
-
-Request body:
-
-```json
-{
-  "body": "Yes, still available!",
-  "attachments": []
-}
+```text
+Authorization: Bearer <token>
 ```
 
 ### Activity
 
 #### `GET /api/activity/mine`
 
-Returns activity for the authenticated user (discussion posts, comments, replies, listing comments).
+Returns activity for the authenticated user.
+
+Requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Included activity:
+
+```text
+discussion_topic
+discussion_comment
+discussion_reply
+listing_comment
+listing_reply
+```
+
+Listings posted by the user are not included.
 
 ## Frontend Behavior
 
@@ -724,57 +815,63 @@ Returns activity for the authenticated user (discussion posts, comments, replies
 
 - Desktop navigation
 - Mobile drawer
-- User dropdown button with combined unread badge
-- My Activity, Notifications, and Messages dropdown links with individual unread badges
+- User dropdown
+- My Activity and Notifications dropdown links
+- Notification unread badges
 - Post listing redirects
 - Protected listing actions
 - One-day inactivity logout
 
 ### Listing Cards
 
-Listing cards show thumbnail, title, location, posted date, category tags, and price. Clicking a dynamic listing opens a popup instead of navigating away.
+Listing cards show:
 
-### Listing Detail
-
-Listing detail views (popup and direct page) show:
-
-- Poster's name
+- Thumbnail image or default category visual
+- Title
+- Location
 - Posted date
-- Message Poster button (primary action for non-owners who are logged in)
-- Authenticated comment section
+- Contact email when available
+- Category/subcategory tags
+- Availability tags
+- Price/rate
 
-### Private Messaging UI
+Clicking a dynamic listing opens a popup instead of navigating away.
 
-- The "Message Poster" button appears on every listing for non-owners.
-- Clicking it opens an inline modal to compose and send a message.
-- After sending, the user is redirected to the conversation in the messages inbox.
-- The inbox shows conversation cards with the other person's name, listing title, message preview, and unread badge.
-- Clicking a conversation loads the full thread with chat-style bubbles.
-- Users reply from the thread view.
-- The reply box has an attachment button (📎) to add images, videos, or files to any message.
-- Images are compressed client-side (1200px max side, JPEG quality 0.78). Videos are capped at 20 MB. Files are capped at 10 MB. Maximum 5 attachments per message.
-- Attached images appear inline in the chat bubble. Videos play inline. Other files appear as a download link.
-- Clicking an inline image opens a fullscreen lightbox.
+Listing detail views also support authenticated comments. Commenting on someone else's listing creates a notification for the listing owner.
 
 ### Discussions UI
 
-The discussion page displays topics first. Logged-in users can click Create Discussion to open a modal.
+The discussion page displays topics first. Logged-in users can click Create Discussion to open a modal. Logged-out users see sign-in prompts for creating topics, comments, and replies.
 
 ### Notifications UI
 
-The notifications page shows unread and read notifications. Clicking a notification marks it read and opens the related content.
+The notifications page shows unread and read notifications. Clicking a notification marks it read and opens the related listing or discussion.
 
 ### My Activity UI
 
-Filters activity by discussion posts, discussion comments, discussion replies, and listing comments.
+The activity page filters user activity by discussion posts, discussion comments, discussion replies, and listing comments.
 
 ### Profile Listings
 
-The profile page renders owner listing cards. Clicking a card opens a popup with full details, image gallery, edit action, and delete action.
+The profile page renders owner listing cards. Clicking a card opens a popup with:
+
+- Full listing details
+- Image gallery
+- Contact actions
+- Edit listing action
+
+Editing happens in the same popup.
 
 ### Posting Page Listings
 
-Supports create, edit, delete, image preview, multiple image upload, and removing images before saving.
+The posting page also shows the current user's listings and supports:
+
+- Create listing
+- Edit listing
+- Delete listing
+- Image preview
+- Multiple image upload
+- Remove images before saving
 
 ## CSS and HTML Cleanliness
 
@@ -803,16 +900,13 @@ node --check assets/js/auth.js
 node --check assets/js/activity.js
 node --check assets/js/discussions.js
 node --check assets/js/listing.js
-node --check assets/js/messages.js
 node --check assets/js/notifications.js
 node --check assets/js/profile.js
 node --check src/routes/activity.js
 node --check src/routes/auth.js
 node --check src/routes/discussions.js
 node --check src/routes/listings.js
-node --check src/routes/messages.js
 node --check src/routes/notifications.js
-node --check src/utils/crypto.js
 node --check scripts/extract-page-css.js
 ```
 
@@ -822,14 +916,25 @@ node --check scripts/extract-page-css.js
 
 If port `4000` is busy, the server tries the next available port automatically.
 
+To see what is using a port:
+
 ```bash
 lsof -nP -iTCP:4000 -sTCP:LISTEN
+```
+
+To stop a process:
+
+```bash
 kill <PID>
 ```
 
 ### MongoDB Connection Error
 
-Make sure MongoDB is running, or set `MONGODB_URI` to a hosted connection string. The server logs reconnection attempts automatically.
+Make sure MongoDB is running, or set:
+
+```bash
+MONGODB_URI=<your connection string>
+```
 
 ### Login Issues
 
@@ -841,11 +946,7 @@ Make sure MongoDB is running, or set `MONGODB_URI` to a hosted connection string
 
 ### Images Are Too Large
 
-Images are resized in the browser before saving. The backend JSON limit is `25mb` (configured in `server.js`) to accommodate video and file attachments in messages.
-
-### Messages Not Decrypting
-
-If `MSG_ENCRYPTION_KEY` is changed after messages have been stored, existing messages will not decrypt correctly. Keep the key stable across restarts. In development the default key is used automatically.
+Images are resized in the browser before saving. If requests are still too large, reduce image count or size. The backend JSON limit is configured in `server.js`.
 
 ## Development Notes
 
@@ -853,10 +954,9 @@ If `MSG_ENCRYPTION_KEY` is changed after messages have been stored, existing mes
 - Keep global styles in `assets/css/main.css`.
 - Keep page-only styles in `assets/css/pages/`.
 - Keep shared frontend behavior in `assets/js/biscoon.js`.
-- Keep page-specific frontend behavior in dedicated JS files.
+- Keep page-specific frontend behavior in `auth.js`, `activity.js`, `discussions.js`, `listing.js`, `notifications.js`, or `profile.js`.
 - Add new backend routes under `src/routes/`.
 - Add new schemas under `src/models/`.
-- Set strong `JWT_SECRET` and `MSG_ENCRYPTION_KEY` values in production.
 
 ## Target Audience
 

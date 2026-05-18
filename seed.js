@@ -23,8 +23,18 @@ async function seedData() {
       password: passwordHash,
     });
 
-    await user.save();
+    const adminHash = await bcrypt.hash('admin123', 10);
+    const admin = new User({
+      id: uuidv4(),
+      name: 'Super Admin',
+      email: 'admin@biscoon.com',
+      password: adminHash,
+      role: 'admin',
+    });
+
+    await Promise.all([user.save(), admin.save()]);
     console.log('✓ Sample user created');
+    console.log('✓ Admin user created  (admin@biscoon.com / admin123)');
 
     const listings = [
       {

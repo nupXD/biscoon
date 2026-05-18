@@ -1,3 +1,4 @@
+require('express-async-errors');
 const express = require('express');
 const cors = require('cors');
 const { PORT, STATIC_ROOT } = require('./src/config/env');
@@ -8,6 +9,7 @@ const discussionRoutes = require('./src/routes/discussions');
 const notificationRoutes = require('./src/routes/notifications');
 const activityRoutes = require('./src/routes/activity');
 const messageRoutes = require('./src/routes/messages');
+const adminRoutes   = require('./src/routes/admin');
 
 const app = express();
 
@@ -21,6 +23,7 @@ app.use('/api/discussions', discussionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found.' });
