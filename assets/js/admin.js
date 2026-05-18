@@ -278,7 +278,10 @@ async function showListings(page) {
             badge(l.category),
             esc(l.location || '—'),
             fmtDate(l.createdAt),
-            `<button class="admin-btn admin-btn-danger" data-del-listing="${esc(l.id)}">🗑 Delete</button>`,
+            `<div class="admin-actions">
+               <button class="admin-btn admin-btn-ghost" data-edit-listing="${esc(l.id)}">✏️ Edit</button>
+               <button class="admin-btn admin-btn-danger" data-del-listing="${esc(l.id)}">🗑</button>
+             </div>`,
           ])
         )}
         ${pager(data.page, data.pages, 'listings')}
@@ -316,7 +319,10 @@ async function showDiscussions(page) {
             badge(d.category),
             d.commentCount,
             fmtDate(d.createdAt),
-            `<button class="admin-btn admin-btn-danger" data-del-discussion="${esc(d.id)}">🗑 Delete</button>`,
+            `<div class="admin-actions">
+               <button class="admin-btn admin-btn-ghost" data-edit-discussion="${esc(d.id)}">✏️ Edit</button>
+               <button class="admin-btn admin-btn-danger" data-del-discussion="${esc(d.id)}">🗑</button>
+             </div>`,
           ])
         )}
         ${pager(data.page, data.pages, 'discussions')}
@@ -402,6 +408,14 @@ document.addEventListener('click', async e => {
     return;
   }
 
+  // Edit listing
+  const editListing = e.target.closest('[data-edit-listing]');
+  if (editListing) { openEditListing(editListing.dataset.editListing); return; }
+
+  // Edit discussion
+  const editDiscussion = e.target.closest('[data-edit-discussion]');
+  if (editDiscussion) { openEditDiscussion(editDiscussion.dataset.editDiscussion); return; }
+
   // Delete listing
   const delListing = e.target.closest('[data-del-listing]');
   if (delListing) {
@@ -424,6 +438,10 @@ document.addEventListener('click', async e => {
     return;
   }
 
+  // Close modal on overlay click
+  if (e.target.closest('#adminModalOverlay') === e.target) { closeModal(); return; }
+  if (e.target.closest('#adminModalClose')) { closeModal(); return; }
+
   // Logout
   if (e.target.closest('#adminLogout')) {
     localStorage.removeItem('biscoonToken');
@@ -431,3 +449,167 @@ document.addEventListener('click', async e => {
     window.location.href = 'login.html';
   }
 });
+
+/* ── Modal ── */
+function openModal(title, bodyHtml, onSave) {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.id = 'adminModalOverlay';
+  overlay.className = 'admin-modal-overlay';
+  overlay.innerHTML = `
+    <div class="admin-modal" role="dialog" aria-modal="true">
+      <div class="admin-modal-head">
+        <div class="admin-modal-title">${title}</div>
+        <button class="admin-modal-close" id="adminModalClose" title="Close">×</button>
+      </div>
+      <div class="admin-modal-error" id="adminModalError"></div>
+      ${bodyHtml}
+      <div class="admin-modal-actions">
+        <button class="admin-btn admin-btn-ghost" id="adminModalClose2">Cancel</button>
+        <button class="admin-btn" id="adminModalSave" style="background:#C0392B;color:#fff;border-color:#C0392B;padding:8px 20px;font-size:13px">Save Changes</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('adminModalClose2').addEventListener('click', closeModal);
+  document.getElementById('adminModalSave').addEventListener('click', async () => {
+    const errEl = document.getElementById('adminModalError');
+    const saveBtn = document.getElementById('adminModalSave');
+    errEl.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    try {
+      await onSave();
+      closeModal();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Changes';
+    }
+  });
+}
+
+function closeModal() {
+  document.getElementById('adminModalOverlay')?.remove();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ── Edit Listing Modal ── */
+async function openEditListing(id) {
+  let l;
+  try { l = await api(`/api/admin/listings/${encodeURIComponent(id)}`); }
+  catch (err) { alert(err.message); return; }
+
+  openModal('Edit Listing', `
+    <div class="admin-modal-meta">
+      Posted by user ID: ${esc(l.userId)} &nbsp;·&nbsp; Created: ${fmtDate(l.createdAt)}
+    </div>
+    <div class="admin-modal-grid">
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Title</label>
+        <input class="admin-modal-input" id="mTitle" value="${esc(l.title || '')}">
+      </div>
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Description</label>
+        <textarea class="admin-modal-textarea" id="mDesc" rows="5">${esc(l.description || '')}</textarea>
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Category</label>
+        <select class="admin-modal-select" id="mCat">
+          ${CATEGORIES.filter(c => c).map(c => `<option value="${c}"${c === l.category ? ' selected' : ''}>${capitalize(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Subcategory</label>
+        <input class="admin-modal-input" id="mSubcat" value="${esc(l.subcategory || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Location</label>
+        <input class="admin-modal-input" id="mLocation" value="${esc(l.location || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Price</label>
+        <input class="admin-modal-input" id="mPrice" value="${esc(l.price || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Price Note</label>
+        <input class="admin-modal-input" id="mPriceNote" value="${esc(l.priceNote || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Availability</label>
+        <input class="admin-modal-input" id="mAvail" value="${esc(l.availability || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Contact Phone</label>
+        <input class="admin-modal-input" id="mPhone" value="${esc(l.contactPhone || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">External Link</label>
+        <input class="admin-modal-input" id="mLink" value="${esc(l.externalLink || '')}">
+      </div>
+    </div>
+  `, async () => {
+    await api(`/api/admin/listings/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        title:       document.getElementById('mTitle').value.trim(),
+        description: document.getElementById('mDesc').value.trim(),
+        category:    document.getElementById('mCat').value,
+        subcategory: document.getElementById('mSubcat').value.trim(),
+        location:    document.getElementById('mLocation').value.trim(),
+        price:       document.getElementById('mPrice').value.trim(),
+        priceNote:   document.getElementById('mPriceNote').value.trim(),
+        availability:document.getElementById('mAvail').value.trim(),
+        contactPhone:document.getElementById('mPhone').value.trim(),
+        externalLink:document.getElementById('mLink').value.trim(),
+      }),
+    });
+    showListings();
+  });
+}
+
+/* ── Edit Discussion Modal ── */
+async function openEditDiscussion(id) {
+  let d;
+  try { d = await api(`/api/admin/discussions/${encodeURIComponent(id)}`); }
+  catch (err) { alert(err.message); return; }
+
+  openModal('Edit Discussion', `
+    <div class="admin-modal-meta">
+      By: ${esc(d.authorName)} &nbsp;·&nbsp; ${d.commentCount} comment${d.commentCount !== 1 ? 's' : ''} &nbsp;·&nbsp; Posted: ${fmtDate(d.createdAt)}
+    </div>
+    <div class="admin-modal-grid">
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Title</label>
+        <input class="admin-modal-input" id="dTitle" value="${esc(d.title || '')}">
+      </div>
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Body</label>
+        <textarea class="admin-modal-textarea" id="dBody" rows="8">${esc(d.body || '')}</textarea>
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Category</label>
+        <input class="admin-modal-input" id="dCat" value="${esc(d.category || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Tags (comma-separated)</label>
+        <input class="admin-modal-input" id="dTags" value="${esc((d.tags || []).join(', '))}">
+      </div>
+    </div>
+  `, async () => {
+    const rawTags = document.getElementById('dTags').value;
+    const tags = rawTags.split(',').map(t => t.trim()).filter(Boolean);
+    await api(`/api/admin/discussions/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        title:    document.getElementById('dTitle').value.trim(),
+        body:     document.getElementById('dBody').value.trim(),
+        category: document.getElementById('dCat').value.trim(),
+        tags,
+      }),
+    });
+    showDiscussions();
+  });
+}

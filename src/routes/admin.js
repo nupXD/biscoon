@@ -142,6 +142,24 @@ router.get('/listings', async (req, res) => {
   });
 });
 
+router.get('/listings/:id', async (req, res) => {
+  const listing = await Listing.findOne({ id: req.params.id }, { images: 0 });
+  if (!listing) return res.status(404).json({ error: 'Listing not found.' });
+  res.json(listing.toObject());
+});
+
+router.put('/listings/:id', async (req, res) => {
+  const EDITABLE = ['title', 'description', 'category', 'subcategory', 'location',
+    'locationType', 'price', 'priceNote', 'availability', 'contactPhone', 'externalLink', 'tags'];
+  const update = { updatedAt: new Date() };
+  for (const key of EDITABLE) {
+    if (req.body[key] !== undefined) update[key] = req.body[key];
+  }
+  const listing = await Listing.findOneAndUpdate({ id: req.params.id }, update, { new: true });
+  if (!listing) return res.status(404).json({ error: 'Listing not found.' });
+  res.json({ ok: true });
+});
+
 router.delete('/listings/:id', async (req, res) => {
   const listing = await Listing.findOneAndDelete({ id: req.params.id });
   if (!listing) return res.status(404).json({ error: 'Listing not found.' });
@@ -171,6 +189,27 @@ router.get('/discussions', async (req, res) => {
     page,
     pages: Math.ceil(total / limit),
   });
+});
+
+router.get('/discussions/:id', async (req, res) => {
+  const d = await Discussion.findOne({ id: req.params.id });
+  if (!d) return res.status(404).json({ error: 'Discussion not found.' });
+  res.json({
+    id: d.id, title: d.title, body: d.body, authorName: d.authorName,
+    category: d.category, tags: d.tags, commentCount: d.comments?.length || 0,
+    createdAt: d.createdAt, updatedAt: d.updatedAt,
+  });
+});
+
+router.put('/discussions/:id', async (req, res) => {
+  const EDITABLE = ['title', 'body', 'category', 'tags'];
+  const update = { updatedAt: new Date() };
+  for (const key of EDITABLE) {
+    if (req.body[key] !== undefined) update[key] = req.body[key];
+  }
+  const d = await Discussion.findOneAndUpdate({ id: req.params.id }, update, { new: true });
+  if (!d) return res.status(404).json({ error: 'Discussion not found.' });
+  res.json({ ok: true });
 });
 
 router.delete('/discussions/:id', async (req, res) => {

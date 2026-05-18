@@ -110,6 +110,24 @@
   .admin-stats-grid{grid-template-columns:1fr 1fr}
 }
 
+/* ── Edit Modal ── */
+.admin-modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.admin-modal{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:620px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.admin-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.admin-modal-title{font-size:17px;font-weight:700;color:#1a2332}
+.admin-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7a8d;padding:4px 8px;border-radius:4px;line-height:1}
+.admin-modal-close:hover{background:#f0f2f5;color:#1a2332}
+.admin-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.admin-modal-grid .admin-modal-full{grid-column:1/-1}
+.admin-modal-field{display:flex;flex-direction:column;gap:5px}
+.admin-modal-label{font-size:11px;font-weight:700;color:#6b7a8d;text-transform:uppercase;letter-spacing:.4px}
+.admin-modal-input,.admin-modal-textarea,.admin-modal-select{border:1.5px solid #e5e9ef;border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;outline:none;transition:border-color .15s;color:#1a2332;width:100%}
+.admin-modal-input:focus,.admin-modal-textarea:focus,.admin-modal-select:focus{border-color:#C0392B}
+.admin-modal-textarea{resize:vertical;min-height:90px}
+.admin-modal-error{background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:14px;display:none}
+.admin-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #f0f2f5}
+.admin-modal-meta{font-size:12px;color:#6b7a8d;margin-bottom:16px;padding:10px 14px;background:#f8f9fb;border-radius:8px}
+
 /* ── Admin Login Page ── */
 .admin-login-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#1a2332;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .admin-login-card{background:#fff;border-radius:14px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
