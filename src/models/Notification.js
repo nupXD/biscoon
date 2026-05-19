@@ -21,5 +21,6 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ userId: 1, createdAt: -1 });
 // Compound index: count unread notifications per user
 notificationSchema.index({ userId: 1, read: 1 });
+notificationSchema.index({ targetType: 1, targetId: 1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

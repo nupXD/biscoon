@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../../assets/css/pages/admin/dashboard.css"/>
 </head>
 <body class="admin-body">
-<div class="admin-layout">
+<div class="admin-layout" id="adminLayout">
 
   <aside class="admin-sidebar">
     <div class="admin-brand">
@@ -21,35 +21,53 @@
 
     <nav class="admin-nav" id="adminNav">
       <button class="admin-nav-link" data-view="dashboard">
-        <span class="admin-nav-icon">📊</span> Dashboard
+        <span class="admin-nav-icon">📊</span><span class="admin-nav-label">Dashboard</span>
       </button>
       <button class="admin-nav-link" data-view="users">
-        <span class="admin-nav-icon">👥</span> Users
+        <span class="admin-nav-icon">👥</span><span class="admin-nav-label">Users</span>
       </button>
       <button class="admin-nav-link" data-view="listings">
-        <span class="admin-nav-icon">📋</span> Listings
+        <span class="admin-nav-icon">📋</span><span class="admin-nav-label">Listings</span>
+      </button>
+      <button class="admin-nav-link" data-view="news">
+        <span class="admin-nav-icon">📰</span><span class="admin-nav-label">News</span>
       </button>
       <button class="admin-nav-link" data-view="discussions">
-        <span class="admin-nav-icon">💬</span> Discussions
+        <span class="admin-nav-icon">💬</span><span class="admin-nav-label">Discussions</span>
       </button>
       <button class="admin-nav-link" data-view="comments">
-        <span class="admin-nav-icon">🗨️</span> Comments
+        <span class="admin-nav-icon">🗨️</span><span class="admin-nav-label">Comments</span>
+      </button>
+      <button class="admin-nav-link" data-view="reports">
+        <span class="admin-nav-icon">🚩</span><span class="admin-nav-label">Reports</span>
       </button>
       <button class="admin-nav-link" data-view="announcements">
-        <span class="admin-nav-icon">📢</span> Announcements
+        <span class="admin-nav-icon">📢</span><span class="admin-nav-label">Announcements</span>
       </button>
     </nav>
 
     <div class="admin-sidebar-footer">
-      <a class="admin-back-link" href="../../index.html">← Back to Biscoon</a>
-      <button class="admin-logout-btn" id="adminLogout">Sign Out</button>
+      <a class="admin-back-link" href="../../index.html"><span>←</span><span class="admin-footer-label">Back to Biscoon</span></a>
+      <button class="admin-logout-btn" id="adminLogout"><span>⏻</span><span class="admin-footer-label">Sign Out</span></button>
     </div>
   </aside>
 
   <main class="admin-main">
     <div class="admin-topbar">
-      <div class="admin-topbar-title" id="viewTitle">Loading…</div>
-      <div class="admin-topbar-user" id="adminName"></div>
+      <div class="admin-topbar-main">
+        <button class="admin-icon-btn admin-sidebar-toggle" id="adminSidebarToggle" type="button" aria-label="Toggle navigation" title="Toggle navigation">☰</button>
+        <div>
+          <div class="admin-topbar-title" id="viewTitle">Loading…</div>
+          <div class="admin-topbar-hint" id="viewHint">Preparing admin workspace</div>
+        </div>
+      </div>
+      <div class="admin-topbar-actions">
+        <button class="admin-icon-btn" id="adminRefreshView" type="button" aria-label="Refresh current view" title="Refresh current view">↻</button>
+        <div class="admin-topbar-user">
+          <span class="admin-status-dot" aria-hidden="true"></span>
+          <span id="adminName"></span>
+        </div>
+      </div>
     </div>
     <div class="admin-content" id="adminContent">
       <div class="admin-loading">Authenticating…</div>

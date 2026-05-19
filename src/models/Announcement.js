@@ -12,4 +12,6 @@ const announcementSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }, { collection: 'announcements' });
 
+announcementSchema.index({ active: 1, expiresAt: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Announcement', announcementSchema);

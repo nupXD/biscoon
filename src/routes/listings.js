@@ -1,16 +1,47 @@
 const express = require('express');
+const { z } = require('zod');
 const { v4: uuidv4 } = require('uuid');
 const Listing = require('../models/Listing');
 const authMiddleware = require('../middleware/auth');
 const { findListingById, normalizeListing } = require('../utils/listings');
 const { createNotification } = require('../utils/notifications');
 const { findUserById } = require('../utils/users');
+const { getPagination, pagedResponse } = require('../utils/pagination');
+const { validate } = require('../utils/validate');
+const { saveBase64Upload } = require('../utils/uploads');
+const { listingCategoryFilter, normalizeCategory } = require('../utils/categories');
 
 const router = express.Router();
 const MAX_LISTING_COMMENTS = 300;
 const MAX_LISTING_IMAGES = 6;
+const MAX_PHOTOGRAPHY_IMAGES = 12;
 const MAX_LISTING_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_LISTING_TEXT_LENGTH = 5000;
+
+const listingPayloadSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(MAX_LISTING_TEXT_LENGTH),
+  category: z.string().trim().min(1).max(80),
+  subcategory: z.string().trim().min(1).max(120),
+  availability: z.string().optional().default(''),
+  price: z.string().optional().default(''),
+  priceNote: z.string().optional().default(''),
+  location: z.string().trim().max(220).optional().default(''),
+  locationType: z.string().optional().default(''),
+  contactEmail: z.string().optional().default(''),
+  contactPhone: z.string().optional().default(''),
+  contactPreference: z.string().optional().default(''),
+  externalLink: z.string().optional().default(''),
+  tags: z.array(z.string()).optional().default([]),
+  images: z.array(z.string()).optional().default([]),
+});
+
+const partialListingPayloadSchema = listingPayloadSchema.partial();
+
+const commentPayloadSchema = z.object({
+  body: z.string().trim().min(1).max(MAX_LISTING_TEXT_LENGTH),
+  parentId: z.string().optional().default(''),
+});
 
 function cleanString(value, fallback = '') {
   if (value === undefined || value === null) return fallback;
@@ -38,12 +69,15 @@ function parseImageDataUrl(dataUrl) {
   };
 }
 
-function cleanImages(images) {
+function maxImagesForCategory(category) {
+  return category === 'photography' ? MAX_PHOTOGRAPHY_IMAGES : MAX_LISTING_IMAGES;
+}
+
+function cleanImages(images, category = '') {
   return Array.isArray(images)
     ? images
       .map(image => cleanString(image))
       .filter(image => {
-        
         if (!image) return false;
         if (/^https?:\/\//i.test(image) || !image.includes(':')) return true;
         if (!image.startsWith('data:image/')) return false;
@@ -52,7 +86,12 @@ function cleanImages(images) {
         const size = getBase64Bytes(parsed.base64);
         return size > 0 && size <= MAX_LISTING_IMAGE_BYTES;
       })
-      .slice(0, MAX_LISTING_IMAGES)
+      .map(image => {
+        if (!image.startsWith('data:image/')) return image;
+        const parsed = parseImageDataUrl(image);
+        return saveBase64Upload({ folder: 'listings', mimeType: parsed.mimeType, base64: parsed.base64 });
+      })
+      .slice(0, maxImagesForCategory(category))
     : [];
 }
 
@@ -82,6 +121,9 @@ function findRootListingComment(comments, comment) {
 }
 
 router.post('/', authMiddleware, async (req, res) => {
+  const parsedPayload = validate(listingPayloadSchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+
   const {
     title,
     description,
@@ -98,19 +140,24 @@ router.post('/', authMiddleware, async (req, res) => {
     externalLink,
     tags,
     images,
-  } = req.body;
+  } = parsedPayload.value;
 
   const cleanTitle = cleanString(title).slice(0, 200);
   const cleanDescription = cleanString(description).slice(0, MAX_LISTING_TEXT_LENGTH);
-  const cleanCategory = cleanString(category).slice(0, 80);
+  const cleanCategory = normalizeCategory(cleanString(category).slice(0, 80));
+  const isPhotographyListing = cleanCategory === 'photography';
   const cleanSubcategory = cleanString(subcategory).slice(0, 120);
-  const cleanLocation = cleanString(location).slice(0, 220);
+  const cleanLocation = (cleanString(location) || (isPhotographyListing ? 'Photography showcase' : '')).slice(0, 220);
   const cleanExternal = cleanExternalLink(externalLink);
+  const cleanedImages = cleanImages(images, cleanCategory);
 
   if (!cleanTitle || !cleanDescription || !cleanCategory || !cleanSubcategory || !cleanLocation) {
     return res.status(400).json({ error: 'Title, description, category, specific type, and location are required.' });
   }
-  if (cleanExternal === null) {
+  if (isPhotographyListing && !cleanedImages.length) {
+    return res.status(400).json({ error: 'Photography posts require at least one photo.' });
+  }
+  if (!isPhotographyListing && cleanExternal === null) {
     return res.status(400).json({ error: 'External link must start with http:// or https://.' });
   }
 
@@ -121,17 +168,17 @@ router.post('/', authMiddleware, async (req, res) => {
     description: cleanDescription,
     category: cleanCategory,
     subcategory: cleanSubcategory,
-    availability: cleanString(availability).slice(0, 160),
-    price: cleanString(price).slice(0, 120),
-    priceNote: cleanString(priceNote).slice(0, 220),
+    availability: isPhotographyListing ? '' : cleanString(availability).slice(0, 160),
+    price: isPhotographyListing ? '' : cleanString(price).slice(0, 120),
+    priceNote: isPhotographyListing ? '' : cleanString(priceNote).slice(0, 220),
     location: cleanLocation,
-    locationType: cleanString(locationType).slice(0, 80),
-    contactEmail: cleanString(contactEmail).slice(0, 200),
-    contactPhone: cleanString(contactPhone).slice(0, 50),
-    contactPreference: cleanString(contactPreference).slice(0, 80),
-    externalLink: cleanExternal,
+    locationType: isPhotographyListing ? 'showcase' : cleanString(locationType).slice(0, 80),
+    contactEmail: isPhotographyListing ? '' : cleanString(contactEmail).slice(0, 200),
+    contactPhone: isPhotographyListing ? '' : cleanString(contactPhone).slice(0, 50),
+    contactPreference: isPhotographyListing ? '' : cleanString(contactPreference).slice(0, 80),
+    externalLink: isPhotographyListing ? '' : cleanExternal,
     tags: cleanTags(tags),
-    images: cleanImages(images),
+    images: cleanedImages,
   });
 
   await listing.save();
@@ -145,23 +192,17 @@ router.get('/', async (req, res) => {
   const category = req.query.category;
   const subcategory = req.query.subcategory;
   const search = req.query.search;
-  const limit = Math.min(Number.parseInt(req.query.limit, 10) || 0, 100);
+  const { page, limit, skip } = getPagination(req.query, { defaultLimit: 24, maxLimit: 100 });
 
-  let query = {};
-  if (category) query.category = category;
-  if (subcategory) query.subcategory = subcategory;
+  let query = listingCategoryFilter(category, subcategory);
 
-  let listingsQuery;
-  if (search) {
-    listingsQuery = Listing.find({ $text: { $search: search }, ...query }).sort({ createdAt: -1 });
-  } else {
-    listingsQuery = Listing.find(query).sort({ createdAt: -1 });
-  }
+  if (search) query = { $text: { $search: search }, ...query };
 
-  if (limit) listingsQuery = listingsQuery.limit(limit);
-
-  const listings = await listingsQuery;
-  res.json({ listings: listings.map(normalizeListing) });
+  const [listings, total] = await Promise.all([
+    Listing.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Listing.countDocuments(query),
+  ]);
+  res.json(pagedResponse('listings', listings.map(normalizeListing), total, page, limit));
 });
 
 router.get('/mine', authMiddleware, async (req, res) => {
@@ -232,11 +273,9 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
     return res.status(404).json({ error: 'Listing not found.' });
   }
 
-  const body = cleanString(req.body.body).slice(0, MAX_LISTING_TEXT_LENGTH);
-  const parentId = cleanString(req.body.parentId);
-  if (!body) {
-    return res.status(400).json({ error: 'Comment text is required.' });
-  }
+  const parsedPayload = validate(commentPayloadSchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+  const { body, parentId } = parsedPayload.value;
   if (listing.comments.length >= MAX_LISTING_COMMENTS) {
     return res.status(413).json({ error: 'This listing has reached its maximum comment capacity.' });
   }
@@ -290,6 +329,9 @@ router.put('/:id', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: 'You do not have permission to edit this listing.' });
   }
 
+  const parsedPayload = validate(partialListingPayloadSchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+
   const {
     title = listing.title,
     description = listing.description,
@@ -306,19 +348,24 @@ router.put('/:id', authMiddleware, async (req, res) => {
     externalLink = listing.externalLink,
     tags = listing.tags,
     images = listing.images,
-  } = req.body;
+  } = parsedPayload.value;
 
   const cleanTitle = cleanString(title).slice(0, 200);
   const cleanDescription = cleanString(description).slice(0, MAX_LISTING_TEXT_LENGTH);
-  const cleanCategory = cleanString(category).slice(0, 80);
+  const cleanCategory = normalizeCategory(cleanString(category).slice(0, 80));
+  const isPhotographyListing = cleanCategory === 'photography';
   const cleanSubcategory = cleanString(subcategory).slice(0, 120);
-  const cleanLocation = cleanString(location).slice(0, 220);
+  const cleanLocation = (cleanString(location) || (isPhotographyListing ? 'Photography showcase' : '')).slice(0, 220);
   const cleanExternal = cleanExternalLink(externalLink);
+  const cleanedImages = cleanImages(images, cleanCategory);
 
   if (!cleanTitle || !cleanDescription || !cleanCategory || !cleanSubcategory || !cleanLocation) {
     return res.status(400).json({ error: 'Title, description, category, specific type, and location are required.' });
   }
-  if (cleanExternal === null) {
+  if (isPhotographyListing && !cleanedImages.length) {
+    return res.status(400).json({ error: 'Photography posts require at least one photo.' });
+  }
+  if (!isPhotographyListing && cleanExternal === null) {
     return res.status(400).json({ error: 'External link must start with http:// or https://.' });
   }
 
@@ -326,17 +373,17 @@ router.put('/:id', authMiddleware, async (req, res) => {
   listing.description = cleanDescription;
   listing.category = cleanCategory;
   listing.subcategory = cleanSubcategory;
-  listing.availability = cleanString(availability).slice(0, 160);
-  listing.price = cleanString(price).slice(0, 120);
-  listing.priceNote = cleanString(priceNote).slice(0, 220);
+  listing.availability = isPhotographyListing ? '' : cleanString(availability).slice(0, 160);
+  listing.price = isPhotographyListing ? '' : cleanString(price).slice(0, 120);
+  listing.priceNote = isPhotographyListing ? '' : cleanString(priceNote).slice(0, 220);
   listing.location = cleanLocation;
-  listing.locationType = cleanString(locationType).slice(0, 80);
-  listing.contactEmail = cleanString(contactEmail).slice(0, 200);
-  listing.contactPhone = cleanString(contactPhone).slice(0, 50);
-  listing.contactPreference = cleanString(contactPreference).slice(0, 80);
-  listing.externalLink = cleanExternal;
+  listing.locationType = isPhotographyListing ? 'showcase' : cleanString(locationType).slice(0, 80);
+  listing.contactEmail = isPhotographyListing ? '' : cleanString(contactEmail).slice(0, 200);
+  listing.contactPhone = isPhotographyListing ? '' : cleanString(contactPhone).slice(0, 50);
+  listing.contactPreference = isPhotographyListing ? '' : cleanString(contactPreference).slice(0, 80);
+  listing.externalLink = isPhotographyListing ? '' : cleanExternal;
   listing.tags = cleanTags(tags);
-  listing.images = cleanImages(images);
+  listing.images = cleanedImages;
   listing.updatedAt = new Date();
 
   await listing.save();

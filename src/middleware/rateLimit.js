@@ -25,6 +25,8 @@ function createRateLimiter({
   }
 
   return function rateLimitMiddleware(req, res, next) {
+    if (process.env.NODE_ENV === 'test') return next();
+
     const now = Date.now();
     sweep(now);
 

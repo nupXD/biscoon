@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 const { MONGODB_URI } = require('./env');
 
 async function connectDatabase() {
-  await mongoose.connect(MONGODB_URI);
+  await mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+  });
 
   mongoose.connection.on('disconnected', () => {
     console.warn('⚠️  MongoDB disconnected. Attempting to reconnect...');

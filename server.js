@@ -1,48 +1,15 @@
-require('express-async-errors');
-const express = require('express');
-const cors = require('cors');
-const { PORT, STATIC_ROOT } = require('./src/config/env');
+const app = require('./src/app');
+const { PORT, isProduction } = require('./src/config/env');
 const connectDatabase = require('./src/config/database');
-const authRoutes = require('./src/routes/auth');
-const listingRoutes = require('./src/routes/listings');
-const discussionRoutes = require('./src/routes/discussions');
-const notificationRoutes = require('./src/routes/notifications');
-const activityRoutes = require('./src/routes/activity');
-const messageRoutes = require('./src/routes/messages');
-const adminRoutes         = require('./src/routes/admin');
-const announcementRoutes  = require('./src/routes/announcements');
-const marketRoutes        = require('./src/routes/market');
+const mongoose = require('mongoose');
 
-const app = express();
-
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '25mb' }));
-app.use(express.static(STATIC_ROOT));
-
-app.use('/api/auth', authRoutes);
-app.use('/api/listings', listingRoutes);
-app.use('/api/discussions', discussionRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/activity', activityRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/announcements', announcementRoutes);
-app.use('/api/market', marketRoutes);
-
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found.' });
-});
-
-// Global error handler — catches any error passed via next(err) or thrown in async routes
-app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-  console.error('✗ Unhandled error:', err.message || err);
-  const status = err.status || err.statusCode || 500;
-  res.status(status).json({ error: err.message || 'An unexpected server error occurred.' });
-});
-
-// Catch unhandled promise rejections from async route handlers (Express 4 does not forward these)
 process.on('unhandledRejection', (reason) => {
   console.error('✗ Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('✗ Uncaught exception:', error);
+  process.exit(1);
 });
 
 function listenWithFallback(port, attemptsLeft = 10) {
@@ -52,7 +19,7 @@ function listenWithFallback(port, attemptsLeft = 10) {
   });
 
   server.on('error', error => {
-    if (error.code === 'EADDRINUSE' && attemptsLeft > 0) {
+    if (!isProduction && error.code === 'EADDRINUSE' && attemptsLeft > 0) {
       const nextPort = numericPort + 1;
       console.warn(`⚠️ Port ${numericPort} is busy. Trying ${nextPort}...`);
       listenWithFallback(nextPort, attemptsLeft - 1);
@@ -62,6 +29,25 @@ function listenWithFallback(port, attemptsLeft = 10) {
     console.error('✗ Unable to start Biscoon backend:', error.message);
     process.exit(1);
   });
+
+  function shutdown(signal) {
+    console.log(`${signal} received. Closing HTTP server...`);
+    server.close(async () => {
+      await mongoose.disconnect();
+      console.log('✓ Shutdown complete');
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.error('✗ Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000).unref();
+  }
+
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.once('SIGINT', () => shutdown('SIGINT'));
+
+  return server;
 }
 
 connectDatabase()

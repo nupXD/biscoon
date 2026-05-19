@@ -1,10 +1,13 @@
 const express = require('express');
+const { z } = require('zod');
 const { v4: uuidv4 } = require('uuid');
 const Conversation = require('../models/Conversation');
 const Listing = require('../models/Listing');
 const authMiddleware = require('../middleware/auth');
 const { findUserById } = require('../utils/users');
 const { encrypt, decrypt } = require('../utils/crypto');
+const { validate } = require('../utils/validate');
+const { saveBase64Upload, isStoredUpload } = require('../utils/uploads');
 
 const router = express.Router();
 
@@ -16,6 +19,25 @@ const MAX_MESSAGE_BODY_LENGTH = 4000;
 const MAX_MESSAGES_PER_CONVERSATION = 200;
 const DEFAULT_MESSAGE_PAGE_SIZE = 50;
 const MAX_MESSAGE_PAGE_SIZE = 100;
+
+const attachmentPayloadSchema = z.object({
+  name: z.string().trim().min(1).max(180),
+  mimeType: z.string().trim().min(1),
+  size: z.number().optional().default(0),
+  data: z.string().trim().min(1),
+});
+
+const messageCreateSchema = z.object({
+  listingId: z.string().trim().min(1),
+  recipientId: z.string().trim().min(1),
+  body: z.string().optional().default(''),
+  attachments: z.array(attachmentPayloadSchema).optional().default([]),
+});
+
+const messageReplySchema = z.object({
+  body: z.string().optional().default(''),
+  attachments: z.array(attachmentPayloadSchema).optional().default([]),
+});
 
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   'image/jpeg',
@@ -123,20 +145,24 @@ function sanitizeAttachment(attachment) {
   }
 
   const parsed = parseDataUrl(data);
-  if (!parsed) {
+  if (!parsed && !isStoredUpload(data)) {
     return { error: 'Attachment must be a valid base64 data URL.' };
   }
-  if (parsed.mimeType !== mimeType) {
+  if (parsed && parsed.mimeType !== mimeType) {
     return { error: 'Attachment MIME type does not match data payload.' };
   }
 
-  const size = getAttachmentSizeFromBase64(parsed.base64);
+  const size = parsed ? getAttachmentSizeFromBase64(parsed.base64) : Number(attachment.size || 0);
   const maxBytes = maxBytesForMimeType(mimeType);
   if (size <= 0 || size > maxBytes) {
     return { error: `Attachment "${name}" exceeds the ${maxBytes} byte limit.` };
   }
 
-  return { value: { name, mimeType, size, data: `data:${mimeType};base64,${parsed.base64}` } };
+  const storedData = parsed
+    ? saveBase64Upload({ folder: 'messages', mimeType, base64: parsed.base64 })
+    : data;
+
+  return { value: { name, mimeType, size, data: storedData } };
 }
 
 function validateAttachments(rawAttachments) {
@@ -240,10 +266,13 @@ router.get('/status', authMiddleware, async (req, res) => {
 });
 
 router.post('/', authMiddleware, async (req, res) => {
-  const listingId = cleanString(req.body.listingId);
-  const recipientId = cleanString(req.body.recipientId);
-  const body = cleanString(req.body.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
-  const validatedAttachments = validateAttachments(req.body.attachments);
+  const parsedPayload = validate(messageCreateSchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+
+  const listingId = cleanString(parsedPayload.value.listingId);
+  const recipientId = cleanString(parsedPayload.value.recipientId);
+  const body = cleanString(parsedPayload.value.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
+  const validatedAttachments = validateAttachments(parsedPayload.value.attachments);
 
   if (validatedAttachments.error) {
     return res.status(400).json({ error: validatedAttachments.error });
@@ -356,8 +385,11 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 router.post('/:id/reply', authMiddleware, async (req, res) => {
-  const body = cleanString(req.body.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
-  const validatedAttachments = validateAttachments(req.body.attachments);
+  const parsedPayload = validate(messageReplySchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+
+  const body = cleanString(parsedPayload.value.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
+  const validatedAttachments = validateAttachments(parsedPayload.value.attachments);
   if (validatedAttachments.error) {
     return res.status(400).json({ error: validatedAttachments.error });
   }

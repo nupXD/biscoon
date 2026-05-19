@@ -1,0 +1,35 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: mongodb://mongo:27017/biscoon
+      JWT_SECRET: ${JWT_SECRET}
+      MSG_ENCRYPTION_KEY: ${MSG_ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      UPLOAD_DIR: uploads
+      TRUST_PROXY: "1"
+    ports:
+      - "4000:4000"
+    volumes:
+      - app-uploads:/app/uploads
+
+volumes:
+  mongo-data:
+  app-uploads:

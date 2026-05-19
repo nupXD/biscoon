@@ -11,8 +11,10 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 - Keep users logged in across all pages, expire inactive sessions after one day, and hide sign-in/sign-up actions once authenticated.
 - Make listings dynamic across the homepage, category pages, search results, profile, and post pages.
 - Support discussion topics, comments, replies, notifications, and user activity history.
+- Publish newsroom stories for community updates, immigration, business, culture, Nepal, and diaspora news.
+- Keep category-specific posting flows focused so users only see fields that matter for housing, jobs, services, events, community posts, marketplace items, and photography.
 - Keep the codebase readable by separating global CSS, page CSS, JavaScript, routes, models, and helpers.
-- Provide a super-admin panel so platform operators can monitor analytics and manage all content.
+- Provide an interactive super-admin panel so platform operators can monitor analytics, manage content, and assign staff privileges.
 
 ## Main Features
 
@@ -39,7 +41,9 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 
 ### Listing Posting
 
-Users can create meaningful listings with:
+The posting form is category-aware. It changes labels, required fields, helper text, specific type suggestions, and availability options based on the chosen category.
+
+Common fields include:
 
 - Category
 - Specific type/subcategory
@@ -58,11 +62,30 @@ Users can create meaningful listings with:
 
 The posting form builds a searchable location string such as `Allston, MA`.
 
+Category-specific behavior:
+
+- Housing requires location, rent/cost, move-in availability, and contact email.
+- Jobs require work location, start/schedule availability, and contact email; pay can be optional.
+- Marketplace items require location, asking price, and contact email.
+- Events require venue/area, event date or timing, and contact email.
+- Services, professional listings, and community posts keep price and availability optional unless the selected type needs them.
+- Photography posts are treated as creative showcase posts, not booking/service listings.
+
+### Photography Showcase
+
+Photography has its own posting mode at `/pages/post/listing.html?category=photography` and appears publicly on `/pages/marketplace/photography.html`.
+
+- Users can upload up to 12 photos for a photography post.
+- At least one photo is required.
+- Booking, location, price, contact, and external link fields are hidden.
+- The form asks for photo style/genre, title, caption/story, tags, and images.
+- The backend stores photography posts with `category: photography`, `location: Photography showcase`, and `locationType: showcase` for compatibility with existing listing queries.
+
 ### Listing Images
 
 - Users can upload multiple images.
 - Images are resized in the browser before saving.
-- Up to 6 images can be stored per listing.
+- Up to 6 images can be stored per regular listing; photography posts allow up to 12 images.
 - Existing images can be kept, removed, or replaced while editing.
 - Listing cards show the first uploaded image.
 - If no image exists, a category-based default visual is shown.
@@ -84,11 +107,21 @@ The profile page lets authenticated users:
 ### Discussions
 
 - Authenticated users can create discussion topics from the discussion page or user dropdown.
+- Admin users with the Discussions privilege can create official discussion topics from the admin panel.
 - The discussion page is optimized for browsing topics first.
 - Creating a discussion opens a modal for logged-in users.
 - Logged-out users are sent to login before creating topics, comments, or replies.
 - Discussion topics support comments and nested replies.
 - Homepage search can include discussions, and the search category dropdown can search only discussions.
+
+### News
+
+- Public news section at `/pages/news/index.html`.
+- Published stories are available through `/api/news`; drafts stay private.
+- News supports headline, summary, body, category, featured flag, source, author, hero image URL/upload, rich text markers, and story media.
+- Admins can upload multiple images/videos, insert them into the article body where they want them, add captions, and use bold, heading, quote, and font controls.
+- Readers can browse a newspaper-style front page, filter by category, search, and open full articles.
+- Admin users with the News privilege can create, edit, publish, feature, and delete stories.
 
 ### Notifications
 
@@ -134,22 +167,44 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 **Admin user privileges:**
 - Super admins have every privilege and can create admin users.
 - Admin users are separate staff accounts created by a super admin only.
-- Admin users can be assigned access to Regular Users, Listings, Discussions, Comments, Reports, and Announcements.
+- Admin users can be assigned access to Regular Users, Listings, News, Discussions, Comments, Reports, and Announcements.
 
 **Listings section:**
 - Paginated list of all listings across all users.
 - Filter by category and search by keyword.
-- Delete any listing.
+- View category-aware listing details in a modal.
+- Photography listings show the uploaded photo gallery, genre, tags, caption/story, comments, and hide irrelevant price/location/contact fields.
+- Housing, jobs, events, services, professional, marketplace, and community listings use category-specific field labels.
+- Edit or delete any listing.
+
+**News section:**
+- Create, edit, publish, feature, preview, and delete stories.
+- Rich story editor supports inline formatting controls and a media library for images/videos.
+- Drafts remain private until published.
 
 **Discussions section:**
 - Paginated list of all discussion topics with author, category, and comment count.
-- Delete any discussion.
+- Create official admin discussions.
+- View, edit, or delete any discussion.
+
+**Reports section:**
+- Review user-submitted reports.
+- Move reports between open, reviewing, resolved, and dismissed states.
+
+**Announcements section:**
+- Create site-wide info, warning, or success banners.
+- Pause/reactivate active announcements and optionally set expiry dates.
 
 **Conversations section (read-only metadata):**
 - Shows who is talking, about which listing, message count, and last activity time.
 - Message content is never shown — it is encrypted at rest and intentionally excluded.
 
 **Interactive dashboard:**
+- Collapsible sidebar and sticky topbar with current-view context.
+- Refresh current view button and polished loading skeletons.
+- Toast notifications for saves, deletes, uploads, report status changes, and errors.
+- Custom confirmation dialogs replace native browser confirm boxes.
+- Press `/` to focus the visible search box.
 - Clickable stat cards that navigate directly to the relevant section.
 - Horizontal bar chart showing listing counts by category.
 - Clickable recent users and recent listings mini-cards.
@@ -157,13 +212,14 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 - Quick action buttons for common admin tasks.
 
 **Full view modals:**
-- Click any listing title or "View" button to see full listing details, contact info, tags, comments, and Edit/Delete actions.
+- Click any listing title or "View" button to see full listing details, images, contact info, tags, comments, and Edit/Delete actions.
 - Click any discussion title or "View" button to see the full body, tags, author info, all comments, and Edit/Delete actions.
 - Click any regular user row to see a full profile header, join date, listing/discussion counts, delete action, and all of their content.
 
 **Separate admin and user login:**
 - Admin login (`/pages/admin/login.html`) accepts super-admin and admin-user accounts. Regular users are blocked.
 - Regular user login (`/pages/auth/login.html`) blocks admin accounts and directs them to the admin panel.
+- Admin panel sessions use separate browser storage from regular website sessions, so an admin can be signed into the panel without also being signed into the public website.
 - Cross-links are shown between the two pages.
 
 **Setting up the first admin:**
@@ -200,7 +256,7 @@ The homepage displays four live scrolling tickers:
 - **Markets** — NASDAQ 100, S&P 500, Dow Jones, and individual stocks (NVDA, AMD, AAPL, MU, CSCO, AKAM) sourced from Stooq.com.
 - **Crypto** — BTC, ETH, XRP, SOL, BNB, DOGE, ADA, AVAX, LINK, DOT, USDT sourced from CoinGecko.
 - **NPR Forex** — 15 currencies (USD, EUR, GBP, AUD, CAD, CHF, CNY, JPY, SAR, QAR, AED, SGD, HKD, KRW, MYR) relative to NPR, sourced from open.er-api.com.
-- **News** — Static Biscoon community announcements.
+- **News** — Biscoon community headlines; the full newsroom lives at `/pages/news/index.html`.
 
 Data is fetched via the backend proxy at `/api/market` and cached for 60 seconds. The frontend polls every 60 seconds and updates the ticker values in place. If the API is unavailable, the static fallback values in the HTML remain visible.
 
@@ -216,6 +272,15 @@ Data is fetched via the backend proxy at `/api/market` and cached for 60 seconds
 - express-async-errors (async error propagation)
 - dotenv (environment config)
 - uuid (deterministic IDs)
+
+## Production Readiness
+
+- `src/app.js` owns middleware, route mounting, static serving, CORS, Helmet CSP, compression, 404s, and error handling.
+- `server.js` handles process startup, port fallback, MongoDB connection, health endpoints, and graceful shutdown.
+- `src/config/env.js` centralizes environment variables and fails fast in production when required secrets or CORS origins are missing.
+- `npm run check` runs the Jest/Supertest API suite and syntax-checks every JavaScript file outside `node_modules`.
+- Docker and Compose files are included for production-like local runs.
+- `DEPLOYMENT.md` documents production env vars, health checks, upload persistence, reverse proxy notes, and first-super-admin setup.
 
 ## Project Structure
 
@@ -234,7 +299,7 @@ biscoon-project/
 ├── assets/
 │   ├── css/
 │   │   ├── main.css        # Global shared design system
-│   │   └── pages/          # Per-page CSS files (auth/, community/, etc.)
+│   │   └── pages/          # Per-page CSS files (admin/, auth/, community/, news/, etc.)
 │   └── js/
 │       ├── biscoon.js      # Shared: auth UI, session, search, listings, nav
 │       ├── auth.js         # Signup / login page logic
@@ -245,6 +310,7 @@ biscoon-project/
 │       ├── notifications.js
 │       ├── profile.js
 │       ├── admin.js        # Full admin panel SPA logic
+│       ├── news.js         # Public newsroom UI
 │       └── ticker.js       # Live market ticker polling
 ├── pages/
 │   ├── admin/              # dashboard.html, login.html
@@ -253,6 +319,7 @@ biscoon-project/
 │   ├── housing/            # housing, paying-guest, real-estate, moving
 │   ├── jobs/               # jobs, tech, healthcare, insurance, cpa, legal, …
 │   ├── marketplace/        # kinbech, services, restaurants, shops, …
+│   ├── news/               # index.html, article.html
 │   └── post/               # listing.html, detail.html
 ├── scripts/
 │   ├── extract-page-css.js
@@ -317,6 +384,7 @@ biscoon-project/
 - `src/models/Notification.js` — Per-user notifications with indexes for inbox and unread-count queries.
 - `src/models/Announcement.js` — Site banners with type (info/warning/success), active flag, and optional expiry.
 - `src/models/Report.js` — Moderation reports: targets listing/discussion/comment/message/user; statuses open → reviewing → resolved/dismissed.
+- `src/models/News.js` — Newsroom stories with draft/published state, category, featured flag, source, author, and optional image.
 - `src/routes/auth.js` — Register, login (rate-limited), GET/PUT `/me`.
 - `src/routes/listings.js` — CRUD, image upload (base64 → disk), threaded comments with reply access control, stats aggregation.
 - `src/routes/discussions.js` — CRUD + threaded comments + notifications.
@@ -325,8 +393,9 @@ biscoon-project/
 - `src/routes/activity.js` — Aggregated user activity (discussions, comments, replies).
 - `src/routes/moderation.js` — User-facing `POST /reports` and `GET /reports/mine`.
 - `src/routes/announcements.js` — `GET /active` returns the newest active, non-expired announcement (or null).
+- `src/routes/news.js` — Public published-news list and article detail endpoints.
 - `src/routes/market.js` — Proxy for CoinGecko (crypto), Stooq (stocks), open.er-api (NPR forex); 60-second in-memory cache.
-- `src/routes/admin.js` — Full admin API: analytics, regular user management, staff CRUD (super-admin only), listings/discussions/comments moderation, reports, announcements.
+- `src/routes/admin.js` — Full admin API: analytics, regular user management, staff CRUD (super-admin only), news, listings/discussions/comments moderation, reports, announcements.
 - `src/utils/categories.js` — Category groups, legacy aliases, and `listingCategoryFilter` query builder.
 - `src/utils/crypto.js` — AES-256-GCM `encrypt`/`decrypt`; key derived from `MSG_ENCRYPTION_KEY` via SHA-256; graceful fallback for pre-encryption data.
 - `src/utils/uploads.js` — `saveBase64Upload`: writes base64 payloads to `UPLOAD_DIR/<folder>/<timestamp>-<uuid>.<ext>`.
@@ -334,7 +403,9 @@ biscoon-project/
 - `src/utils/adminPermissions.js` — Role hierarchy constants, `getAdminPermissions`, `hasAdminPermission`, `isSuperAdmin`.
 - `src/utils/pagination.js` — `getPagination(query, defaults)` and `pagedResponse(key, items, total, page, limit)`.
 - `assets/js/biscoon.js` — Shared frontend: JWT session, auth UI, nav, dynamic listings, listing popups, comments, notifications badge.
-- `assets/js/admin.js` — Full admin panel SPA: dashboard, users, staff, listings, discussions, comments, reports, announcements.
+- `assets/js/admin.js` — Full admin panel SPA: dashboard, users, staff, news, listings, discussions, comments, reports, announcements, toasts, confirmations, and shell interactions.
+- `assets/js/news.js` — Public newsroom front page, category filters, search, and article reader.
+- `assets/js/listing.js` — Category-aware posting experience, including photography showcase mode.
 - `assets/js/messages.js` — Inbox and conversation thread UI.
 - `assets/js/ticker.js` — Polls `/api/market` every 60 s; updates ticker tracks in place.
 - `assets/css/main.css` — Global design system and reusable components.
@@ -735,7 +806,7 @@ Duplicate emails return `409`.
 
 #### `POST /api/auth/login`
 
-Logs in an existing user.
+Logs in an existing regular user. Admin accounts are refused here and must use the admin login endpoint.
 
 Request body:
 
@@ -747,6 +818,21 @@ Request body:
 ```
 
 Returns user data and a JWT token. Tokens expire after one day.
+
+#### `POST /api/auth/admin/login`
+
+Logs in a super-admin or admin-user account for the admin panel. Regular users are refused here.
+
+Request body:
+
+```json
+{
+  "email": "admin@biscoon.com",
+  "password": "password123"
+}
+```
+
+Returns admin user data and a JWT token. Tokens expire after one day.
 
 #### `GET /api/auth/me`
 
@@ -781,7 +867,7 @@ title
 description
 category
 subcategory
-location
+location (regular listings only; photography defaults to Photography showcase)
 ```
 
 Optional fields:
@@ -799,7 +885,7 @@ tags
 images
 ```
 
-Images accepts up to 6 image data URLs or image paths.
+Images accepts up to 6 image data URLs or image paths for regular listings. Photography posts use `category: "photography"` and accept up to 12 images; at least one image is required.
 
 #### `GET /api/listings`
 
@@ -1038,6 +1124,25 @@ Returns the newest active, non-expired site announcement (or `null`).
 { "announcement": { "id": "...", "title": "...", "body": "...", "type": "info" } }
 ```
 
+### News
+
+#### `GET /api/news`
+
+Returns published news stories. Supports pagination, category filtering, and search.
+
+Optional query parameters:
+
+```text
+page
+limit
+category
+search
+```
+
+#### `GET /api/news/:slug`
+
+Returns one published news article by slug.
+
 ### Moderation
 
 #### `POST /api/moderation/reports`
@@ -1091,6 +1196,16 @@ PUT    /api/admin/staff/:id         — update name/email/phone/permissions/pass
 DELETE /api/admin/staff/:id         — delete (cannot delete super-admins or yourself)
 ```
 
+#### News (`news` permission)
+
+```
+GET    /api/admin/news              — paginated; ?search=&status=&category=
+GET    /api/admin/news/:id          — includes full body and media
+POST   /api/admin/news              — create draft or published story
+PUT    /api/admin/news/:id          — update story, rich body, media, status, featured flag
+DELETE /api/admin/news/:id
+```
+
 #### Listings (`listings` permission)
 
 ```
@@ -1104,6 +1219,7 @@ DELETE /api/admin/listings/:id
 
 ```
 GET    /api/admin/discussions
+POST   /api/admin/discussions       — create a discussion as the signed-in admin
 GET    /api/admin/discussions/:id    — includes all comments
 PUT    /api/admin/discussions/:id
 DELETE /api/admin/discussions/:id

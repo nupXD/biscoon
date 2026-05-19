@@ -89,60 +89,25 @@
       <form id="listingForm" action="#" method="post">
         <div id="listingGuardMessage" class="form-helper error-text">Please sign in to publish, edit, or delete your listings.</div>
         <div class="form-section">
-          <h3>Where should this listing appear?</h3>
-          <div class="form-group">
+          <h3 id="sectionPlacementTitle">Where should this listing appear?</h3>
+          <div class="form-group" id="categoryGroup">
             <label class="form-label" for="category">Category</label>
             <select class="form-select" id="category" name="category" required>
               <option value="">Select category</option>
-              <option value="ai-services">AI Services</option>
-              <option value="art">Art</option>
-              <option value="auto">Auto / Cars</option>
-              <option value="beauty">Beauty / Salon</option>
-              <option value="business-for-sale">Business for Sale</option>
-              <option value="childcare">Child Care</option>
-              <option value="cleaning">Cleaning</option>
-              <option value="cpa">CPA / Accounting</option>
-              <option value="events">Events</option>
-              <option value="finance">Finance</option>
-              <option value="healthcare">Healthcare</option>
-              <option value="jobs">Jobs</option>
-              <option value="immigration">Immigration</option>
-              <option value="insurance">Insurance</option>
-              <option value="jyotish">Jyotish</option>
-              <option value="kinbech">Kinbech</option>
-              <option value="legal">Legal Services</option>
-              <option value="literature">Literature</option>
-              <option value="matchmaker">Matchmaker</option>
-              <option value="matrimony">Matrimony</option>
-              <option value="moving">Moving</option>
-              <option value="music">Music</option>
-              <option value="organizations">Organizations</option>
-              <option value="paying-guest">Paying Guest</option>
-              <option value="pen-pals">Pen Pals</option>
-              <option value="photography">Photography</option>
-              <option value="produce">Produce</option>
-              <option value="real-estate">Real Estate</option>
-              <option value="rojgar">Rojgar</option>
+              <option value="jobs">Jobs & Work</option>
               <option value="housing">Housing</option>
-              <option value="services">Services</option>
-              <option value="shops">Shops</option>
-              <option value="restaurants">Restaurants</option>
-              <option value="education">Education</option>
-              <option value="sports">Sports</option>
-              <option value="student">Student Network</option>
-              <option value="tech">Tech Services</option>
-              <option value="translation">Translation</option>
-              <option value="travel">Travel</option>
-              <option value="tutoring">Tutoring</option>
-              <option value="yoga">Yoga</option>
-              <option value="community">Community</option>
+              <option value="photography">Photography</option>
+              <option value="marketplace">Marketplace & Local Services</option>
+              <option value="community">Community & Culture</option>
               <option value="other">Other</option>
             </select>
             <div class="field-note">This controls which Biscoon page your post appears on.</div>
+            <div class="category-context" id="categoryContext"></div>
+            <div class="category-field-guide" id="categoryFieldGuide"></div>
           </div>
           <div class="form-row--two">
             <div class="form-group">
-              <label class="form-label" for="subcategory">Specific type</label>
+              <label class="form-label" for="subcategory" id="subcategoryLabel">Specific type</label>
               <input class="form-input" id="subcategory" name="subcategory" type="text" list="subcategorySuggestions" placeholder="e.g. room, full-time, momo, tutoring" required />
               <datalist id="subcategorySuggestions">
                 <option value="room"></option>
@@ -161,28 +126,31 @@
                 <option value="event"></option>
                 <option value="sale"></option>
               </datalist>
-              <div class="field-note">Use a short searchable label people can filter by.</div>
+              <div class="field-note" id="subcategoryNote">Use a short searchable label people can filter by.</div>
+              <div class="dynamic-suggestions" id="subcategoryQuickPicks" aria-label="Specific type suggestions"></div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="availability">Availability / timing</label>
-              <input class="form-input" id="availability" name="availability" type="text" placeholder="e.g. Available now, weekends, starts June 1" />
+            <div class="form-group" id="availabilityGroup">
+              <label class="form-label" for="availability" id="availabilityLabel">Availability / timing</label>
+              <input class="form-input" id="availability" name="availability" type="text" list="availabilitySuggestions" placeholder="e.g. Available now, weekends, starts June 1" />
+              <datalist id="availabilitySuggestions"></datalist>
+              <div class="dynamic-suggestions" id="availabilityQuickPicks" aria-label="Availability suggestions"></div>
             </div>
           </div>
         </div>
         <div class="form-section">
-          <h3>What are you offering?</h3>
+          <h3 id="sectionOfferingTitle">What are you offering?</h3>
           <div class="form-group">
-            <label class="form-label" for="title">Headline</label>
+            <label class="form-label" for="title" id="titleLabel">Headline</label>
             <input class="form-input" id="title" name="title" type="text" placeholder="Write a strong listing title" required />
-            <div class="field-note">Example: "Boston roommate needed — Nepali-speaking, 2BR, $950"</div>
+            <div class="field-note" id="titleNote">Example: "Boston roommate needed — Nepali-speaking, 2BR, $950"</div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="description">Description</label>
+            <label class="form-label" for="description" id="descriptionLabel">Description</label>
             <textarea class="form-input" id="description" name="description" placeholder="Include what is included, who this is for, requirements, pickup/meeting details, and anything the buyer/renter/applicant should know." required></textarea>
           </div>
-          <div class="form-row--three">
+          <div class="form-row--three" id="locationDetailsGroup">
             <div class="form-group">
-              <label class="form-label" for="area">Area / city</label>
+              <label class="form-label" for="area" id="areaLabel">Area / city</label>
               <input class="form-input" id="area" name="area" type="text" placeholder="e.g. Allston, Boston, Queens" required />
             </div>
             <div class="form-group">
@@ -243,7 +211,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="locationType">Location type</label>
+              <label class="form-label" for="locationType" id="locationTypeLabel">Location type</label>
               <select class="form-select" id="locationType" name="locationType">
                 <option value="in-person">In person</option>
                 <option value="remote">Remote</option>
@@ -254,19 +222,19 @@
             </div>
           </div>
           <input id="location" name="location" type="hidden" />
-          <div class="form-row--two">
+          <div class="form-row--two" id="priceDetailsGroup">
             <div class="form-group">
-              <label class="form-label" for="price">Price / rate</label>
+              <label class="form-label" for="price" id="priceLabel">Price / rate</label>
               <input class="form-input" id="price" name="price" type="text" placeholder="e.g. $120/week, $25/hr, free, negotiable" />
             </div>
             <div class="form-group">
-              <label class="form-label" for="priceNote">Price note</label>
+              <label class="form-label" for="priceNote" id="priceNoteLabel">Price note</label>
               <input class="form-input" id="priceNote" name="priceNote" type="text" placeholder="e.g. utilities included, cash only, no broker fee" />
             </div>
           </div>
         </div>
-        <div class="form-section">
-          <h3>How should people contact you?</h3>
+        <div class="form-section" id="contactDetailsSection">
+          <h3 id="sectionContactTitle">How should people contact you?</h3>
           <div class="form-row--two">
             <div class="form-group">
               <label class="form-label" for="contactEmail">Email</label>
@@ -278,7 +246,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="contactPreference">Preferred contact method</label>
+            <label class="form-label" for="contactPreference" id="contactPreferenceLabel">Preferred contact method</label>
             <select class="form-select" id="contactPreference" name="contactPreference">
               <option value="email">Email first</option>
               <option value="phone">Phone call</option>
@@ -287,24 +255,24 @@
               <option value="either">Email or phone</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="link">External link (optional)</label>
+          <div class="form-group" id="linkGroup">
+            <label class="form-label" for="link" id="linkLabel">External link (optional)</label>
             <input class="form-input" id="link" name="link" type="url" placeholder="Website or portfolio URL" />
           </div>
         </div>
         <div class="form-section">
-          <h3>Make it easier to find</h3>
+          <h3 id="sectionSearchTitle">Make it easier to find</h3>
           <div class="form-group">
-            <label class="form-label" for="tags">Tags / keywords</label>
+            <label class="form-label" for="tags" id="tagsLabel">Tags / keywords</label>
             <input class="form-input" id="tags" name="tags" type="text" placeholder="Nepali, remote, shared room, legal, etc." />
-            <div class="field-note">Separate tags with commas to help people find your listing.</div>
+            <div class="field-note" id="tagsNote">Separate tags with commas to help people find your listing.</div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="imagesUpload">Upload images</label>
+            <label class="form-label" for="imagesUpload" id="imagesLabel">Upload images</label>
             <div class="file-upload">
               <input class="file-input" id="imagesUpload" name="imagesUpload[]" type="file" accept="image/*" multiple />
               <label class="btn-white file-upload-button" for="imagesUpload">Choose images</label>
-              <div class="field-note">Upload photos from your device. You can select multiple images from desktop or mobile.</div>
+              <div class="field-note" id="imagesNote">Upload photos from your device. You can select multiple images from desktop or mobile.</div>
               <div id="imagePreviewList" class="image-preview-list"></div>
             </div>
           </div>
@@ -322,8 +290,8 @@
     </div>
     <aside class="post-sidebar">
       <div class="sidebar-widget">
-        <h4>Best listing practices</h4>
-        <ul>
+        <h4 id="sidebarBestTitle">Best listing practices</h4>
+        <ul id="sidebarBestList">
           <li>Use a clear, specific title and include location.</li>
           <li>Mention price expectations and important details.</li>
           <li>Pick the right category so your post reaches the right community.</li>
@@ -331,16 +299,16 @@
         </ul>
       </div>
       <div class="sidebar-widget">
-        <h4>What happens next</h4>
-        <ul>
+        <h4 id="sidebarNextTitle">What happens next</h4>
+        <ul id="sidebarNextList">
           <li>Your listing appears instantly in search results.</li>
           <li>Interested people can contact you directly.</li>
           <li>Manage responses from your Biscoon account.</li>
         </ul>
       </div>
       <div class="sidebar-widget">
-        <h4>Popular listing types</h4>
-        <ul>
+        <h4 id="sidebarTypesTitle">Popular listing types</h4>
+        <ul id="sidebarTypesList">
           <li>Roommate / shared housing</li>
           <li>Job openings and freelance work</li>
           <li>Local services like cleaning, tutoring, and repair</li>

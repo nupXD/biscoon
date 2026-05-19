@@ -110,7 +110,39 @@ window.biscoonSession = {
   touch: touchBiscoonSession,
 };
 
+function getRelativeNewsPath() {
+  return '/pages/news/index.html';
+}
+
+function ensureNewsNavLink() {
+  const newsPath = getRelativeNewsPath();
+  document.querySelectorAll('.nav-links').forEach(nav => {
+    if (nav.querySelector('.news-nav-link')) return;
+    const a = document.createElement('a');
+    a.href = newsPath;
+    a.className = 'news-nav-link';
+    a.textContent = 'News';
+    const discussions = Array.from(nav.querySelectorAll('a')).find(link => /discussions/i.test(link.textContent || ''));
+    discussions ? nav.insertBefore(a, discussions) : nav.appendChild(a);
+  });
+
+  document.querySelectorAll('.mobile-drawer').forEach(drawer => {
+    if (drawer.querySelector('.news-nav-link')) return;
+    const a = document.createElement('a');
+    a.href = newsPath;
+    a.className = 'news-nav-link';
+    a.textContent = 'News';
+    const discussions = Array.from(drawer.querySelectorAll('a')).find(link => /discussions/i.test(link.textContent || ''));
+    const authButtons = drawer.querySelector('.mobile-drawer-btns');
+    if (discussions) drawer.insertBefore(a, discussions);
+    else if (authButtons) drawer.insertBefore(a, authButtons);
+    else drawer.appendChild(a);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  ensureNewsNavLink();
+
   document.addEventListener('click', function (e) {
     const d = document.getElementById('mobileDrawer');
     const h = document.getElementById('hamburger');
@@ -511,25 +543,71 @@ function bindProtectedPostActions() {
 function normalizeCategoryForListings(category) {
   const aliases = {
     realestate: 'real-estate',
-    pg: 'pg',
+    pg: 'paying-guest',
     students: 'student',
     rojgar: 'jobs',
   };
   return aliases[category] || category || '';
 }
 
+const BISCOON_SPECIFIC_TYPE_SCOPE = {
+  tech: { category: 'jobs', subcategory: 'tech' },
+  healthcare: { category: 'jobs', subcategory: 'healthcare' },
+  insurance: { category: 'jobs', subcategory: 'insurance' },
+  cpa: { category: 'jobs', subcategory: 'cpa' },
+  legal: { category: 'jobs', subcategory: 'legal' },
+  finance: { category: 'jobs', subcategory: 'finance' },
+  education: { category: 'jobs', subcategory: 'education' },
+  student: { category: 'jobs', subcategory: 'student' },
+  tutoring: { category: 'jobs', subcategory: 'tutoring' },
+  'ai-services': { category: 'jobs', subcategory: 'ai-services' },
+  immigration: { category: 'jobs', subcategory: 'immigration' },
+  'paying-guest': { category: 'housing', subcategory: 'paying-guest' },
+  'real-estate': { category: 'housing', subcategory: 'real-estate' },
+  moving: { category: 'housing', subcategory: 'moving' },
+  kinbech: { category: 'marketplace', subcategory: 'kinbech' },
+  services: { category: 'marketplace', subcategory: 'services' },
+  restaurants: { category: 'marketplace', subcategory: 'restaurants' },
+  shops: { category: 'marketplace', subcategory: 'shops' },
+  childcare: { category: 'marketplace', subcategory: 'childcare' },
+  beauty: { category: 'marketplace', subcategory: 'beauty' },
+  auto: { category: 'marketplace', subcategory: 'auto' },
+  cleaning: { category: 'marketplace', subcategory: 'cleaning' },
+  photography: { category: 'photography', subcategory: '' },
+  produce: { category: 'marketplace', subcategory: 'produce' },
+  'business-for-sale': { category: 'marketplace', subcategory: 'business-for-sale' },
+  translation: { category: 'marketplace', subcategory: 'translation' },
+  organizations: { category: 'community', subcategory: 'organizations' },
+  events: { category: 'community', subcategory: 'events' },
+  literature: { category: 'community', subcategory: 'literature' },
+  music: { category: 'community', subcategory: 'music' },
+  art: { category: 'community', subcategory: 'art' },
+  sports: { category: 'community', subcategory: 'sports' },
+  yoga: { category: 'community', subcategory: 'yoga' },
+  jyotish: { category: 'community', subcategory: 'jyotish' },
+  matchmaker: { category: 'community', subcategory: 'matchmaker' },
+  matrimony: { category: 'community', subcategory: 'matrimony' },
+  'pen-pals': { category: 'community', subcategory: 'pen-pals' },
+  travel: { category: 'community', subcategory: 'travel' },
+};
+
+function getListingScopeForCategory(category) {
+  const normalized = normalizeCategoryForListings(category);
+  return BISCOON_SPECIFIC_TYPE_SCOPE[normalized] || { category: normalized, subcategory: '' };
+}
+
 function getSelectedBrowseScope() {
   const activeHomeFilter = document.querySelector('.filter-btn.active');
   if (activeHomeFilter) {
-    return { category: normalizeCategoryForListings(getFilterFromButton(activeHomeFilter)), subcategory: '' };
+    return getListingScopeForCategory(getFilterFromButton(activeHomeFilter));
   }
 
-  const category = normalizeCategoryForListings(inferPageCategory());
+  const scope = getListingScopeForCategory(inferPageCategory());
   const activeChip = document.querySelector('.filter-chips .chip.active[data-filter]');
   const chipFilter = activeChip ? activeChip.dataset.filter : '';
   return {
-    category,
-    subcategory: chipFilter && chipFilter !== 'all' ? chipFilter : '',
+    category: scope.category,
+    subcategory: chipFilter && chipFilter !== 'all' ? chipFilter : scope.subcategory,
   };
 }
 
@@ -576,12 +654,14 @@ async function fetchUserInfo(token) {
       return;
     }
     const data = await response.json();
-    if (data.user && data.user.name) {
-      const userNameEls = document.querySelectorAll('#userName, #mobileUserName');
-      userNameEls.forEach(el => el.textContent = data.user.name);
+    const user = data.user || data;
+    if (user && ['super-admin', 'admin', 'staff', 'sub-admin'].includes(user.role)) {
+      endBiscoonSession({ redirect: false });
+      return;
     }
-    if (data.user && data.user.role === 'admin') {
-      injectAdminLink();
+    if (user && user.name) {
+      const userNameEls = document.querySelectorAll('#userName, #mobileUserName');
+      userNameEls.forEach(el => el.textContent = user.name);
     }
   } catch (error) {
     console.error('Failed to fetch user info:', error);
@@ -589,10 +669,7 @@ async function fetchUserInfo(token) {
 }
 
 function getRelativeAdminPath() {
-  const isHome = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
-  const depth = window.location.pathname.split('/').filter(Boolean).length;
-  const prefix = isHome ? 'pages/admin' : depth >= 3 ? '../admin' : 'admin';
-  return `${prefix}/dashboard.html`;
+  return '/pages/admin/dashboard.html';
 }
 
 function injectAdminLink() {
@@ -765,6 +842,7 @@ const BISCOON_CATEGORY_META = {
   legal: { label: 'Legal Services', emoji: '⚖️' },
   literature: { label: 'Literature', emoji: '📖' },
   matchmaker: { label: 'Matchmaker', emoji: '💑' },
+  marketplace: { label: 'Marketplace', emoji: '🛍️' },
   matrimony: { label: 'Matrimony', emoji: '💍' },
   moving: { label: 'Moving', emoji: '📦' },
   music: { label: 'Music', emoji: '🎵' },
@@ -961,6 +1039,7 @@ function getDefaultListingImageMarkup(category = 'other') {
 
 function listingToCard(listing) {
   const category = listing.category || 'other';
+  const isPhotographyListing = category === 'photography';
   const meta = getCategoryMeta(category);
   const image = Array.isArray(listing.images) && listing.images.length ? listing.images[0] : '';
   const thumb = image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">` : getDefaultListingImageMarkup(category);
@@ -969,14 +1048,14 @@ function listingToCard(listing) {
   const tags = Array.isArray(listing.tags)
     ? listing.tags.slice(0, 2).map(tag => `<span class="tag tag-gray">${escapeHtml(tag)}</span>`).join('')
     : '';
-  const contact = listing.contactEmail ? `<span>${escapeHtml(listing.contactEmail)}</span>` : '';
+  const contact = !isPhotographyListing && listing.contactEmail ? `<span>${escapeHtml(listing.contactEmail)}</span>` : '';
   return `
     <a class="listing-card" data-cat="${escapeHtml(category)}" data-listing-id="${escapeHtml(listing.id || '')}" href="${getListingPageHref(listing.id || '')}">
       <div class="listing-thumb">${thumb}</div>
       <div class="listing-body">
         <div class="listing-title">${escapeHtml(listing.title || 'Untitled listing')}</div>
         <div class="listing-meta">
-          <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
+          ${isPhotographyListing ? '<span>Photo showcase</span>' : `<span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>`}
           <span>🕐 ${escapeHtml(formatListingDate(listing.createdAt))}</span>
           ${contact}
         </div>
@@ -987,7 +1066,7 @@ function listingToCard(listing) {
           ${tags}
         </div>
       </div>
-      <div class="listing-price">${escapeHtml(listing.price || 'Open')}</div>
+      <div class="listing-price">${isPhotographyListing ? 'View photos' : escapeHtml(listing.price || 'Open')}</div>
     </a>
   `;
 }
@@ -1168,6 +1247,9 @@ function renderListingModalContent(listing) {
     isOwner,
     conversationId: listing.existingConversationId || '',
   });
+  const reportBtn = token && listing.id
+    ? `<button class="btn-ghost" type="button" data-report-target="listing" data-report-id="${escapeHtml(listing.id)}">Report</button>`
+    : '';
   const detailRows = [
     listing.locationType ? ['Location type', listing.locationType] : null,
     listing.availability ? ['Availability', listing.availability] : null,
@@ -1189,9 +1271,34 @@ function renderListingModalContent(listing) {
     <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
     ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
     <p>${escapeHtml(listing.description || 'No description provided.')}</p>
-    <div class="listing-detail-contact">${messageBtn}${contactPhone}${externalLink}</div>
+    <div class="listing-detail-contact">${messageBtn}${contactPhone}${externalLink}${reportBtn}</div>
     ${renderListingComments(listing)}
   `;
+}
+
+async function submitReport(targetType, targetId) {
+  const token = getBiscoonToken();
+  if (!token) {
+    window.location.href = getLoginPath(window.location.pathname + window.location.search);
+    return;
+  }
+  const reason = window.prompt('Why are you reporting this? Type spam, scam, harassment, illegal, misinformation, or other.', 'spam');
+  if (!reason) return;
+  const normalizedReason = reason.trim().toLowerCase();
+  const allowed = ['spam', 'scam', 'harassment', 'illegal', 'misinformation', 'other'];
+  if (!allowed.includes(normalizedReason)) {
+    alert('Please use one of: spam, scam, harassment, illegal, misinformation, other.');
+    return;
+  }
+  const details = window.prompt('Optional: add details for the admin team.', '') || '';
+  const response = await fetch(`${getApiBase()}/api/moderation/reports`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ targetType, targetId, reason: normalizedReason, details }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Could not submit report.');
+  alert('Thanks. The report was sent to admins.');
 }
 
 async function openListingModal(id) {
@@ -1230,6 +1337,17 @@ function bindListingDetailModal() {
     if (!card) return;
     e.preventDefault();
     openListingModal(card.dataset.listingId);
+  });
+
+  document.addEventListener('click', async function(e) {
+    const reportButton = e.target.closest('[data-report-target][data-report-id]');
+    if (!reportButton) return;
+    e.preventDefault();
+    try {
+      await submitReport(reportButton.dataset.reportTarget, reportButton.dataset.reportId);
+    } catch (error) {
+      alert(error.message);
+    }
   });
 
   document.addEventListener('submit', async function(e) {
@@ -1469,7 +1587,8 @@ async function setFilter(button, category) {
   if (button) button.classList.add('active');
 
   try {
-    const listings = await fetchListings(normalizeCategoryForListings(category));
+    const scope = getListingScopeForCategory(category);
+    const listings = await fetchListings(scope.category, '', 0, scope.subcategory);
     renderListings(listings);
   } catch (error) {
     console.error(error);
@@ -1490,20 +1609,23 @@ async function hydrateDynamicListings(category = inferPageCategory()) {
       </div>
     `;
     const params = new URLSearchParams(window.location.search);
-    const requestedCategory = normalizeCategoryForListings(params.get('category') || '');
-    const requestedSubcategory = params.get('subcategory') || getActiveChipFilter();
+    const requestedScope = getListingScopeForCategory(params.get('category') || '');
+    const requestedCategory = requestedScope.category;
+    const requestedSubcategory = params.get('subcategory') || getActiveChipFilter() || requestedScope.subcategory;
     const requestedSearch = params.get('search') || '';
     const activeHomeFilter = document.querySelector('.filter-btn.active');
-    const homeCategory = activeHomeFilter ? normalizeCategoryForListings(getFilterFromButton(activeHomeFilter)) : '';
-    const selectedCategory = requestedCategory || homeCategory || normalizeCategoryForListings(category);
+    const homeScope = activeHomeFilter ? getListingScopeForCategory(getFilterFromButton(activeHomeFilter)) : { category: '', subcategory: '' };
+    const pageScope = getListingScopeForCategory(category);
+    const selectedCategory = requestedCategory || homeScope.category || pageScope.category;
+    const selectedSubcategory = requestedSubcategory || homeScope.subcategory || pageScope.subcategory;
 
     if (requestedCategory && activeHomeFilter) {
       document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.toggle('active', normalizeCategoryForListings(getFilterFromButton(btn)) === requestedCategory);
+        btn.classList.toggle('active', getListingScopeForCategory(getFilterFromButton(btn)).category === requestedCategory);
       });
     }
 
-    const listings = await fetchListings(selectedCategory, requestedSearch, 100, requestedSubcategory);
+    const listings = await fetchListings(selectedCategory, requestedSearch, 100, selectedSubcategory);
     renderListings(listings, target);
 
     if (window.location.hash === '#listings') {
@@ -1555,20 +1677,21 @@ async function hydrateListingDetail() {
     if (!response.ok) throw new Error('Listing not found');
     const listing = await response.json();
     const meta = getCategoryMeta(listing.category || 'other');
+    const isPhotographyListing = listing.category === 'photography';
     const gallery = Array.isArray(listing.images) && listing.images.length
       ? `<div class="listing-detail-gallery">${listing.images.map(image => `<img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}">`).join('')}</div>`
       : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
     const externalHref = safeExternalHref(listing.externalLink);
-    const externalLink = externalHref
+    const externalLink = !isPhotographyListing && externalHref
       ? `<a class="btn-ghost" href="${escapeHtml(externalHref)}" target="_blank" rel="noopener">Open link</a>`
       : '';
     const detailToken = getBiscoonToken();
     const detailUserId = getCurrentUserIdFromToken();
     const isDetailOwner = detailToken && detailUserId && listing.userId === detailUserId;
-    if (detailToken && listing.userId && !isDetailOwner) {
+    if (!isPhotographyListing && detailToken && listing.userId && !isDetailOwner) {
       listing.existingConversationId = await fetchExistingConversationId(listing.id, listing.userId);
     }
-    const detailMessageBtn = getMessagePosterActionMarkup({
+    const detailMessageBtn = isPhotographyListing ? '' : getMessagePosterActionMarkup({
       listingId: listing.id || '',
       recipientId: listing.userId || '',
       listingTitle: listing.title || '',
@@ -1577,10 +1700,10 @@ async function hydrateListingDetail() {
       conversationId: listing.existingConversationId || '',
     });
     const detailRows = [
-      listing.locationType ? ['Location type', listing.locationType] : null,
-      listing.availability ? ['Availability', listing.availability] : null,
-      listing.priceNote ? ['Price note', listing.priceNote] : null,
-      listing.contactPreference ? ['Contact preference', listing.contactPreference] : null,
+      !isPhotographyListing && listing.locationType ? ['Location type', listing.locationType] : null,
+      !isPhotographyListing && listing.availability ? ['Availability', listing.availability] : null,
+      !isPhotographyListing && listing.priceNote ? ['Price note', listing.priceNote] : null,
+      !isPhotographyListing && listing.contactPreference ? ['Contact preference', listing.contactPreference] : null,
       Array.isArray(listing.tags) && listing.tags.length ? ['Tags', listing.tags.join(', ')] : null,
     ].filter(Boolean).map(([label, value]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</span>`).join('');
     target.innerHTML = `
@@ -1589,19 +1712,19 @@ async function hydrateListingDetail() {
         <h1>${escapeHtml(listing.title || 'Untitled listing')}</h1>
         ${gallery}
         <div class="listing-detail-meta">
-          <span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>
+          ${isPhotographyListing ? '<span>Photo showcase</span>' : `<span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>`}
           <span>🕐 Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
           ${listing.authorName ? `<span>👤 ${escapeHtml(listing.authorName)}</span>` : ''}
           ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
         </div>
-        <div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>
+        ${isPhotographyListing ? '' : `<div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>`}
         ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
         <p>${escapeHtml(listing.description || 'No description provided.')}</p>
-        <div class="listing-detail-contact">
+        ${isPhotographyListing ? '' : `<div class="listing-detail-contact">
           ${detailMessageBtn}
           ${listing.contactPhone ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>` : ''}
           ${externalLink}
-        </div>
+        </div>`}
         ${renderListingComments(listing)}
       </article>
     `;

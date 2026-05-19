@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+const { ASSIGNABLE_ADMIN_PERMISSIONS } = require('../utils/adminPermissions');
+
+const ADMIN_PERMISSION_KEYS = ASSIGNABLE_ADMIN_PERMISSIONS.map(permission => permission.key);
 
 const userSchema = new mongoose.Schema({
   id: { type: String, default: uuidv4, unique: true, required: true },
@@ -7,8 +10,11 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   phone: { type: String },
   password: { type: String, required: true },
-  role: { type: String, default: 'user', enum: ['user', 'admin'] },
+  role: { type: String, default: 'user', enum: ['user', 'staff', 'sub-admin', 'admin', 'super-admin'] },
+  permissions: [{ type: String, enum: ADMIN_PERMISSION_KEYS }],
+  createdBy: { type: String },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 }, { collection: 'users' });
 
 module.exports = mongoose.model('User', userSchema);

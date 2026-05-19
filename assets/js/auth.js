@@ -44,7 +44,7 @@ function handleLogin(event) {
   postJson('/api/auth/login', { email, password })
     .then(data => {
       if (data.error) return showAuthMessage(data.error, 'error');
-      if (data.user?.role === 'admin') {
+      if (['super-admin', 'admin', 'staff', 'sub-admin'].includes(data.user?.role)) {
         return showAuthMessage('Admin accounts must sign in through the Admin Panel.', 'error');
       }
       saveToken(data.token);

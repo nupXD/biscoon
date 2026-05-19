@@ -20,7 +20,7 @@
   </div>
 
   <div class="admin-login-title">Admin Sign In</div>
-  <div class="admin-login-sub">Sign in with your admin account to access the panel.</div>
+  <div class="admin-login-sub">Sign in with your super admin or admin user account to access the panel.</div>
 
   <div class="admin-login-error" id="loginError"></div>
 
@@ -41,9 +41,8 @@
   <div class="admin-login-divider"></div>
 
   <div class="admin-login-hint">
-    <strong>Admin access only.</strong> Regular Biscoon accounts cannot sign in here.
-    To promote an account, set <code>role: "admin"</code> in MongoDB or run
-    <code>npm run seed</code> for a demo admin.
+    <strong>Admin panel access only.</strong> Regular Biscoon accounts cannot sign in here.
+    Admin users are created by a super admin from inside this panel.
   </div>
 
   <div class="admin-login-footer">
@@ -60,14 +59,22 @@
       ? 'http://localhost:4000'
       : window.location.origin;
 
-    // Already logged in and admin? Go straight to dashboard.
-    const existingToken = localStorage.getItem('biscoonToken');
+    function isAdminRole(role) {
+      return role === 'super-admin' || role === 'admin' || role === 'staff' || role === 'sub-admin';
+    }
+
+    const ADMIN_TOKEN_KEY = 'biscoonAdminToken';
+    const ADMIN_SESSION_KEY = 'biscoonAdminSession';
+    const ADMIN_LAST_ACTIVITY_KEY = 'biscoonAdminLastActivity';
+
+    // Already logged in as an admin account? Go straight to dashboard.
+    const existingToken = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (existingToken) {
       fetch(BASE + '/api/auth/me', {
         headers: { Authorization: 'Bearer ' + existingToken }
       })
         .then(r => r.json())
-        .then(d => { if ((d.user || d).role === 'admin') window.location.href = 'dashboard.html'; })
+        .then(d => { if (isAdminRole((d.user || d).role)) window.location.href = 'dashboard.html'; })
         .catch(() => {});
     }
 
@@ -90,7 +97,7 @@
       btn.textContent = 'Signing in…';
 
       try {
-        const res  = await fetch(BASE + '/api/auth/login', {
+        const res  = await fetch(BASE + '/api/auth/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -102,15 +109,15 @@
           return;
         }
 
-        if (data.user?.role !== 'admin') {
+        if (!isAdminRole(data.user?.role)) {
           showError('This account does not have admin access.');
           return;
         }
 
-        // Store token the same way the main site does
-        localStorage.setItem('biscoonToken', data.token);
+        localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+        localStorage.setItem(ADMIN_LAST_ACTIVITY_KEY, String(Date.now()));
         if (data.user) {
-          localStorage.setItem('biscoonSession', JSON.stringify({
+          localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({
             user: data.user,
             token: data.token,
             lastActive: Date.now(),

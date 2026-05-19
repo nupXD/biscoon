@@ -1,4 +1,5 @@
 const express = require('express');
+const { z } = require('zod');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -7,23 +8,64 @@ const authMiddleware = require('../middleware/auth');
 const { authLoginLimiter, authRegisterLimiter } = require('../middleware/rateLimit');
 const { JWT_SECRET } = require('../config/env');
 const { findUserByEmail, findUserById, sanitizeUser } = require('../utils/users');
+const { isAdminAccount } = require('../utils/adminPermissions');
+const { validate } = require('../utils/validate');
 
 const router = express.Router();
+
+const registerSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(240),
+  phone: z.string().trim().max(50).optional().default(''),
+  password: z.string().min(8).max(200),
+  confirmPassword: z.string().min(8).max(200),
+});
+
+const loginSchema = z.object({
+  email: z.string().trim().email().max(240),
+  password: z.string().min(1).max(200),
+});
+
+const profileUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  phone: z.string().trim().max(50).optional(),
+  currentPassword: z.string().max(200).optional(),
+  newPassword: z.string().max(200).optional(),
+  confirmPassword: z.string().max(200).optional(),
+});
 
 function createToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
 }
 
-router.post('/register', authRegisterLimiter, async (req, res) => {
-  const { name, email, phone, password, confirmPassword } = req.body;
-  if (!name || !email || !password || !confirmPassword) {
-    return res.status(400).json({ error: 'Name, email, and password are required.' });
+async function authenticateLogin(body) {
+  const parsedPayload = validate(loginSchema, body);
+  if (parsedPayload.error) {
+    return { status: 400, error: parsedPayload.error };
   }
+
+  const { email, password } = parsedPayload.value;
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await findUserByEmail(normalizedEmail);
+  if (!user) {
+    return { status: 401, error: 'Invalid email or password.' };
+  }
+
+  const passwordMatches = await bcrypt.compare(password, user.password);
+  if (!passwordMatches) {
+    return { status: 401, error: 'Invalid email or password.' };
+  }
+
+  return { user };
+}
+
+router.post('/register', authRegisterLimiter, async (req, res) => {
+  const parsedPayload = validate(registerSchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+
+  const { name, email, phone, password, confirmPassword } = parsedPayload.value;
   if (password !== confirmPassword) {
     return res.status(400).json({ error: 'Passwords do not match.' });
-  }
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -57,25 +99,28 @@ router.post('/register', authRegisterLimiter, async (req, res) => {
 });
 
 router.post('/login', authLoginLimiter, async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const user = await findUserByEmail(normalizedEmail);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid email or password.' });
-  }
-
-  const passwordMatches = await bcrypt.compare(password, user.password);
-  if (!passwordMatches) {
-    return res.status(401).json({ error: 'Invalid email or password.' });
+  const auth = await authenticateLogin(req.body);
+  if (auth.error) return res.status(auth.status).json({ error: auth.error });
+  if (isAdminAccount(auth.user)) {
+    return res.status(403).json({ error: 'Admin accounts must sign in through the Admin Panel.' });
   }
 
   return res.json({
-    user: sanitizeUser(user),
-    token: createToken(user),
+    user: sanitizeUser(auth.user),
+    token: createToken(auth.user),
+  });
+});
+
+router.post('/admin/login', authLoginLimiter, async (req, res) => {
+  const auth = await authenticateLogin(req.body);
+  if (auth.error) return res.status(auth.status).json({ error: auth.error });
+  if (!isAdminAccount(auth.user)) {
+    return res.status(403).json({ error: 'This account does not have admin access.' });
+  }
+
+  return res.json({
+    user: sanitizeUser(auth.user),
+    token: createToken(auth.user),
   });
 });
 
@@ -84,7 +129,10 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 router.put('/me', authMiddleware, async (req, res) => {
-  const { name, phone, currentPassword, newPassword, confirmPassword } = req.body;
+  const parsedPayload = validate(profileUpdateSchema, req.body);
+  if (parsedPayload.error) return res.status(400).json({ error: parsedPayload.error });
+
+  const { name, phone, currentPassword, newPassword, confirmPassword } = parsedPayload.value;
   const user = await findUserById(req.user.id);
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
