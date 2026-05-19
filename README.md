@@ -117,7 +117,7 @@ Listings posted by the user are intentionally not included in My Activity.
 
 A protected admin panel at `/pages/admin/dashboard.html` gives operators full visibility into the platform.
 
-**Access:** Only users with `role: "admin"` in the database can access the panel. Regular users see a 403 error.
+**Access:** Super admins and admin users can access the panel. Regular users see a 403 error.
 
 **Dashboard — Analytics:**
 - Total users, listings, discussions, and active conversation threads.
@@ -126,10 +126,15 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 - Recent users and recent listings tables.
 
 **Users section:**
-- Paginated list of all registered users with name, email, phone, role, listing count, and join date.
+- Regular Users tab: paginated list of public signup users with name, email, phone, listing count, and join date.
+- Admin Users tab: super-admin-only area for creating admin users and assigning privileges.
 - Live search by name or email.
-- Promote any user to admin or demote back to user.
-- Delete a user (removes their listings too). Admins cannot delete themselves.
+- Delete a regular user (removes their listings too).
+
+**Admin user privileges:**
+- Super admins have every privilege and can create admin users.
+- Admin users are separate staff accounts created by a super admin only.
+- Admin users can be assigned access to Regular Users, Listings, Discussions, Comments, Reports, and Announcements.
 
 **Listings section:**
 - Paginated list of all listings across all users.
@@ -154,27 +159,27 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 **Full view modals:**
 - Click any listing title or "View" button to see full listing details, contact info, tags, comments, and Edit/Delete actions.
 - Click any discussion title or "View" button to see the full body, tags, author info, all comments, and Edit/Delete actions.
-- Click any user row to see a full profile header (avatar, role badge, join date, listing/discussion counts, Promote/Delete buttons) and all of their content.
+- Click any regular user row to see a full profile header, join date, listing/discussion counts, delete action, and all of their content.
 
 **Separate admin and user login:**
-- Admin login (`/pages/admin/login.html`) only accepts accounts with `role: "admin"`. Regular users are blocked.
+- Admin login (`/pages/admin/login.html`) accepts super-admin and admin-user accounts. Regular users are blocked.
 - Regular user login (`/pages/auth/login.html`) blocks admin accounts and directs them to the admin panel.
 - Cross-links are shown between the two pages.
 
 **Setting up the first admin:**
 
-Run `npm run seed` to create a ready-to-use admin account:
+Run `npm run seed` to create a ready-to-use super admin account:
 
 ```text
 Email:    admin@biscoon.com
 Password: admin123
 ```
 
-To promote an existing user manually:
+To make an existing account the first super admin manually:
 
 ```js
 // In a MongoDB shell:
-db.users.updateOne({ email: "your@email.com" }, { $set: { role: "admin" } })
+db.users.updateOne({ email: "your@email.com" }, { $set: { role: "super-admin" } })
 ```
 
 ### Dynamic Stats
@@ -201,15 +206,16 @@ Data is fetched via the backend proxy at `/api/market` and cached for 60 seconds
 
 ## Technology Stack
 
-- HTML5
-- CSS3
-- JavaScript
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose
-- JWT
-- bcryptjs
+- HTML5, CSS3, JavaScript (no frontend framework)
+- Node.js + Express.js
+- MongoDB + Mongoose
+- JWT (jsonwebtoken) + bcryptjs
+- Zod (request validation)
+- Helmet (HTTP security headers + CSP)
+- Compression (gzip)
+- express-async-errors (async error propagation)
+- dotenv (environment config)
+- uuid (deterministic IDs)
 
 ## Project Structure
 
@@ -218,79 +224,122 @@ biscoon-project/
 ├── index.html
 ├── package.json
 ├── package-lock.json
-├── server.js
+├── server.js               # Process startup, port fallback, graceful shutdown
 ├── seed.js
 ├── README.md
+├── DEPLOYMENT.md
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
 ├── assets/
 │   ├── css/
-│   │   ├── main.css
-│   │   └── pages/
-│   │       ├── index.css
-│   │       ├── auth/
-│   │       ├── community/
-│   │       ├── housing/
-│   │       ├── jobs/
-│   │       ├── marketplace/
-│   │       └── post/
+│   │   ├── main.css        # Global shared design system
+│   │   └── pages/          # Per-page CSS files (auth/, community/, etc.)
 │   └── js/
-│       ├── auth.js
-│       ├── activity.js
-│       ├── biscoon.js
-│       ├── discussions.js
-│       ├── listing.js
+│       ├── biscoon.js      # Shared: auth UI, session, search, listings, nav
+│       ├── auth.js         # Signup / login page logic
+│       ├── activity.js     # My Activity page
+│       ├── discussions.js  # Discussions page
+│       ├── listing.js      # Create / edit / delete listings
+│       ├── messages.js     # Inbox and conversation thread
 │       ├── notifications.js
-│       └── profile.js
+│       ├── profile.js
+│       ├── admin.js        # Full admin panel SPA logic
+│       └── ticker.js       # Live market ticker polling
 ├── pages/
-│   ├── auth/
-│   ├── community/
-│   ├── housing/
-│   ├── jobs/
-│   ├── marketplace/
-│   └── post/
+│   ├── admin/              # dashboard.html, login.html
+│   ├── auth/               # login, signup, profile, activity, notifications, messages
+│   ├── community/          # discussions, organizations, events, literature, …
+│   ├── housing/            # housing, paying-guest, real-estate, moving
+│   ├── jobs/               # jobs, tech, healthcare, insurance, cpa, legal, …
+│   ├── marketplace/        # kinbech, services, restaurants, shops, …
+│   └── post/               # listing.html, detail.html
 ├── scripts/
-│   └── extract-page-css.js
+│   ├── extract-page-css.js
+│   └── migrate-conversations.js
+├── tests/
+│   └── api.test.js         # Jest + Supertest + mongodb-memory-server
+├── uploads/                # Saved listing images and message attachments (git-ignored)
 └── src/
+    ├── app.js              # Express app factory (routes, middleware, CSP, CORS)
     ├── config/
+    │   ├── env.js          # All env vars with dev defaults and production guards
+    │   └── database.js     # Mongoose connect
     ├── middleware/
+    │   ├── auth.js         # JWT Bearer token middleware
+    │   ├── admin.js        # Admin role + permission middleware
+    │   └── rateLimit.js    # Custom in-memory rate limiter (no Redis)
     ├── models/
+    │   ├── User.js         # Roles: user / staff / sub-admin / admin / super-admin
+    │   ├── Listing.js      # Full listing + embedded comments; text index
+    │   ├── Discussion.js   # Discussion + embedded comments; text index
+    │   ├── Conversation.js # Private messages (body encrypted at rest)
+    │   ├── Notification.js
+    │   ├── Announcement.js # Site-wide banners (info / warning / success)
+    │   └── Report.js       # Moderation reports with status workflow
     ├── routes/
+    │   ├── auth.js         # register, login, /me
+    │   ├── listings.js     # CRUD + comments + stats
+    │   ├── discussions.js  # CRUD + comments
+    │   ├── messages.js     # Conversations + replies + read state
+    │   ├── notifications.js
+    │   ├── activity.js
+    │   ├── moderation.js   # User-facing report submission
+    │   ├── announcements.js# Public active-announcement endpoint
+    │   ├── market.js       # Proxy for stocks / crypto / NPR forex (60s cache)
+    │   └── admin.js        # Full admin API (stats, users, staff, content, reports)
     └── utils/
+        ├── users.js
+        ├── listings.js
+        ├── discussions.js
+        ├── notifications.js
+        ├── categories.js   # Category groups, aliases, and query builders
+        ├── pagination.js   # getPagination + pagedResponse helpers
+        ├── uploads.js      # saveBase64Upload — writes files to UPLOAD_DIR
+        ├── validate.js     # Thin Zod wrapper returning { value } or { error }
+        ├── crypto.js       # AES-256-GCM encrypt/decrypt for message bodies
+        └── adminPermissions.js # Role/permission constants and helpers
 ```
 
 ## Important Files
 
-- `server.js`: Express app setup, static file serving, route mounting, and port fallback startup.
-- `src/config/env.js`: Environment defaults for port, MongoDB URI, JWT secret, and static root.
-- `src/config/database.js`: MongoDB connection setup.
-- `src/models/User.js`: User schema.
-- `src/models/Listing.js`: Listing schema.
-- `src/models/Discussion.js`: Discussion topic and comment schema.
-- `src/models/Notification.js`: User notification schema.
-- `src/routes/auth.js`: Register, login, and profile API routes.
-- `src/routes/listings.js`: Listing CRUD, search, owner listings, and stats routes.
-- `src/routes/discussions.js`: Discussion topic, comment, and reply routes.
-- `src/routes/notifications.js`: Notification listing and read-state routes.
-- `src/routes/activity.js`: Authenticated user activity aggregation route.
-- `src/middleware/auth.js`: JWT auth middleware.
-- `src/utils/users.js`: User lookup helpers.
-- `src/utils/listings.js`: Listing lookup and normalization helpers.
-- `src/utils/discussions.js`: Discussion lookup and normalization helpers.
-- `src/utils/notifications.js`: Notification creation and normalization helpers.
-- `assets/js/activity.js`: My Activity frontend logic.
-- `assets/js/auth.js`: Signup/login frontend logic.
-- `assets/js/biscoon.js`: Shared page behavior, session handling, login UI, search, dynamic listings, listing popups, comments, notifications, and stats.
-- `assets/js/discussions.js`: Discussion page topic/comment/reply logic.
-- `assets/js/listing.js`: Post listing page logic, image upload/editing, create/update/delete.
-- `assets/js/notifications.js`: Notifications page logic.
-- `assets/js/profile.js`: Profile page logic, account update, owner listing popups, and popup editing.
-- `src/routes/market.js`: Backend proxy for live market data (stocks, crypto, NPR forex) with 60-second in-memory cache.
-- `src/routes/announcements.js`: Public and admin routes for site-wide announcement banners.
-- `src/models/Announcement.js`: Announcement schema with title, body, type, active flag, and expiry.
-- `assets/js/ticker.js`: Polls `/api/market` every 60 seconds and updates the homepage ticker tracks in place.
-- `assets/js/admin.js`: Full single-page admin panel — dashboard, users, listings, discussions, comments, announcements.
-- `assets/css/main.css`: Global shared design system and reusable components.
-- `assets/css/pages/`: Extracted page-specific CSS files.
-- `scripts/extract-page-css.js`: Utility script for extracting inline/page CSS into external CSS files.
+- `server.js` — Process startup, port auto-increment (tries up to 10 ports), graceful SIGTERM/SIGINT shutdown.
+- `src/app.js` — Express app factory: all middleware (Helmet CSP, CORS, compression), route mounting, 404 and error handlers.
+- `src/config/env.js` — All env vars with development defaults; in production, missing or placeholder secrets cause an immediate crash.
+- `src/config/database.js` — Mongoose connection.
+- `src/middleware/auth.js` — JWT Bearer token validation; attaches `req.user`.
+- `src/middleware/admin.js` — Checks that `req.user` has an admin role; exposes `requirePermission(key)` and `requireSuperAdmin` helpers.
+- `src/middleware/rateLimit.js` — Custom in-memory rate limiter (no Redis required). Login: 8 attempts per 10 min, 30 min block. Register: 10 per hour, 1 hour block. Keyed on IP + email.
+- `src/models/User.js` — Roles: `user`, `staff`, `sub-admin`, `admin`, `super-admin`. Granular permissions array for staff accounts.
+- `src/models/Listing.js` — Full listing schema; compound indexes on category+date and userId+date; MongoDB full-text index.
+- `src/models/Discussion.js` — Discussion schema; full-text index; sorted by `updatedAt` for active-thread feel.
+- `src/models/Conversation.js` — Private messages per listing pair; message bodies AES-256-GCM encrypted; max 200 messages per thread.
+- `src/models/Notification.js` — Per-user notifications with indexes for inbox and unread-count queries.
+- `src/models/Announcement.js` — Site banners with type (info/warning/success), active flag, and optional expiry.
+- `src/models/Report.js` — Moderation reports: targets listing/discussion/comment/message/user; statuses open → reviewing → resolved/dismissed.
+- `src/routes/auth.js` — Register, login (rate-limited), GET/PUT `/me`.
+- `src/routes/listings.js` — CRUD, image upload (base64 → disk), threaded comments with reply access control, stats aggregation.
+- `src/routes/discussions.js` — CRUD + threaded comments + notifications.
+- `src/routes/messages.js` — Inbox, conversation thread (cursor-paginated), reply, read state, attachment upload (images/video/docs).
+- `src/routes/notifications.js` — List, mark read, mark all read, unread count.
+- `src/routes/activity.js` — Aggregated user activity (discussions, comments, replies).
+- `src/routes/moderation.js` — User-facing `POST /reports` and `GET /reports/mine`.
+- `src/routes/announcements.js` — `GET /active` returns the newest active, non-expired announcement (or null).
+- `src/routes/market.js` — Proxy for CoinGecko (crypto), Stooq (stocks), open.er-api (NPR forex); 60-second in-memory cache.
+- `src/routes/admin.js` — Full admin API: analytics, regular user management, staff CRUD (super-admin only), listings/discussions/comments moderation, reports, announcements.
+- `src/utils/categories.js` — Category groups, legacy aliases, and `listingCategoryFilter` query builder.
+- `src/utils/crypto.js` — AES-256-GCM `encrypt`/`decrypt`; key derived from `MSG_ENCRYPTION_KEY` via SHA-256; graceful fallback for pre-encryption data.
+- `src/utils/uploads.js` — `saveBase64Upload`: writes base64 payloads to `UPLOAD_DIR/<folder>/<timestamp>-<uuid>.<ext>`.
+- `src/utils/validate.js` — Thin Zod `safeParse` wrapper returning `{ value }` or `{ error: string }`.
+- `src/utils/adminPermissions.js` — Role hierarchy constants, `getAdminPermissions`, `hasAdminPermission`, `isSuperAdmin`.
+- `src/utils/pagination.js` — `getPagination(query, defaults)` and `pagedResponse(key, items, total, page, limit)`.
+- `assets/js/biscoon.js` — Shared frontend: JWT session, auth UI, nav, dynamic listings, listing popups, comments, notifications badge.
+- `assets/js/admin.js` — Full admin panel SPA: dashboard, users, staff, listings, discussions, comments, reports, announcements.
+- `assets/js/messages.js` — Inbox and conversation thread UI.
+- `assets/js/ticker.js` — Polls `/api/market` every 60 s; updates ticker tracks in place.
+- `assets/css/main.css` — Global design system and reusable components.
+- `scripts/extract-page-css.js` — Extracts `<style>` blocks and `style="..."` into `assets/css/pages/` files.
+- `scripts/migrate-conversations.js` — One-time backfill of `participantKey` on existing conversations.
 
 ## CSS Organization
 
@@ -404,13 +453,27 @@ MONGODB_URI=mongodb://localhost:27017/biscoon
 JWT_SECRET=<strong-random-secret>
 MSG_ENCRYPTION_KEY=<strong-random-secret>
 NODE_ENV=development
+CORS_ORIGINS=http://localhost:4000,http://localhost:4001
+UPLOAD_DIR=uploads
+JSON_BODY_LIMIT=25mb
+TRUST_PROXY=
 ```
 
 In `production`, both `JWT_SECRET` and `MSG_ENCRYPTION_KEY` are required and the server will fail fast if they are missing.
+Use `.env.example` as the deployment checklist.
+See `DEPLOYMENT.md` for Docker and production hosting notes.
 
 ### Start MongoDB
 
 Start a local MongoDB service or provide a hosted MongoDB connection string with `MONGODB_URI`.
+
+For this project-local database folder, you can run:
+
+```bash
+npm run mongo
+```
+
+Keep that terminal open, then start the app in another terminal.
 
 ### Start the App
 
@@ -444,6 +507,22 @@ npm run dev
 
 This uses `nodemon` to restart the backend when files change.
 
+### Health Check
+
+```text
+GET /api/health
+```
+
+Returns service status, uptime, and a timestamp.
+
+### Tests
+
+```bash
+npm test
+```
+
+The test suite uses Jest, Supertest, and an in-memory MongoDB instance.
+
 ### Seed Sample Data
 
 ```bash
@@ -461,12 +540,35 @@ Password: password123
 
 ## NPM Scripts
 
-```json
-{
-  "start": "node server.js",
-  "dev": "nodemon server.js",
-  "seed": "node seed.js"
-}
+```bash
+npm start                   # node server.js
+npm run start:prod          # NODE_ENV=production node server.js
+npm run dev                 # nodemon server.js (auto-restart on change)
+npm test                    # Jest + Supertest + mongodb-memory-server
+npm run check               # npm test && node --check on all .js files
+npm run seed                # Reset sample data, create demo user + super-admin
+npm run mongo               # Start local mongod at data/mongo/ (keep terminal open)
+npm run migrate:conversations  # One-time backfill of participantKey on existing conversations
+```
+
+## Upload Storage
+
+New listing images and message attachments are written to `UPLOAD_DIR` and stored in MongoDB as paths plus metadata instead of large base64 payloads. Existing base64 data still renders for backwards compatibility. The default upload folder is `uploads/`, which is git-ignored.
+
+## Moderation
+
+Authenticated users can submit reports through:
+
+```text
+POST /api/moderation/reports
+GET  /api/moderation/reports/mine
+```
+
+Admins can review and update report status in the admin panel and through:
+
+```text
+GET /api/admin/reports
+PUT /api/admin/reports/:id/status
 ```
 
 ## Data Model
@@ -474,12 +576,16 @@ Password: password123
 ### User
 
 ```text
-id          String, unique
+id          String, unique (uuid)
 name        String, required
 email       String, required, unique, lowercase
 phone       String
-password    String, bcrypt hash
+password    String, bcrypt hash (cost 10)
+role        String, enum: user | staff | sub-admin | admin | super-admin
+permissions Array<String>  — granular keys for staff accounts
+createdBy   String         — id of the super-admin who created staff accounts
 createdAt   Date
+updatedAt   Date
 ```
 
 ### Listing
@@ -488,26 +594,26 @@ createdAt   Date
 id                  String, unique
 userId              String, required
 title               String, required
-description         String, required
-category            String, required, indexed
+description         String, required (max 5000 chars)
+category            String, required
 subcategory         String
 availability        String
 price               String
 priceNote           String
-location            String, indexed
+location            String
 locationType        String
 contactEmail        String
 contactPhone        String
 contactPreference   String
-externalLink        String
-tags                Array<String>
-images              Array<String>, max 6
-comments            Array<Comment>
-createdAt           Date, indexed
+externalLink        String (http/https validated)
+tags                Array<String>, max 8 tags × 40 chars
+images              Array<String>, max 6 images × 3 MB (saved to disk, stored as path)
+comments            Array<Comment>, max 300
+createdAt           Date
 updatedAt           Date
 ```
 
-Listings have a text index across title, description, category, location, and related searchable fields.
+Indexes: `{ category, createdAt }`, `{ category, subcategory, createdAt }`, `{ userId, createdAt }`, full-text on title/description/category/location/tags.
 
 ### Discussion
 
@@ -516,12 +622,42 @@ id          String, unique
 userId      String, required
 authorName  String, required
 title       String, required
-body        String, required
+body        String, required (max 5000 chars)
 category    String, indexed
-tags        Array<String>
-comments    Array<Comment>
+tags        Array<String>, max 8
+comments    Array<Comment>, max 300
 createdAt   Date, indexed
 updatedAt   Date
+```
+
+Full-text index on title/body/category/tags.
+
+### Conversation
+
+```text
+id               String, unique
+listingId        String, required
+listingTitle     String
+participantKey   String, indexed (sorted user-id pair, e.g. "uuid1:uuid2")
+participantIds   Array<String>
+participantNames Map<userId, name>
+messages         Array<Message>, max 200
+updatedAt        Date
+createdAt        Date
+```
+
+Unique compound index on `{ listingId, participantKey }` prevents duplicate threads.
+
+#### Embedded Message
+
+```text
+id          String
+senderId    String
+senderName  String
+body        String (AES-256-GCM encrypted; falls back gracefully for pre-encryption data)
+attachments Array<Attachment>  — images (4 MB), video (12 MB), docs/files (6 MB), max 5
+readBy      Array<String>      — user IDs who have opened this message
+createdAt   Date
 ```
 
 ### Notification
@@ -540,6 +676,39 @@ targetTitle   String
 url           String
 read          Boolean, indexed
 createdAt     Date, indexed
+```
+
+Compound indexes: `{ userId, createdAt }` (inbox), `{ userId, read }` (unread count).
+
+### Announcement
+
+```text
+id          String, unique
+title       String, required
+body        String, required
+type        String, enum: info | warning | success
+active      Boolean
+expiresAt   Date (null = no expiry)
+createdBy   String
+createdAt   Date
+```
+
+### Report
+
+```text
+id            String, unique
+reporterId    String, indexed
+reporterName  String
+targetType    String, enum: listing | discussion | listing_comment | discussion_comment | message | user
+targetId      String, indexed
+parentId      String (parent listing/discussion id for comment reports)
+reason        String, enum: spam | scam | harassment | illegal | misinformation | other
+details       String (max 1000 chars)
+status        String, enum: open | reviewing | resolved | dismissed
+reviewedBy    String
+reviewedAt    Date
+createdAt     Date, indexed
+updatedAt     Date
 ```
 
 ## API Reference
@@ -784,6 +953,204 @@ Request body:
 
 Notifications are created for the discussion owner and, for replies, the parent comment author when they are different from the actor.
 
+### Messages
+
+#### `GET /api/messages`
+
+Returns the authenticated user's inbox (up to 50 conversations), each with last-message preview and unread count.
+
+Requires `Authorization: Bearer <token>`.
+
+Response includes `unread` (total unread across all conversations) and `conversations[]`.
+
+#### `GET /api/messages/unread`
+
+Returns `{ unread: N }` — total unread message count. Used for the nav badge.
+
+#### `GET /api/messages/status?listingId=&recipientId=`
+
+Returns `{ exists: bool, conversationId: string }`. Used before starting a new thread.
+
+#### `POST /api/messages`
+
+Starts or continues a conversation tied to a specific listing.
+
+Requires `Authorization: Bearer <token>`.
+
+```json
+{
+  "listingId": "<id>",
+  "recipientId": "<userId>",
+  "body": "Is this still available?",
+  "attachments": []
+}
+```
+
+At least one of `body` or `attachments` is required. Returns `{ conversationId }`.
+
+#### `GET /api/messages/:id`
+
+Returns a conversation with paginated messages. Marks all unread messages as read.
+
+Query params: `?limit=50&before=<messageId>` (cursor-based pagination, newest-first).
+
+Requires `Authorization: Bearer <token>`.
+
+#### `POST /api/messages/:id/reply`
+
+Sends a message in an existing conversation.
+
+Requires `Authorization: Bearer <token>`.
+
+```json
+{
+  "body": "Yes, still available.",
+  "attachments": []
+}
+```
+
+**Attachment limits:** images 4 MB, video 12 MB, other files (PDF, docs, CSV, zip) 6 MB, max 5 per message. Accepted MIME types include `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/heic`, `video/mp4`, `video/quicktime`, `video/webm`, `application/pdf`, Word, Excel, plain text, CSV, ZIP, RAR.
+
+### Market
+
+#### `GET /api/market`
+
+Returns live market data (cached 60 seconds server-side).
+
+```json
+{
+  "crypto": [{ "sym": "BTC", "price": 67000, "change": 1.23 }, ...],
+  "stocks": [{ "sym": "NASDAQ", "price": 18500, "change": -0.4, "isIndex": true }, ...],
+  "forex":  [{ "sym": "USD", "rate": 133.5 }, ...],
+  "updatedAt": 1700000000000
+}
+```
+
+Crypto source: CoinGecko. Stock source: Stooq.com. Forex source: open.er-api.com (NPR per foreign currency unit).
+
+### Announcements
+
+#### `GET /api/announcements/active`
+
+Returns the newest active, non-expired site announcement (or `null`).
+
+```json
+{ "announcement": { "id": "...", "title": "...", "body": "...", "type": "info" } }
+```
+
+### Moderation
+
+#### `POST /api/moderation/reports`
+
+Submits a moderation report. Requires `Authorization: Bearer <token>`.
+
+```json
+{
+  "targetType": "listing",
+  "targetId": "<listingId>",
+  "parentId": "",
+  "reason": "spam",
+  "details": "This looks like a scam."
+}
+```
+
+#### `GET /api/moderation/reports/mine`
+
+Returns the authenticated user's own reports (paginated).
+
+### Admin
+
+All admin endpoints require `Authorization: Bearer <token>` plus an admin role. Specific endpoints additionally require the matching permission key.
+
+#### `GET /api/admin/stats`
+
+Dashboard analytics: user counts (today/week/month), listing counts, discussion counts, conversation count, by-category breakdown, recent users, recent listings.
+
+Permission-gated: fields are zeroed out for permissions the caller lacks.
+
+#### `GET /api/admin/feed`
+
+Activity feed: last 10 users, listings, and discussions merged and sorted by date. Returns up to 20 items.
+
+#### Users (`users` permission)
+
+```
+GET    /api/admin/users              — paginated list with listing counts; ?search=
+DELETE /api/admin/users/:id          — deletes user and all their listings
+GET    /api/admin/users/:id/content  — user's listings and discussions
+```
+
+#### Staff (super-admin only)
+
+```
+GET    /api/admin/staff/permissions — list all assignable permission keys
+GET    /api/admin/staff             — paginated staff list
+GET    /api/admin/staff/:id
+POST   /api/admin/staff             — create staff account with role and permissions
+PUT    /api/admin/staff/:id         — update name/email/phone/permissions/password
+DELETE /api/admin/staff/:id         — delete (cannot delete super-admins or yourself)
+```
+
+#### Listings (`listings` permission)
+
+```
+GET    /api/admin/listings           — paginated; ?search=&category=
+GET    /api/admin/listings/:id
+PUT    /api/admin/listings/:id       — editable fields: title, description, category, etc.
+DELETE /api/admin/listings/:id
+```
+
+#### Discussions (`discussions` permission)
+
+```
+GET    /api/admin/discussions
+GET    /api/admin/discussions/:id    — includes all comments
+PUT    /api/admin/discussions/:id
+DELETE /api/admin/discussions/:id
+```
+
+#### Comments (`comments` permission)
+
+```
+GET    /api/admin/comments           — all listing + discussion comments; ?type=listing|discussion|all
+DELETE /api/admin/listings/:listingId/comments/:commentId
+DELETE /api/admin/discussions/:discussionId/comments/:commentId
+```
+
+#### Conversations (`users` permission, metadata only)
+
+```
+GET    /api/admin/conversations      — participant names, listing, message count; no message bodies
+```
+
+#### Reports (`reports` permission)
+
+```
+GET    /api/admin/reports            — paginated; ?status=open|reviewing|resolved|dismissed
+PUT    /api/admin/reports/:id/status — update status; body: { "status": "resolved" }
+```
+
+#### Announcements (`announcements` permission)
+
+```
+GET    /api/admin/announcements
+POST   /api/admin/announcements      — body: { title, body, type, expiresAt }
+PUT    /api/admin/announcements/:id/toggle — flip active/inactive
+DELETE /api/admin/announcements/:id
+```
+
+### System
+
+#### `GET /api/health`
+
+Returns service name, environment, uptime, database state, and timestamp.
+
+#### `GET /api/ready`
+
+Returns 200 when MongoDB is connected, 503 otherwise. Suitable for Docker/K8s readiness probes.
+
+---
+
 ### Notifications
 
 #### `GET /api/notifications`
@@ -924,22 +1291,37 @@ node scripts/extract-page-css.js
 
 ## Validation and Checks
 
-Useful syntax checks:
+Run the full suite (tests + syntax check on every JS file):
+
+```bash
+npm run check
+```
+
+Or check individual files:
 
 ```bash
 node --check server.js
+node --check src/app.js
+node --check src/routes/auth.js
+node --check src/routes/listings.js
+node --check src/routes/discussions.js
+node --check src/routes/messages.js
+node --check src/routes/notifications.js
+node --check src/routes/activity.js
+node --check src/routes/admin.js
+node --check src/routes/market.js
+node --check src/routes/moderation.js
+node --check src/routes/announcements.js
 node --check assets/js/biscoon.js
 node --check assets/js/auth.js
 node --check assets/js/activity.js
 node --check assets/js/discussions.js
 node --check assets/js/listing.js
+node --check assets/js/messages.js
 node --check assets/js/notifications.js
 node --check assets/js/profile.js
-node --check src/routes/activity.js
-node --check src/routes/auth.js
-node --check src/routes/discussions.js
-node --check src/routes/listings.js
-node --check src/routes/notifications.js
+node --check assets/js/admin.js
+node --check assets/js/ticker.js
 node --check scripts/extract-page-css.js
 ```
 
@@ -979,7 +1361,7 @@ MONGODB_URI=<your connection string>
 
 ### Images Are Too Large
 
-Images are resized in the browser before saving. If requests are still too large, reduce image count or size. The backend JSON limit is configured in `server.js`.
+Images are resized in the browser before saving. If requests are still too large, reduce image count or size. The backend JSON limit defaults to `25mb` and is controlled by the `JSON_BODY_LIMIT` environment variable (configured in `src/config/env.js`).
 
 ## Development Notes
 
