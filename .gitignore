@@ -1,7 +1,14 @@
 node_modules/
+dist/
 .env
 .DS_Store
 data/users.json
 data/*.db
 data/mongo/
 uploads/
+.claude/
+.codex/
+.agents/
+skills-lock.json
+start-elasticsearch.sh
+scripts/reindex-elasticsearch.js

@@ -3,11 +3,13 @@
 .page-sidebar{display:flex;flex-direction:column;gap:14px;position:sticky;top:74px}
 .filter-sort-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 40px;background:var(--off-white);border-bottom:1px solid var(--border)}
 .filter-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
-.chip{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:white;font-size:12px;cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;color:var(--gray-600);transition:all .15s;white-space:nowrap}
+.chip{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:white;font-size:12px;cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;color:var(--gray-600);transition:background 150ms ease-out,border-color 150ms ease-out,color 150ms ease-out;white-space:nowrap}
 .chip:hover,.chip.active{background:var(--red);border-color:var(--red);color:white}
+.chip:active{transform:scale(0.96)}
 .sort-select{padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--gray-600);background:white;cursor:pointer;outline:none}
-.listing-card{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;background:white;display:flex;gap:14px;align-items:flex-start;transition:border-color .15s,box-shadow .15s,transform .15s;cursor:pointer;margin-bottom:9px;text-decoration:none;color:inherit}
-.listing-card:hover{border-color:var(--red);box-shadow:0 3px 14px rgba(192,57,43,.09);transform:translateX(2px)}
+.listing-card{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;background:white;display:flex;gap:14px;align-items:flex-start;transition:border-color 180ms ease-out,box-shadow 200ms ease-out,transform 220ms var(--ease-out,cubic-bezier(0.23,1,0.32,1));cursor:pointer;margin-bottom:9px;text-decoration:none;color:inherit}
+@media(hover:hover)and(pointer:fine){.listing-card:hover{border-color:var(--red);box-shadow:0 6px 18px rgba(192,57,43,.11);transform:translateY(-2px)}}
+.listing-card:active{transform:scale(0.99)}
 .listing-thumb{width:50px;height:50px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
 .listing-body{flex:1;min-width:0}
 .listing-title{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -16,8 +18,17 @@
 .listing-tags{display:flex;gap:5px;flex-wrap:wrap}
 .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
 .tag-green{background:var(--green-light);color:#065f46}.tag-blue{background:var(--blue-light);color:#1e40af}.tag-red{background:var(--red-light);color:var(--red-dark)}.tag-gold{background:var(--gold-light);color:#78350f}.tag-navy{background:#e0e7ff;color:#3730a3}.tag-gray{background:var(--gray-100);color:var(--gray-600)}.tag-purple{background:#ede9fe;color:#5b21b6}
+.events-calendar-panel{margin:22px 40px 0;padding:20px;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.06)}
+.events-calendar-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:14px}
+.events-calendar-eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--red)}
+.events-calendar-head h2{font-size:20px;color:var(--navy);margin:2px 0 0}
+.events-calendar-post{border:1.5px solid var(--red);background:var(--red);color:white;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:800;white-space:nowrap}
+.fc{font-family:inherit;font-size:12px}
+.fc .fc-toolbar-title{font-size:17px;color:var(--navy)}
+.fc .fc-button-primary{background:var(--navy);border-color:var(--navy);border-radius:6px;text-transform:capitalize}
+.fc .fc-daygrid-event{border-radius:5px;padding:2px 4px;background:var(--red);border-color:var(--red);font-size:11px}
 @media(max-width:1100px){.page-layout{grid-template-columns:1fr}.page-sidebar{display:none}}
-@media(max-width:640px){.page-layout{padding:20px}.filter-sort-bar{padding:12px 20px}}
+@media(max-width:640px){.page-layout{padding:20px}.filter-sort-bar{padding:12px 20px}.events-calendar-panel{margin:18px 20px 0;padding:14px}.events-calendar-head{display:grid}.events-calendar-post{width:fit-content}}
 
 /* Extracted inline styles from pages/community/events.html */
 .pages-community-events-inline-1 { color:#93c5fd }

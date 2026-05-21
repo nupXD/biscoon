@@ -22,6 +22,8 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 
 - User signup and login with JWT authentication.
 - Duplicate email validation prevents the same email from registering more than once.
+- Registration now creates hashed email-verification tokens, and password reset tokens are hashed at rest.
+- `EMAIL_VERIFICATION_REQUIRED=true` can require verified email before posting, commenting, or messaging once an email provider is connected.
 - Login state is persisted in `localStorage` with an inactivity timestamp.
 - Sessions expire after one day of inactivity, matching the one-day JWT expiry.
 - Logged-in users see profile, activity, notifications, add-listing, create-discussion, and logout dropdowns across pages.
@@ -38,6 +40,7 @@ The project is built as a static HTML/CSS/JavaScript frontend served by an Expre
 - Listing cards open detail popups instead of redirecting away.
 - Detail pages still exist for direct listing URLs.
 - Listing detail views support authenticated comments.
+- Logged-in users can save and unsave listings for later.
 
 ### Listing Posting
 
@@ -90,6 +93,40 @@ Photography has its own posting mode at `/pages/post/listing.html?category=photo
 - Listing cards show the first uploaded image.
 - If no image exists, a category-based default visual is shown.
 - Popups and detail pages show an image gallery, or a default image area when no images were uploaded.
+- Listing galleries are enhanced with PhotoSwipe lightbox zoom on supported pages.
+
+### Photography Showcase Gallery
+
+The photography page (`/pages/marketplace/photography.html`) features a full visual portfolio experience:
+
+- **Masonry grid** — 4-column responsive photo gallery with tall and wide span variants, hover zoom, and overlay labels.
+- **"Photographer of the Week" banner** — featured photographer card with avatar, stats, and a 4-photo mini-strip gallery.
+- **PhotoSwipe lightbox** — click any photo to open a full-screen carousel with keyboard navigation, swipe, zoom, close button, and previous/next arrows.
+- **Photo listing cards** — each listing card shows a real photo thumbnail instead of an emoji icon, with an image-count badge for multi-photo posts.
+
+### UX Enhancements
+
+- Fuse.js powers lightweight autocomplete suggestions for listings and discussions from the shared search inputs.
+- FullCalendar adds a calendar view to the Events page while keeping the existing event list.
+- Tiptap powers the admin news editor for rich text, headings, quotes, font choices, and placed media.
+- Socket.IO sends real-time notification/message updates to signed-in users.
+- MapLibre renders an approximate local map preview on listing detail pages without requiring a cloud map provider.
+- Sentry hooks are available for production error monitoring when `SENTRY_DSN` or a browser Sentry DSN meta tag is configured.
+- PhotoSwipe lightbox is loaded on every page. It auto-activates via `MutationObserver` whenever `[data-pswp-gallery]` elements appear in the DOM — including dynamically opened listing modals and the admin gallery panel.
+
+### Animation and Motion Design
+
+The frontend uses an Emil Kowalski-inspired motion system applied consistently across all pages:
+
+- **Custom easing variables** — `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)`, `--ease-in-out`, and `--ease-drawer` defined in `:root` and used for all transitions.
+- **Touch guards** — all hover transforms are wrapped in `@media (hover: hover) and (pointer: fine)` so touch devices never trigger unintended animations.
+- **`:active` scale states** — buttons, chips, cards, and links scale down slightly on press for tactile feedback.
+- **No `transition: all`** — every transition explicitly lists only the properties being animated, preventing layout and paint thrashing across the entire CSS codebase.
+- **Hero entrance stagger** — homepage hero elements (`biscoon-name`, `biscoon-sub`, search bar, stats strip, etc.) animate in with staggered `heroFadeUp` keyframes from 60 ms to 600 ms.
+- **Category card scroll-reveal** — the category grid fades in with a 35 ms stagger between cards, triggered by `IntersectionObserver` when the section enters the viewport.
+- **Section scroll-reveal** — journal, heatmap, Facebook groups, calendar, and CTA sections fade up from `translateY(28px)` as they scroll into view.
+- **Counter animation** — stat numbers (`.stat-num`, `.hmap-num`) animate from 0 to their target value with a cubic ease-out over 1 100 ms when they first enter the viewport.
+- **`prefers-reduced-motion`** — all entrance animations and counter animations are disabled when the user has requested reduced motion.
 
 ### Profile Management
 
@@ -195,6 +232,10 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 - Create site-wide info, warning, or success banners.
 - Pause/reactivate active announcements and optionally set expiry dates.
 
+**Audit Logs section:**
+- Super-admin-only activity trail for admin user changes, news edits, listing moderation, discussion moderation, reports, comments, and announcements.
+- Logs include actor, target, timestamp, action type, and lightweight context.
+
 **Conversations section (read-only metadata):**
 - Shows who is talking, about which listing, message count, and last activity time.
 - Message content is never shown — it is encrypted at rest and intentionally excluded.
@@ -262,7 +303,7 @@ Data is fetched via the backend proxy at `/api/market` and cached for 60 seconds
 
 ## Technology Stack
 
-- HTML5, CSS3, JavaScript (no frontend framework)
+- HTML5, CSS3, TypeScript (compiled to ES2020 with esbuild — no frontend framework)
 - Node.js + Express.js
 - MongoDB + Mongoose
 - JWT (jsonwebtoken) + bcryptjs
@@ -272,13 +313,24 @@ Data is fetched via the backend proxy at `/api/market` and cached for 60 seconds
 - express-async-errors (async error propagation)
 - dotenv (environment config)
 - uuid (deterministic IDs)
+- TypeScript + esbuild — all frontend source lives in `assets/ts/`; `npm run build:client:core` compiles to `assets/js/`
+- PhotoSwipe v5 (listing and gallery lightbox, loaded globally via MutationObserver)
+- Tiptap (admin rich-text news editor)
+- FullCalendar (events page calendar view)
+- Fuse.js (search autocomplete)
+- Socket.IO (real-time notifications and messages)
+- MapLibre GL (listing detail map preview)
+- Optional Sentry monitoring
 
 ## Production Readiness
 
-- `src/app.js` owns middleware, route mounting, static serving, CORS, Helmet CSP, compression, 404s, and error handling.
-- `server.js` handles process startup, port fallback, MongoDB connection, health endpoints, and graceful shutdown.
-- `src/config/env.js` centralizes environment variables and fails fast in production when required secrets or CORS origins are missing.
-- `npm run check` runs the Jest/Supertest API suite and syntax-checks every JavaScript file outside `node_modules`.
+- `src/app.ts` owns middleware, route mounting, static serving, CORS, Helmet CSP, compression, 404s, and error handling.
+- `server.ts` handles process startup, port fallback, MongoDB connection, health endpoints, Socket.IO, and graceful shutdown.
+- `src/config/env.ts` centralizes environment variables and fails fast in production when required secrets or CORS origins are missing.
+- Email verification and password reset token storage are implemented without cloud/email delivery; production email delivery can be connected later.
+- Admin audit logs provide accountability for privileged actions.
+- GitHub Actions runs `npm run check` on pushes and pull requests.
+- `npm run check` runs the Jest/Supertest API suite, server typecheck, client typecheck, and browser bundle build.
 - Docker and Compose files are included for production-like local runs.
 - `DEPLOYMENT.md` documents production env vars, health checks, upload persistence, reverse proxy notes, and first-super-admin setup.
 
@@ -298,20 +350,37 @@ biscoon-project/
 ├── .env.example
 ├── assets/
 │   ├── css/
-│   │   ├── main.css        # Global shared design system
-│   │   └── pages/          # Per-page CSS files (admin/, auth/, community/, news/, etc.)
-│   └── js/
-│       ├── biscoon.js      # Shared: auth UI, session, search, listings, nav
-│       ├── auth.js         # Signup / login page logic
-│       ├── activity.js     # My Activity page
-│       ├── discussions.js  # Discussions page
-│       ├── listing.js      # Create / edit / delete listings
-│       ├── messages.js     # Inbox and conversation thread
-│       ├── notifications.js
-│       ├── profile.js
-│       ├── admin.js        # Full admin panel SPA logic
-│       ├── news.js         # Public newsroom UI
-│       └── ticker.js       # Live market ticker polling
+│   │   ├── main.css        # Global design system + PhotoSwipe import + easing vars
+│   │   └── pages/          # Per-page CSS (admin/, auth/, community/, news/, etc.)
+│   ├── ts/                 # TypeScript source (compiled by esbuild)
+│   │   ├── biscoon.ts      # Auth UI, session, search, listings, nav, animations
+│   │   ├── auth.ts
+│   │   ├── admin.ts
+│   │   ├── profile.ts
+│   │   └── ticker.ts
+│   ├── js/
+│   │   ├── biscoon.js      # Compiled output
+│   │   ├── admin.js
+│   │   ├── auth.js
+│   │   ├── profile.js
+│   │   ├── ticker.js
+│   │   ├── news.js         # Public newsroom UI (not TypeScript-authored)
+│   │   ├── listing.js      # Posting page logic
+│   │   ├── activity.js
+│   │   ├── discussions.js
+│   │   ├── messages.js
+│   │   ├── notifications.js
+│   │   └── plugins/        # Pre-built vendor plugins loaded on-demand
+│   │       ├── listing-lightbox.js   # PhotoSwipe v5 (all pages)
+│   │       ├── listing-map.js        # MapLibre (listing detail)
+│   │       ├── events-calendar.js    # FullCalendar (events page)
+│   │       ├── search-autocomplete.js # Fuse.js (all pages)
+│   │       ├── realtime-notifications.js # Socket.IO (signed-in users)
+│   │       ├── news-editor.js        # Tiptap (admin panel)
+│   │       └── error-monitor.js      # Sentry (optional)
+│   └── vendor/
+│       └── photoswipe/
+│           └── photoswipe.css        # PhotoSwipe UI styles
 ├── pages/
 │   ├── admin/              # dashboard.html, login.html
 │   ├── auth/               # login, signup, profile, activity, notifications, messages
@@ -335,8 +404,10 @@ biscoon-project/
     ├── middleware/
     │   ├── auth.js         # JWT Bearer token middleware
     │   ├── admin.js        # Admin role + permission middleware
+    │   ├── requireVerifiedEmail.js
     │   └── rateLimit.js    # Custom in-memory rate limiter (no Redis)
     ├── models/
+    │   ├── AdminAuditLog.js
     │   ├── User.js         # Roles: user / staff / sub-admin / admin / super-admin
     │   ├── Listing.js      # Full listing + embedded comments; text index
     │   ├── Discussion.js   # Discussion + embedded comments; text index
@@ -416,9 +487,10 @@ biscoon-project/
 
 The project avoids inline CSS in HTML pages.
 
-- Global reusable styles live in `assets/css/main.css`.
+- Global reusable styles and design tokens live in `assets/css/main.css`, including custom easing variables (`--ease-out`, `--ease-in-out`, `--ease-drawer`) and a `@import` for PhotoSwipe so the lightbox UI is available on every page.
 - Page-specific styles live in `assets/css/pages/`.
 - Each HTML page links `main.css` first and then its own page stylesheet.
+- All hover transitions use explicit property lists (no `transition: all`) and are guarded with `@media (hover: hover) and (pointer: fine)` to prevent unintended animations on touch devices.
 - If inline styles are introduced again, run:
 
 ```bash
@@ -426,6 +498,27 @@ node scripts/extract-page-css.js
 ```
 
 This script extracts `<style>` blocks and `style="..."` attributes into matching CSS files under `assets/css/pages/`.
+
+## Frontend TypeScript
+
+All frontend JavaScript is authored in TypeScript under `assets/ts/` and compiled to `assets/js/` using esbuild.
+
+```bash
+npm run build:client:core   # compile biscoon.ts, auth.ts, admin.ts, profile.ts, ticker.ts
+```
+
+Source files:
+
+```text
+assets/ts/
+├── biscoon.ts    # Auth UI, session, search, listings, nav, animations, plugin loader
+├── auth.ts       # Signup / login page logic
+├── admin.ts      # Admin panel SPA logic
+├── profile.ts    # Profile page logic
+└── ticker.ts     # Live market ticker polling
+```
+
+Plugin scripts under `assets/js/plugins/` are pre-built vendor bundles and are not TypeScript-authored.
 
 ## Pages
 
@@ -612,13 +705,14 @@ Password: password123
 ## NPM Scripts
 
 ```bash
-npm start                   # node server.js
-npm run start:prod          # NODE_ENV=production node server.js
-npm run dev                 # nodemon server.js (auto-restart on change)
-npm test                    # Jest + Supertest + mongodb-memory-server
-npm run check               # npm test && node --check on all .js files
-npm run seed                # Reset sample data, create demo user + super-admin
-npm run mongo               # Start local mongod at data/mongo/ (keep terminal open)
+npm start                      # node server.js
+npm run start:prod             # NODE_ENV=production node server.js
+npm run dev                    # nodemon server.js (auto-restart on change)
+npm test                       # Jest + Supertest + mongodb-memory-server
+npm run check                  # npm test && node --check on all .js files
+npm run seed                   # Reset sample data, create demo user + super-admin
+npm run mongo                  # Start local mongod at data/mongo/ (keep terminal open)
+npm run build:client:core      # Compile assets/ts/*.ts → assets/js/ with esbuild
 npm run migrate:conversations  # One-time backfill of participantKey on existing conversations
 ```
 

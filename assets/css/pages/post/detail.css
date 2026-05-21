@@ -7,6 +7,17 @@
 .listing-detail-price { color: var(--red); font-size: 24px; font-weight: 700; margin-bottom: 18px; }
 .listing-detail-card p { color: var(--gray-700); line-height: 1.8; font-size: 15px; white-space: pre-wrap; margin-bottom: 24px; }
 .listing-detail-contact { display: flex; flex-wrap: wrap; gap: 12px; }
+.listing-detail-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin: 20px 0 22px; }
+.listing-detail-gallery a { display: block; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--gray-100); cursor: zoom-in; }
+.listing-detail-gallery img { width: 100%; height: 100%; display: block; object-fit: cover; transition: transform 250ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)); }
+@media (hover: hover) and (pointer: fine) { .listing-detail-gallery a:hover img { transform: scale(1.06); } }
+.listing-detail-gallery a:active { transform: scale(0.98); }
+.listing-detail-gallery .listing-default-image { min-height: 180px; border: 1px solid var(--border); border-radius: 12px; }
+.listing-map-shell { margin: 22px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #f8fafc; }
+.listing-map-canvas { height: 260px; min-height: 260px; }
+.listing-map-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 12px; color: var(--text-muted); font-size: 12.5px; border-top: 1px solid var(--border); }
+.listing-map-meta a { color: var(--red); font-weight: 700; text-decoration: none; }
+.listing-map-meta a:hover { text-decoration: underline; }
 @media(max-width:640px){ .detail-page{padding:24px 20px 48px}.listing-detail-card{padding:24px} }
 
 /* Extracted inline styles from pages/post/detail.html */

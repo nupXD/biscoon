@@ -1,10 +1,15 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const app = require('../src/app');
-const User = require('../src/models/User');
-const Report = require('../src/models/Report');
-const Discussion = require('../src/models/Discussion');
+const appModule = require('../src/app');
+const userModule = require('../src/models/User');
+const reportModule = require('../src/models/Report');
+const discussionModule = require('../src/models/Discussion');
+
+const app = appModule.default || appModule;
+const User = userModule.default || userModule;
+const Report = reportModule.default || reportModule;
+const Discussion = discussionModule.default || discussionModule;
 
 let mongo;
 let userToken;
@@ -77,6 +82,46 @@ test('auth validation rejects invalid registration payloads', async () => {
   expect(res.body.error).toMatch(/email|name|password/i);
 });
 
+test('email verification and password reset tokens work without exposing hashes', async () => {
+  const registered = await registerUser({
+    name: 'Verify User',
+    email: 'verify@example.com',
+    password: 'password123',
+    confirmPassword: 'password123',
+  });
+  expect(registered.verificationToken).toBeTruthy();
+  expect(registered.user.emailVerified).toBe(false);
+  expect(registered.user.emailVerificationTokenHash).toBeUndefined();
+
+  const verified = await request(app).post('/api/auth/verify-email').send({
+    email: 'verify@example.com',
+    token: registered.verificationToken,
+  });
+  expect(verified.status).toBe(200);
+  expect(verified.body.user.emailVerified).toBe(true);
+  expect(verified.body.user.emailVerificationTokenHash).toBeUndefined();
+
+  const forgot = await request(app).post('/api/auth/forgot-password').send({
+    email: 'verify@example.com',
+  });
+  expect(forgot.status).toBe(200);
+  expect(forgot.body.resetToken).toBeTruthy();
+
+  const reset = await request(app).post('/api/auth/reset-password').send({
+    email: 'verify@example.com',
+    token: forgot.body.resetToken,
+    password: 'newpassword123',
+    confirmPassword: 'newpassword123',
+  });
+  expect(reset.status).toBe(200);
+
+  const login = await request(app).post('/api/auth/login').send({
+    email: 'verify@example.com',
+    password: 'newpassword123',
+  });
+  expect(login.status).toBe(200);
+});
+
 test('listing creation stores uploaded images as file paths and paginates listings', async () => {
   const image = `data:image/png;base64,${Buffer.from('tiny image').toString('base64')}`;
   const created = await request(app)
@@ -101,6 +146,45 @@ test('listing creation stores uploaded images as file paths and paginates listin
   expect(list.body.page).toBe(1);
 });
 
+test('users can save and unsave listings', async () => {
+  const created = await request(app)
+    .post('/api/listings')
+    .set('Authorization', `Bearer ${userToken}`)
+    .send({
+      title: 'Saveable listing',
+      description: 'A listing that can be saved for later.',
+      category: 'services',
+      subcategory: 'handyman',
+      location: 'Boston, MA',
+    });
+  expect(created.status).toBe(201);
+
+  const saved = await request(app)
+    .post(`/api/listings/${created.body.listing.id}/save`)
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(saved.status).toBe(200);
+  expect(saved.body.saved).toBe(true);
+
+  const status = await request(app)
+    .get(`/api/listings/${created.body.listing.id}/save`)
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(status.status).toBe(200);
+  expect(status.body.saved).toBe(true);
+
+  const list = await request(app)
+    .get('/api/listings/saved')
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(list.status).toBe(200);
+  expect(list.body.listings).toHaveLength(1);
+  expect(list.body.listings[0].savedByMe).toBe(true);
+
+  const removed = await request(app)
+    .delete(`/api/listings/${created.body.listing.id}/save`)
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(removed.status).toBe(200);
+  expect(removed.body.saved).toBe(false);
+});
+
 test('listing categories are canonicalized and legacy aliases still query correctly', async () => {
   const created = await request(app)
     .post('/api/listings')
@@ -123,7 +207,8 @@ test('listing categories are canonicalized and legacy aliases still query correc
 });
 
 test('legacy alias query includes older category values', async () => {
-  const Listing = require('../src/models/Listing');
+  const listingModule = require('../src/models/Listing');
+  const Listing = listingModule.default || listingModule;
   await Listing.create({
     userId: 'legacy-user',
     title: 'Legacy PG listing',
@@ -272,6 +357,12 @@ test('super admins can create admin users with assigned privileges', async () =>
     .set('Authorization', `Bearer ${adminToken}`);
   expect(staff.status).toBe(200);
   expect(staff.body.total).toBe(2);
+
+  const audit = await request(app)
+    .get('/api/admin/audit-logs')
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(audit.status).toBe(200);
+  expect(audit.body.auditLogs.some(log => log.action === 'admin_user.created')).toBe(true);
 });
 
 test('admin users can only use assigned privileges', async () => {

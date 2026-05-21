@@ -82,7 +82,8 @@
 .listing-empty-panel { border:1.5px dashed var(--border); border-radius:14px; background:var(--off-white); padding:22px; display:grid; gap:4px; color:var(--gray-600); }
 .listing-empty-panel strong { color:var(--navy); }
 .listing-gallery-shell { margin-bottom:18px; display:grid; gap:10px; }
-.listing-gallery-main { border:0; padding:0; background:transparent; cursor:zoom-in; border-radius:14px; overflow:hidden; }
+.listing-gallery-main { border:0; padding:0; background:transparent; cursor:zoom-in; border-radius:14px; overflow:hidden; display:block; }
+.listing-gallery-main:focus-visible { outline:3px solid rgba(192,57,43,.24); outline-offset:3px; }
 .listing-gallery-main img { width:100%; max-height:360px; object-fit:cover; display:block; border-radius:14px; border:1px solid var(--border); background:var(--gray-100); }
 .listing-gallery-thumbs { display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; }
 .listing-gallery-thumbs button { width:74px; height:58px; flex:0 0 auto; padding:0; border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; background:white; }

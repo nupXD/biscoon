@@ -7,7 +7,6 @@
 <meta name="description" content="Connecting 4.5 million Nepalis worldwide through community, commerce, and culture."/>
 <link rel="stylesheet" href="assets/css/main.css"/>
 <link rel="stylesheet" href="./assets/css/pages/index.css"/>
-
 </head>
 <body>
 
@@ -125,39 +124,30 @@
     <a href="pages/community/discussions.html">Discussions</a>
     <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="pages/auth/login.html">साइन इन</a>
     <a class="btn-primary" href="pages/auth/signup.html">साइन अप</a>
   </div>
   <div class="user-dropdown index-inline-5" id="userDropdown">
-    <button class="user-btn" id="userBtn">
+    <button class="user-btn" id="userBtn" aria-haspopup="true" aria-expanded="false">
       <span class="user-avatar">👤</span>
       <span class="user-name" id="userName">Profile</span>
       <span class="dropdown-arrow">▼</span>
     </button>
-    <div class="dropdown-menu" id="dropdownMenu">
-      <a href="pages/auth/profile.html">📋 My Profile</a>
-      <a href="pages/auth/activity.html">🧾 My Activity</a>
-      <a href="pages/post/listing.html">➕ Add Listing</a>
-      <a href="#" id="logoutBtn">🚪 Logout</a>
+    <div class="dropdown-menu" id="dropdownMenu" role="menu">
+      <a href="pages/auth/profile.html" role="menuitem">📋 My Profile</a>
+      <a href="pages/auth/activity.html" role="menuitem">🧾 My Activity</a>
+      <a href="pages/post/listing.html" role="menuitem">➕ Add Listing</a>
+      <a href="#" id="logoutBtn" role="menuitem">🚪 Logout</a>
     </div>
   </div>
-  <div class="user-dropdown index-inline-5" id="userDropdown">
-    <button class="user-btn" id="userBtn">
-      <span class="user-avatar">👤</span>
-      <span class="user-name" id="userName">User</span>
-      <span class="dropdown-arrow">▼</span>
-    </button>
-    <div class="dropdown-menu" id="dropdownMenu">
-      <a href="pages/auth/profile.html">प्रोफाइल</a>
-      <a href="pages/auth/activity.html">🧾 My Activity</a>
-      <a href="#" id="logoutBtn">लग आउट</a>
-    </div>
-  </div>
-  <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
 </nav>
-<div class="mobile-drawer" id="mobileDrawer">
-  
+<div class="mobile-drawer" id="mobileDrawer" role="navigation" aria-label="Mobile navigation">
     <a href="pages/marketplace/kinbech.html">किनबेच</a>
     <a href="pages/jobs/jobs.html">रोजगार</a>
     <a href="pages/housing/housing.html">घर / कोठा</a>
@@ -166,7 +156,6 @@
     <a href="pages/community/literature.html">साहित्य</a>
     <a href="pages/community/discussions.html">Discussions</a>
     <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
-  
   <div class="mobile-drawer-btns" id="mobileBtns">
     <a class="btn-ghost index-inline-6" href="pages/auth/login.html">साइन इन</a>
     <a class="btn-primary index-inline-6" href="pages/auth/signup.html">साइन अप</a>
@@ -180,16 +169,6 @@
     <a href="pages/auth/activity.html">🧾 My Activity</a>
     <a href="pages/post/listing.html">➕ Add Listing</a>
     <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
-  </div>
-</div>
-  <div class="mobile-user-menu index-inline-5" id="mobileUserMenu">
-    <div class="mobile-user-info">
-      <span class="user-avatar">👤</span>
-      <span class="user-name" id="mobileUserName">User</span>
-    </div>
-    <a href="pages/auth/profile.html">प्रोफाइल</a>
-    <a href="pages/auth/activity.html">🧾 My Activity</a>
-    <a href="#" id="mobileLogoutBtn">लग आउट</a>
   </div>
 </div>
 
@@ -212,7 +191,7 @@
       <option value="discussions">💬 Discussions</option>
     </select>
     <input type="text" class="search-input" placeholder="Search jobs, housing, services, discussions…" id="searchInput"/>
-    <button class="search-btn" onclick="doSearch()">खोज्नुस्</button>
+    <button class="search-btn" aria-label="Search listings">खोज्नुस्</button>
   </div>
   <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" class="index-inline-8"> · Detecting…</span></div>
   <div class="stats-strip">
@@ -220,7 +199,7 @@
     <div class="stat-cell"><span class="stat-num">39</span><span class="stat-lbl">Categories</span></div>
     <div class="stat-cell"><span class="stat-num">90+</span><span class="stat-lbl">Countries</span></div>
     <div class="stat-cell"><span class="stat-num">Free</span><span class="stat-lbl">To list</span></div>
-    <div class="stat-cell pg-stat" onclick="location.href='pages/paying-guest.html'"><span class="stat-num">🏡</span><span class="stat-lbl">शःशुल्क पाहुना</span></div>
+    <a class="stat-cell pg-stat" href="pages/housing/paying-guest.html"><span class="stat-num">🏡</span><span class="stat-lbl">शःशुल्क पाहुना</span></a>
   </div>
 </section>
 
@@ -230,7 +209,7 @@
       <div class="section-title">Search results</div>
       <div class="section-subtitle" id="searchResultsMeta">Enter a term and choose a category to surface matching posts.</div>
     </div>
-    <button class="btn-clear" onclick="clearSearch()">Clear search</button>
+    <button class="btn-clear" id="clearSearchBtn">Clear search</button>
   </div>
   <div id="searchResultsContainer" class="search-results-grid">
     <div class="search-results-empty">Search listings by keyword, category, or location to see matching posts.</div>
@@ -348,19 +327,20 @@
 
   <!-- SIDEBAR -->
   <div class="sidebar">
-    <div class="sidebar-widget">
-      <div class="widget-header">🌤 Boston Weather</div>
-      <div class="widget-body">
-        <div class="index-inline-10">
-          <span class="index-inline-11">⛅</span>
+    <div class="sidebar-widget" id="weatherWidget">
+      <div class="widget-header" id="weatherHeader">🌤 Local Weather</div>
+      <div class="widget-body" id="weatherBody">
+        <div class="weather-main">
+          <span class="weather-icon" id="weatherIcon">🌡️</span>
           <div>
-            <div class="index-inline-12">62°F</div>
-            <div class="index-inline-13">Boston, Massachusetts</div>
+            <div class="weather-temp" id="weatherTemp" style="font-size:20px;opacity:.5">Loading…</div>
+            <div class="weather-condition" id="weatherCondition"></div>
+            <div class="weather-city" id="weatherCity"></div>
           </div>
         </div>
-        <div class="widget-row"><span class="lbl">Humidity</span><span class="val">58%</span></div>
-        <div class="widget-row"><span class="lbl">Wind</span><span class="val">12 mph SW</span></div>
-        <div class="widget-row"><span class="lbl">High / Low</span><span class="val">65° / 54°</span></div>
+        <div class="widget-row"><span class="lbl">Humidity</span><span class="val" id="weatherHumidity">—</span></div>
+        <div class="widget-row"><span class="lbl">Wind</span><span class="val" id="weatherWind">—</span></div>
+        <div class="widget-row"><span class="lbl">High / Low</span><span class="val" id="weatherHighLow">— / —</span></div>
       </div>
     </div>
     <div class="sidebar-widget">

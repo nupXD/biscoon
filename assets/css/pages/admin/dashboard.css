@@ -90,7 +90,7 @@ button,input,select,textarea{font:inherit}
 
 /* ── Quick actions ── */
 .dash-quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
-.dash-action-btn{background:#fff;border:1px solid var(--admin-line);border-radius:8px;padding:10px 18px;font-size:13px;font-weight:650;color:#1a2332;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.dash-action-btn{background:#fff;border:1px solid var(--admin-line);border-radius:8px;padding:10px 18px;font-size:13px;font-weight:650;color:#1a2332;cursor:pointer;font-family:inherit;transition:background 150ms ease-out,border-color 150ms ease-out,box-shadow 150ms ease-out,transform 200ms var(--ease-out,cubic-bezier(0.23,1,0.32,1));display:flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .dash-action-btn:hover{background:#f8fafc;border-color:#c5cdd8;transform:translateY(-1px);box-shadow:var(--admin-shadow-soft)}
 .dash-action-primary{background:#C0392B;color:#fff;border-color:#C0392B}
 .dash-action-primary:hover{background:#a93226;border-color:#a93226;transform:translateY(-1px)}
@@ -121,15 +121,15 @@ button,input,select,textarea{font:inherit}
 .dash-mini-date{font-size:11px;color:#9ca3af}
 
 /* ── Clickable feed ── */
-.dash-feed-clickable{cursor:pointer;border-radius:6px;transition:background .12s,transform .12s}
-.dash-feed-clickable:hover{background:#f8fafc;transform:translateX(2px)}
+.dash-feed-clickable{cursor:pointer;border-radius:6px;transition:background .12s,transform 180ms var(--ease-out,cubic-bezier(0.23,1,0.32,1))}
+@media(hover:hover)and(pointer:fine){.dash-feed-clickable:hover{background:#f8fafc;transform:translateX(3px)}}
 .admin-feed-icon-user{background:#dbeafe}
 .admin-feed-icon-listing{background:#dcfce7}
 .admin-feed-icon-discussion{background:#ede9fe}
 
 /* ── Clickable mini items ── */
-.dash-mini-clickable{cursor:pointer;transition:background .12s,transform .12s}
-.dash-mini-clickable:hover{background:#f8fafc;transform:translateX(2px)}
+.dash-mini-clickable{cursor:pointer;transition:background .12s,transform 180ms var(--ease-out,cubic-bezier(0.23,1,0.32,1))}
+@media(hover:hover)and(pointer:fine){.dash-mini-clickable:hover{background:#f8fafc;transform:translateX(3px)}}
 
 /* ── Clickable table title ── */
 .admin-link{color:#1a2332;cursor:pointer;font-weight:600;text-decoration:none}
@@ -206,7 +206,7 @@ button,input,select,textarea{font:inherit}
 .admin-news-preview{width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-top:14px;background:#f0f2f5}
 .admin-news-body{font-size:14px;line-height:1.75;color:#1a2332;margin-top:16px}
 .admin-news-body p{margin-bottom:13px}
-.admin-news-body h3{font-size:19px;line-height:1.25;margin:18px 0 8px;color:#111827}
+.admin-news-body h2,.admin-news-body h3{font-size:19px;line-height:1.25;margin:18px 0 8px;color:#111827}
 .admin-news-body blockquote{border-left:4px solid #C0392B;margin:16px 0;padding:8px 14px;background:#f8f9fb;color:#374151;font-style:italic}
 .admin-news-formatbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .admin-news-help{font-size:12px;color:#6b7a8d;margin:6px 0 10px}
@@ -343,6 +343,15 @@ button,input,select,textarea{font:inherit}
 .admin-modal-input,.admin-modal-textarea,.admin-modal-select{border:1px solid #dfe5ee;border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;color:#1a2332;width:100%;background:#fff}
 .admin-modal-input:focus,.admin-modal-textarea:focus,.admin-modal-select:focus{border-color:#C0392B;box-shadow:0 0 0 4px rgba(192,57,43,.08)}
 .admin-modal-textarea{resize:vertical;min-height:90px}
+.admin-news-rich-editor{border:1px solid #dfe5ee;border-radius:8px;background:#fff;min-height:280px;overflow:hidden}
+.admin-news-rich-editor:focus-within{border-color:#C0392B;box-shadow:0 0 0 4px rgba(192,57,43,.08)}
+.admin-news-rich-editor-surface{min-height:280px;padding:14px 16px;outline:none;font-size:14px;line-height:1.7;color:#1a2332}
+.admin-news-rich-editor-surface p{margin:0 0 12px}
+.admin-news-rich-editor-surface h2{font-size:24px;line-height:1.2;margin:18px 0 10px;color:#101827}
+.admin-news-rich-editor-surface blockquote{margin:14px 0;padding:10px 14px;border-left:4px solid #C0392B;background:#f8f9fb;color:#4b5563}
+.admin-news-rich-editor-surface img,.admin-news-rich-editor-surface video{max-width:100%;border-radius:8px;border:1px solid #e5e9ef;display:block;margin:12px 0}
+.admin-news-hidden-body{display:none}
+.admin-news-formatbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .admin-modal-error{background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:14px;display:none}
 .admin-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #f0f2f5}
 .admin-modal-meta{font-size:12px;color:#6b7a8d;margin-bottom:16px;padding:10px 14px;background:#f8f9fb;border-radius:8px}
@@ -350,9 +359,9 @@ button,input,select,textarea{font:inherit}
 .admin-view-link{color:#C0392B;word-break:break-all;text-decoration:none}
 .admin-view-link:hover{text-decoration:underline}
 .admin-listing-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin:14px 0 18px}
-.admin-listing-photo-link{display:block;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1px solid #e5e9ef;background:#f8f9fb}
-.admin-listing-photo-link img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .18s ease}
-.admin-listing-photo-link:hover img{transform:scale(1.03)}
+.admin-listing-photo-link{display:block;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1px solid #e5e9ef;background:#f8f9fb;cursor:zoom-in}
+.admin-listing-photo-link img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 250ms var(--ease-out,cubic-bezier(0.23,1,0.32,1))}
+@media(hover:hover)and(pointer:fine){.admin-listing-photo-link:hover img{transform:scale(1.06)}}
 .admin-listing-gallery-empty{border:1.5px dashed #d8dee8;border-radius:8px;padding:18px;text-align:center;color:#6b7a8d;background:#f8f9fb;margin:14px 0 18px;font-size:13px}
 .admin-listing-tags{display:flex;gap:6px;flex-wrap:wrap}
 

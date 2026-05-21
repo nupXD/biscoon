@@ -26,14 +26,15 @@
 .stat-cell.pg-stat .stat-num, .stat-cell.pg-stat .stat-lbl { color:white }
 /* Category Grid */
 .cat-section { padding:44px 40px; background:var(--off-white); border-top:1px solid var(--border) }
-.cat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:9px; margin-top:22px }
-.cat-card { border:1.5px solid var(--border); border-radius:10px; padding:13px 8px; text-align:center; cursor:pointer; transition:background .15s,border-color .2s,transform .2s,box-shadow .2s; position:relative; background:white; text-decoration:none; display:block; color:inherit }
-.cat-card:hover { background:var(--red-ultra); border-color:var(--red); transform:translateY(-2px); box-shadow:0 4px 14px rgba(192,57,43,.1) }
-.cat-card:hover .cn,.cat-card:hover .ce { color:var(--red) }
+.cat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:12px; margin-top:22px; isolation:isolate }
+.cat-card { border:1.5px solid var(--border); border-radius:10px; min-height:104px; padding:16px 10px; text-align:center; cursor:pointer; transition:background .15s,border-color .2s,transform .2s,box-shadow .2s; position:relative; background:white; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; color:inherit; transform-origin:center; will-change:transform }
+.cat-card:hover,.cat-card:focus-visible { background:var(--red-ultra); border-color:var(--red); transform:translateY(-7px) scale(1.14); box-shadow:0 18px 42px rgba(13,27,62,.18),0 8px 24px rgba(192,57,43,.14); z-index:20 }
+.cat-card:hover .cn,.cat-card:hover .ce,.cat-card:focus-visible .cn,.cat-card:focus-visible .ce { color:var(--red) }
 .cat-card.featured { border-color:var(--red); border-width:2px; background:var(--red-ultra) }
-.cat-emoji { font-size:22px; display:block; margin-bottom:5px; line-height:1.3 }
-.cn { font-family:'Noto Sans Devanagari',sans-serif; font-size:10.5px; font-weight:500; color:var(--text); display:block; line-height:1.3; transition:color .15s }
-.ce { font-size:9.5px; color:var(--text-muted); display:block; margin-top:2px; transition:color .15s }
+.cat-emoji { font-size:27px; display:block; margin-bottom:6px; line-height:1.15; transition:transform .2s }
+.cat-card:hover .cat-emoji,.cat-card:focus-visible .cat-emoji { transform:scale(1.18) }
+.cn { font-family:'Noto Sans Devanagari',sans-serif; font-size:12px; font-weight:600; color:var(--text); display:block; line-height:1.3; transition:color .15s }
+.ce { font-size:11px; color:var(--text-muted); display:block; margin-top:3px; transition:color .15s }
 .badge-new { position:absolute; top:5px; right:5px; background:var(--gold); color:var(--navy); font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
 .badge-feat { position:absolute; top:5px; left:5px; background:var(--red); color:white; font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
 /* Alert banners */
@@ -47,20 +48,20 @@
 /* Listings layout */
 .listings-wrap { display:grid; grid-template-columns:1fr 300px; gap:24px; padding:24px 40px 48px; align-items:start }
 .filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border) }
-.filter-btn { padding:5px 13px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:11.5px; cursor:pointer; font-family:'Noto Sans Devanagari',sans-serif; color:var(--gray-600); transition:all .15s; white-space:nowrap }
+.filter-btn { padding:5px 13px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:11.5px; cursor:pointer; font-family:'Noto Sans Devanagari',sans-serif; color:var(--gray-600); transition:background 150ms ease-out,border-color 150ms ease-out,color 150ms ease-out; white-space:nowrap }
 .filter-btn:hover { background:var(--red-ultra); border-color:var(--red-light); color:var(--red) }
 .filter-btn.active { background:var(--red); border-color:var(--red); color:white }
 .filter-btn.pg-filter { background:var(--red-ultra); border-color:var(--red); color:var(--red); font-weight:600 }
 .filter-btn.pg-filter:hover,.filter-btn.pg-filter.active { background:var(--red); color:white }
-.search-results-panel { background:white; border:1px solid var(--border); border-radius:20px; padding:24px 28px; margin:0 40px 32px; box-shadow:0 18px 48px rgba(0,0,0,.06); }
+.search-results-panel { background:white; border:1px solid var(--border); border-radius:20px; padding:24px 28px; margin:0 40px 32px; box-shadow:0 18px 48px rgba(0,0,0,.06); scroll-margin-top:calc(var(--nav-h) + 8px); }
 .search-results-header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
 .search-results-header .section-title { margin:0; }
 .search-results-header .section-subtitle { margin:0; color:var(--text-muted); font-size:13px; max-width:760px; }
-.btn-clear { border:1px solid var(--border); background:white; color:var(--navy); padding:10px 18px; border-radius:999px; cursor:pointer; transition:all .15s; font-size:13px; }
+.btn-clear { border:1px solid var(--border); background:white; color:var(--navy); padding:10px 18px; border-radius:999px; cursor:pointer; transition:background 180ms ease-out,color 180ms ease-out,border-color 180ms ease-out; font-size:13px; }
 .btn-clear:hover { background:var(--navy); color:white; border-color:var(--navy); }
 .search-results-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
 .search-results-empty { padding:30px 0; color:var(--text-muted); font-size:14px; }
-.search-discussion-card { border:1.5px solid var(--border); border-radius:10px; padding:16px; background:white; color:inherit; text-decoration:none; transition:border-color .15s,box-shadow .15s,transform .15s; }
+.search-discussion-card { border:1.5px solid var(--border); border-radius:10px; padding:16px; background:white; color:inherit; text-decoration:none; transition:border-color 180ms ease-out,box-shadow 200ms ease-out,transform 220ms var(--ease-out,cubic-bezier(0.23,1,0.32,1)); }
 .search-discussion-card:hover { border-color:var(--red); box-shadow:0 3px 14px rgba(192,57,43,.09); transform:translateY(-1px); }
 .search-discussion-kicker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; font-size:11px; color:var(--text-muted); }
 .search-discussion-kicker .discussion-category { display:inline-flex; align-items:center; padding:2px 7px; border-radius:4px; background:var(--gray-100); color:var(--gray-600); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
@@ -158,3 +159,122 @@
 .index-inline-19 { display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px }
 .index-inline-20 { color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:1px;flex-shrink:0 }
 .index-inline-21 { font-family:'Noto Sans Devanagari',sans-serif;color:rgba(255,255,255,.2) }
+
+/* ═══════════════════════════════════════════
+   HOMEPAGE POLISH — Emil Design Engineering
+═══════════════════════════════════════════ */
+
+/* ── Hero entrance stagger ── */
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(22px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+.hero-eyebrow    { animation: heroFadeUp 550ms var(--ease-out, cubic-bezier(0.23,1,0.32,1))  60ms both }
+.biscoon-name    { animation: heroFadeUp 650ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 160ms both }
+.biscoon-sub     { animation: heroFadeUp 550ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 260ms both }
+.hero-devanagari { animation: heroFadeUp 450ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 330ms both }
+.hero-desc       { animation: heroFadeUp 450ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 390ms both }
+.hero .search-bar { animation: heroFadeUp 450ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 460ms both }
+.location-bar    { animation: heroFadeUp 400ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 540ms both }
+.stats-strip     { animation: heroFadeUp 500ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 600ms both }
+
+/* ── Cat card hover — reduced scale, proper easing, touch guard ── */
+.cat-card {
+  transition: background 180ms ease-out, border-color 180ms ease-out,
+              transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)),
+              box-shadow 220ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .cat-card:hover, .cat-card:focus-visible {
+    background: var(--red-ultra);
+    border-color: var(--red);
+    transform: translateY(-5px) scale(1.06);
+    box-shadow: 0 12px 32px rgba(13,27,62,.14), 0 6px 16px rgba(192,57,43,.10);
+    z-index: 20;
+  }
+  .cat-card:hover .cn, .cat-card:hover .ce,
+  .cat-card:focus-visible .cn, .cat-card:focus-visible .ce { color: var(--red) }
+  .cat-emoji { transition: transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) }
+  .cat-card:hover .cat-emoji, .cat-card:focus-visible .cat-emoji { transform: scale(1.12) }
+}
+.cat-card:active { transform: scale(0.97) !important; transition-duration: 100ms !important }
+
+/* ── Cat card scroll-reveal stagger ── */
+.cat-section.animate-ready .cat-card {
+  opacity: 0;
+  transform: translateY(18px) scale(0.97);
+}
+@keyframes catReveal {
+  from { opacity: 0; transform: translateY(18px) scale(0.97) }
+  to   { opacity: 1; transform: none }
+}
+.cat-section.is-revealed .cat-card {
+  animation: catReveal 380ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) both;
+}
+.cat-section.is-revealed .cat-card:nth-child(1)   { animation-delay:   0ms }
+.cat-section.is-revealed .cat-card:nth-child(2)   { animation-delay:  35ms }
+.cat-section.is-revealed .cat-card:nth-child(3)   { animation-delay:  70ms }
+.cat-section.is-revealed .cat-card:nth-child(4)   { animation-delay: 105ms }
+.cat-section.is-revealed .cat-card:nth-child(5)   { animation-delay: 140ms }
+.cat-section.is-revealed .cat-card:nth-child(6)   { animation-delay: 175ms }
+.cat-section.is-revealed .cat-card:nth-child(7)   { animation-delay: 210ms }
+.cat-section.is-revealed .cat-card:nth-child(n+8) { animation-delay: 265ms }
+
+/* ── Scroll-reveal for sections (added via JS) ── */
+.reveal-section {
+  transition: opacity 560ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)),
+              transform 560ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
+}
+.reveal-section:not(.is-revealed) { opacity: 0; transform: translateY(28px) }
+.reveal-section.is-revealed { opacity: 1; transform: none }
+
+/* ── Journal card improvements ── */
+.journal-card {
+  transition: background 200ms ease-out,
+              transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)),
+              box-shadow 220ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .journal-card:hover { background: var(--navy-light); transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.28) }
+}
+.journal-card:active { transform: scale(0.98) }
+
+/* ── FB card improvements ── */
+.fb-card {
+  transition: border-color 180ms ease-out,
+              transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)),
+              box-shadow 220ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .fb-card:hover { border-color: #1877F2; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(24,119,242,.14) }
+}
+.fb-card:active { transform: scale(0.98) }
+.fb-card-btn { transition: background 150ms ease-out, color 150ms ease-out, transform 120ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) }
+.fb-card-btn:active { transform: scale(0.97) }
+
+/* ── Heatmap dot — guard hover on touch ── */
+.heatmap-dot { transition: transform 200ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)), opacity 200ms ease-out }
+@media (hover: hover) and (pointer: fine) {
+  .heatmap-dot:hover { transform: translate(-50%,-50%) scale(1.3) !important; opacity: 1; z-index: 10; animation: none }
+}
+
+/* ── Stat cell ── */
+.stat-cell { transition: background 150ms ease-out, transform 150ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) }
+.stat-cell:not(.pg-stat):active { transform: scale(0.97) }
+.stat-cell.pg-stat { transition: background 150ms ease-out }
+
+/* ── Fix filter-btn on homepage (overrides main.css for index page) ── */
+.listings-wrap .filter-btn {
+  transition: background 150ms ease-out, border-color 150ms ease-out,
+              color 150ms ease-out, transform 120ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
+}
+.listings-wrap .filter-btn:active { transform: scale(0.95) }
+
+/* ── prefers-reduced-motion: disable all hero + reveal animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .hero-eyebrow, .biscoon-name, .biscoon-sub, .hero-devanagari,
+  .hero-desc, .hero .search-bar, .location-bar, .stats-strip { animation: none }
+  .cat-section.animate-ready .cat-card { opacity: 1; transform: none }
+  .cat-section.is-revealed .cat-card { animation: none }
+  .reveal-section:not(.is-revealed) { opacity: 1; transform: none }
+}
