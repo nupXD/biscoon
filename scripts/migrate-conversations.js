@@ -1,5 +1,8 @@
-const connectDatabase = require('../src/config/database');
-const Conversation = require('../src/models/Conversation');
+const connectDatabaseModule = require('../src/config/database');
+const conversationModule = require('../src/models/Conversation');
+
+const connectDatabase = connectDatabaseModule.default || connectDatabaseModule;
+const Conversation = conversationModule.default || conversationModule;
 
 const MAX_MESSAGES_PER_CONVERSATION = 200;
 

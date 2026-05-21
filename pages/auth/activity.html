@@ -18,6 +18,10 @@
     <a href="../marketplace/services.html">सेवाहरू</a>
     <a href="../community/discussions.html">Discussions</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="login.html">साइन इन</a>
     <a class="btn-primary" href="signup.html">साइन अप</a>
@@ -31,14 +35,24 @@
   <a href="../marketplace/services.html">सेवाहरू</a>
   <a href="../community/discussions.html">Discussions</a>
   <div class="mobile-drawer-btns" id="mobileBtns">
-    <a class="btn-ghost activity-inline-1" href="login.html">साइन इन</a>
-    <a class="btn-primary activity-inline-1" href="signup.html">साइन अप</a>
+    <a class="btn-ghost" href="login.html">साइन इन</a>
+    <a class="btn-primary" href="signup.html">साइन अप</a>
+  </div>
+  <div class="mobile-user-menu" id="mobileUserMenu">
+    <div class="mobile-user-info">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="mobileUserName">Profile</span>
+    </div>
+    <a href="profile.html">📋 My Profile</a>
+    <a href="activity.html" aria-current="page">🧾 My Activity</a>
+    <a href="../post/listing.html">➕ Add Listing</a>
+    <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
   </div>
 </div>
 <div class="breadcrumb">
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
-  <span>My Activity</span>
+  <span aria-current="page">My Activity</span>
 </div>
 <main class="activity-page">
   <section class="activity-head">
@@ -55,9 +69,22 @@
     <button class="activity-filter" type="button" data-activity-filter="listing_comment">Listing comments</button>
     <button class="activity-filter" type="button" data-activity-filter="listing_reply">Listing replies</button>
   </section>
-  <section class="activity-list" id="activityList">Loading activity...</section>
+  <section class="activity-list" id="activityList" aria-live="polite">
+    <div class="loading-placeholder" id="activityLoading">
+      <div class="loading-spinner"></div>
+      <p>Loading activity…</p>
+    </div>
+  </section>
 </main>
 <script src="../../assets/js/biscoon.js"></script>
 <script src="../../assets/js/activity.js"></script>
+<script>
+  setTimeout(function() {
+    var el = document.getElementById('activityLoading');
+    if (el && el.parentElement.contains(el)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Could not load activity</h3><p>Something went wrong. <button class="btn-ghost" onclick="location.reload()" style="display:inline;padding:4px 10px;font-size:13px;">Try again</button></p></div>';
+    }
+  }, 10000);
+</script>
 </body>
 </html>

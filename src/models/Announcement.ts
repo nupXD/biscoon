@@ -10,6 +10,8 @@ const announcementSchema = new mongoose.Schema({
   active:    { type: Boolean, default: true },
   expiresAt: { type: Date, default: null },
   createdBy: { type: String, default: '' },
+  deleted:   { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 }, { collection: 'announcements' });
 

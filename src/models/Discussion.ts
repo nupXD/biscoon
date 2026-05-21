@@ -21,6 +21,8 @@ const discussionSchema = new mongoose.Schema({
   category: { type: String, default: 'general', index: true },
   tags: [{ type: String }],
   comments: [commentSchema],
+  deleted:   { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now },
 }, { collection: 'discussions' });

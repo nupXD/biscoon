@@ -85,6 +85,25 @@ interface AdminReport {
   createdAt?: string;
 }
 
+interface AdminSpotlight {
+  id: string;
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  badgeText?: string;
+  badgeColor?: string;
+  imageUrl?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  type?: string;
+  active?: boolean;
+  order?: number;
+  startDate?: string;
+  endDate?: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
 interface AdminAnnouncement {
   id: string;
   title?: string;
@@ -144,6 +163,7 @@ const _s = {
   discussions:   { page: 1 },
   comments:      { page: 1, type: 'all' },
   reports:       { page: 1, status: 'open' },
+  spotlight:     {},
   announcements: {},
   audit:         { page: 1, action: 'all', targetType: 'all', search: '' },
 };
@@ -188,7 +208,7 @@ const VIEW_TITLES = {
   dashboard: 'Dashboard', users: 'Users', listings: 'Listings',
   events: 'Events',
   news: 'News', discussions: 'Discussions', comments: 'Comments', reports: 'Reports',
-  announcements: 'Announcements', audit: 'Audit Logs',
+  spotlight: 'Hero Spotlight', announcements: 'Announcements', audit: 'Audit Logs', trash: 'Trash',
 };
 
 const VIEW_HINTS = {
@@ -200,7 +220,9 @@ const VIEW_HINTS = {
   discussions: 'Create and moderate community discussion threads.',
   comments: 'Review listing and discussion comments from one moderation queue.',
   reports: 'Track reported content and move each report through review.',
+  spotlight: 'Manage Netflix-style hero banners shown on the homepage — ads, events, promos.',
   announcements: 'Publish site-wide messages and control visibility.',
+  trash: 'Soft-deleted content — the internet is forever. Only super-admins can restore or permanently delete.',
   audit: 'Review super-admin activity, content changes, and moderation actions.',
 };
 
@@ -212,6 +234,7 @@ const VIEW_PERMISSION = {
   discussions: 'discussions',
   comments: 'comments',
   reports: 'reports',
+  spotlight: 'announcements',
   announcements: 'announcements',
 };
 
@@ -240,8 +263,9 @@ function navigate(view: string): void {
   ({ dashboard: showDashboard, users: showUsers, listings: showListings,
      events: showEvents,
      news: showNews, discussions: showDiscussions,
-     comments: showComments, reports: showReports, announcements: showAnnouncements,
-     audit: showAuditLogs })[view]?.();
+     comments: showComments, reports: showReports,
+     spotlight: showSpotlights, announcements: showAnnouncements,
+     audit: showAuditLogs, trash: showTrash })[view]?.();
 }
 
 function content(html: string): void {
@@ -304,8 +328,10 @@ function refreshCurrentView(showToast: boolean = false): void {
     discussions: showDiscussions,
     comments: showComments,
     reports: showReports,
+    spotlight: showSpotlights,
     announcements: showAnnouncements,
     audit: showAuditLogs,
+    trash: showTrash,
   };
   const refresh = handlers[_view];
   if (!refresh) return;
@@ -1798,6 +1824,403 @@ function formatAuditMetadata(metadata: Record<string, unknown> = {}): string {
 /* ══════════════════════════════════════
    ANNOUNCEMENTS
 ══════════════════════════════════════ */
+/* ── Trash ── */
+async function showTrash(): Promise<void> {
+  try {
+    const data = await api('/api/admin/trash');
+
+    const section = (label: string, icon: string, items: any[], renderRow: (item: any) => string[]) => {
+      if (!items.length) return '';
+      return `
+        <div class="admin-card" style="margin-bottom:24px">
+          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+            <span>${icon}</span><span>${label}</span>
+            <span style="font-size:11px;font-weight:400;color:#888;margin-left:auto">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+          </div>
+          ${table(
+            ['Title / Name', 'Info', 'Deleted', 'Restore'],
+            items.map(renderRow)
+          )}
+        </div>`;
+    };
+
+    const restoreBtn = (type: string, id: string) =>
+      `<button class="admin-btn admin-btn-ghost" style="font-size:11px" data-restore-type="${esc(type)}" data-restore-id="${esc(id)}">↩ Restore</button>`;
+
+    content(`
+      <div style="max-width:900px">
+        <div style="background:#fff8f0;border:1.5px solid #f5c97a;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:13px;color:#7a5000;line-height:1.5">
+          🌐 <strong>The internet is forever.</strong> Deleted content is never truly gone — it's preserved here and invisible to regular users. Only super-admins can restore items.
+        </div>
+        ${section('Listings', '📋', data.listings, l => [
+          esc(l.title || '(untitled)'),
+          badge(l.category || '', 'gray'),
+          fmtDate(l.deletedAt),
+          restoreBtn('listing', l.id),
+        ])}
+        ${section('Discussions', '💬', data.discussions, d => [
+          esc(d.title || '(untitled)'),
+          esc(d.authorName || ''),
+          fmtDate(d.deletedAt),
+          restoreBtn('discussion', d.id),
+        ])}
+        ${section('News', '📰', data.news, n => [
+          esc(n.title || '(untitled)'),
+          badge(n.status || 'draft', n.status === 'published' ? 'green' : 'gray'),
+          fmtDate(n.deletedAt),
+          restoreBtn('news', n.id),
+        ])}
+        ${section('Announcements', '📢', data.announcements, a => [
+          esc(a.title || '(untitled)'),
+          '',
+          fmtDate(a.deletedAt),
+          restoreBtn('announcement', a.id),
+        ])}
+        ${section('Spotlights', '🎬', data.spotlights, s => [
+          esc(s.title || '(untitled)'),
+          badge(s.type || 'ad', 'blue'),
+          fmtDate(s.deletedAt),
+          restoreBtn('spotlight', s.id),
+        ])}
+        ${section('Users', '👤', data.users, u => [
+          `${esc(u.name)} <span style="color:#888;font-size:11px">${esc(u.email)}</span>`,
+          badge(u.role || 'user', 'gray'),
+          fmtDate(u.deletedAt),
+          restoreBtn('user', u.id),
+        ])}
+        ${!data.listings.length && !data.discussions.length && !data.news.length &&
+          !data.announcements.length && !data.spotlights.length && !data.users.length
+          ? '<div class="admin-empty">Trash is empty — nothing has been soft-deleted yet.</div>' : ''}
+      </div>
+    `);
+  } catch (err) { content(`<div class="admin-error">${esc(err.message)}</div>`); }
+}
+
+/* ── Hero Spotlights ── */
+async function showSpotlights(): Promise<void> {
+  try {
+    const data = await api('/api/admin/spotlights');
+    const typeColors: Record<string, string> = { ad: 'blue', event: 'green', news: 'gray', promo: 'red' };
+
+    content(`
+      <div class="admin-ann-form">
+        <div class="admin-ann-form-title">🎬 Create New Spotlight</div>
+        <div id="spotFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:12px"></div>
+        <div class="admin-ann-grid">
+          <div class="admin-ann-field admin-ann-full">
+            <label class="admin-ann-label">Title <span style="color:#C0392B">*</span></label>
+            <input class="admin-ann-input" id="spotTitle" placeholder="e.g. Dashain Mela 2025 — Register Now">
+          </div>
+          <div class="admin-ann-field admin-ann-full">
+            <label class="admin-ann-label">Subtitle</label>
+            <input class="admin-ann-input" id="spotSubtitle" placeholder="Short supporting line under the title">
+          </div>
+          <div class="admin-ann-field admin-ann-full">
+            <label class="admin-ann-label">Description</label>
+            <textarea class="admin-ann-textarea" id="spotBody" placeholder="Optional body text shown below the subtitle…" rows="2"></textarea>
+          </div>
+          <div class="admin-ann-field admin-ann-full">
+            <label class="admin-ann-label">Banner image <span style="color:#C0392B">*</span> <span style="font-weight:400;color:#888">(upload from PC or paste a URL · 1920×1080 ideal, max 5MB)</span></label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:white;transition:border-color .15s;white-space:nowrap" id="spotFileLbl">
+                📁 Browse…
+                <input type="file" id="spotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+              </label>
+              <input class="admin-ann-input" id="spotImageUrl" type="url" placeholder="…or paste https:// URL" style="flex:1;min-width:160px">
+            </div>
+            <div id="spotImgPreviewWrap" style="margin-top:8px;display:none">
+              <img id="spotImgPreview" src="" alt="Preview" style="max-width:100%;max-height:160px;border-radius:6px;border:1.5px solid var(--border);object-fit:cover">
+            </div>
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">Badge text</label>
+            <input class="admin-ann-input" id="spotBadgeText" placeholder="e.g. EVENT · FREE ENTRY">
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">Badge color</label>
+            <input class="admin-ann-input" id="spotBadgeColor" type="color" value="#C0392B" style="height:38px;padding:2px 6px">
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">CTA button text</label>
+            <input class="admin-ann-input" id="spotCtaText" placeholder="e.g. Register Now">
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">CTA button URL</label>
+            <input class="admin-ann-input" id="spotCtaUrl" type="url" placeholder="https://…">
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">Type</label>
+            <select class="admin-ann-select" id="spotType">
+              <option value="ad">📣 Ad</option>
+              <option value="event">🎉 Event</option>
+              <option value="news">📰 News</option>
+              <option value="promo">🔥 Promo</option>
+            </select>
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">Display order</label>
+            <input class="admin-ann-input" id="spotOrder" type="number" value="0" min="0" placeholder="0 = first">
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">Show from (optional)</label>
+            <input class="admin-ann-input" id="spotStart" type="datetime-local">
+          </div>
+          <div class="admin-ann-field">
+            <label class="admin-ann-label">Show until (optional)</label>
+            <input class="admin-ann-input" id="spotEnd" type="datetime-local">
+          </div>
+        </div>
+        <div class="admin-ann-actions">
+          <button class="admin-btn" id="spotSubmit" style="background:#C0392B;color:#fff;border-color:#C0392B;padding:9px 22px;font-size:13px">Publish Spotlight</button>
+        </div>
+      </div>
+
+      <div class="admin-ann-list" id="spotList">
+        ${data.spotlights.length ? data.spotlights.map((s: AdminSpotlight) => `
+          <div class="admin-ann-card" style="align-items:flex-start">
+            <div class="admin-ann-stripe admin-ann-stripe-${s.type === 'event' ? 'success' : s.type === 'promo' ? 'warning' : 'info'}"></div>
+            ${s.imageUrl ? `<img src="${esc(s.imageUrl)}" alt="" style="width:96px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;margin-right:2px;margin-top:2px">` : ''}
+            <div class="admin-ann-content" style="flex:1;min-width:0">
+              <div class="admin-ann-card-title">${esc(s.title)}</div>
+              ${s.subtitle ? `<div style="font-size:12px;color:#555;margin-bottom:4px">${esc(s.subtitle)}</div>` : ''}
+              <div class="admin-ann-card-meta">
+                ${badge(s.active ? 'Live' : 'Inactive', s.active ? 'green' : 'gray')}
+                ${badge(s.type || 'ad', typeColors[s.type] || 'gray')}
+                ${s.badgeText ? badge(s.badgeText, 'blue') : ''}
+                <span>Order ${s.order ?? 0}</span>
+                <span>By ${esc(s.createdBy || 'admin')}</span>
+                ${s.endDate ? `<span>Until ${fmtDate(s.endDate)}</span>` : ''}
+              </div>
+              ${s.ctaText ? `<div style="font-size:11px;color:#888;margin-top:4px">CTA: ${esc(s.ctaText)}</div>` : ''}
+            </div>
+            <div class="admin-ann-card-actions">
+              <button class="admin-btn admin-btn-ghost" data-view-spot="${esc(s.id)}">👁 View</button>
+              <button class="admin-btn admin-btn-ghost" data-edit-spot="${esc(s.id)}">✏️ Edit</button>
+              <button class="admin-btn admin-btn-ghost" data-toggle-spot="${esc(s.id)}" title="${s.active ? 'Deactivate' : 'Activate'}">
+                ${s.active ? '⏸ Pause' : '▶ Activate'}
+              </button>
+              <button class="admin-btn admin-btn-danger" data-del-spot="${esc(s.id)}">🗑</button>
+            </div>
+          </div>
+        `).join('') : '<div class="admin-empty">No spotlights yet. Create one above to show a hero banner on the homepage.</div>'}
+      </div>
+    `);
+
+    function showSpotImgPreview(src: string): void {
+      const wrap = document.getElementById('spotImgPreviewWrap') as HTMLDivElement | null;
+      const img  = document.getElementById('spotImgPreview') as HTMLImageElement | null;
+      if (!wrap || !img) return;
+      if (src) { img.src = src; wrap.style.display = 'block'; }
+      else { wrap.style.display = 'none'; img.src = ''; }
+    }
+
+    // File picker → read as data URL, populate URL input and show preview
+    document.getElementById('spotImageFile')?.addEventListener('change', async function(this: HTMLInputElement) {
+      const file = this.files?.[0];
+      if (!file) return;
+      const lbl = document.getElementById('spotFileLbl');
+      if (lbl) lbl.textContent = `📁 ${file.name}`;
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
+        if (urlInput) urlInput.value = '';
+        (document.getElementById('spotImageUrl') as HTMLInputElement)?.setAttribute('data-file-data', dataUrl);
+        showSpotImgPreview(dataUrl);
+      } catch (_) {}
+    });
+
+    // URL input → show preview on blur
+    document.getElementById('spotImageUrl')?.addEventListener('blur', function(this: HTMLInputElement) {
+      if (this.value.trim()) showSpotImgPreview(this.value.trim());
+    });
+
+    document.getElementById('spotSubmit')?.addEventListener('click', async () => {
+      const title    = (document.getElementById('spotTitle') as HTMLInputElement)?.value.trim();
+      const subtitle = (document.getElementById('spotSubtitle') as HTMLInputElement)?.value.trim();
+      const body     = (document.getElementById('spotBody') as HTMLTextAreaElement)?.value.trim();
+      const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
+      const fileData = urlInput?.getAttribute('data-file-data') || '';
+      const imageUrl = fileData || urlInput?.value.trim() || '';
+      const badgeText  = (document.getElementById('spotBadgeText') as HTMLInputElement)?.value.trim();
+      const badgeColor = (document.getElementById('spotBadgeColor') as HTMLInputElement)?.value.trim();
+      const ctaText  = (document.getElementById('spotCtaText') as HTMLInputElement)?.value.trim();
+      const ctaUrl   = (document.getElementById('spotCtaUrl') as HTMLInputElement)?.value.trim();
+      const type     = (document.getElementById('spotType') as HTMLSelectElement)?.value;
+      const order    = parseInt((document.getElementById('spotOrder') as HTMLInputElement)?.value || '0', 10);
+      const startDate = (document.getElementById('spotStart') as HTMLInputElement)?.value || null;
+      const endDate   = (document.getElementById('spotEnd') as HTMLInputElement)?.value || null;
+      const errEl    = document.getElementById('spotFormError');
+      const btn      = document.getElementById('spotSubmit') as HTMLButtonElement | null;
+
+      errEl.style.display = 'none';
+      if (!title) { errEl.textContent = 'Title is required.'; errEl.style.display = 'block'; return; }
+      if (!imageUrl) { errEl.textContent = 'Image is required — upload a file or paste a URL.'; errEl.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Publishing…';
+      try {
+        await api('/api/admin/spotlights', {
+          method: 'POST',
+          body: JSON.stringify({ title, subtitle, body, imageUrl, badgeText, badgeColor, ctaText, ctaUrl, type, order, startDate, endDate }),
+        });
+        showSpotlights();
+        notify('Spotlight published.', 'success');
+      } catch (err) {
+        errEl.textContent = err.message; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Publish Spotlight';
+      }
+    });
+
+  } catch (err) { content(`<div class="admin-error">${esc(err.message)}</div>`); }
+}
+
+async function openViewSpotlight(id: string): Promise<void> {
+  let s: AdminSpotlight;
+  try { s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`); }
+  catch (err) { notify(err.message, 'error'); return; }
+
+  const typeColors: Record<string, string> = { ad: 'blue', event: 'green', news: 'gray', promo: 'red' };
+  openModal(`👁 ${esc(s.title || 'Spotlight')}`, `
+    ${s.imageUrl ? `<img src="${esc(s.imageUrl)}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-bottom:16px;display:block">` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;font-size:13px">
+      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Status</span>${badge(s.active ? 'Live' : 'Inactive', s.active ? 'green' : 'gray')}</div>
+      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Type</span>${badge(s.type || 'ad', typeColors[s.type || ''] || 'gray')}</div>
+      ${s.badgeText ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Badge</span><span style="background:${esc(s.badgeColor||'#C0392B')};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">${esc(s.badgeText)}</span></div>` : ''}
+      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Order</span>${s.order ?? 0}</div>
+      ${s.subtitle ? `<div style="grid-column:1/-1"><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Subtitle</span>${esc(s.subtitle)}</div>` : ''}
+      ${s.body ? `<div style="grid-column:1/-1"><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Body</span><span style="color:#555">${esc(s.body)}</span></div>` : ''}
+      ${s.ctaText ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">CTA</span>${esc(s.ctaText)}</div>` : ''}
+      ${s.ctaUrl ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">CTA URL</span><a href="${esc(s.ctaUrl)}" target="_blank" rel="noopener" style="color:var(--red);word-break:break-all">${esc(s.ctaUrl)}</a></div>` : ''}
+      ${s.startDate ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Show from</span>${fmtDate(s.startDate)}</div>` : ''}
+      ${s.endDate ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Show until</span>${fmtDate(s.endDate)}</div>` : ''}
+      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Created by</span>${esc(s.createdBy || 'admin')}</div>
+      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Created</span>${fmtDate(s.createdAt)}</div>
+    </div>
+  `, null);
+}
+
+function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
+  const toDatetimeLocal = (d?: string) => {
+    if (!d) return '';
+    try { return new Date(d).toISOString().slice(0, 16); } catch { return ''; }
+  };
+  return `
+    <div class="admin-modal-grid">
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Title <span style="color:#C0392B">*</span></label>
+        <input class="admin-modal-input" id="editSpotTitle" maxlength="200" value="${esc(s.title || '')}">
+      </div>
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Subtitle</label>
+        <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(s.subtitle || '')}">
+      </div>
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Description</label>
+        <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(s.body || '')}</textarea>
+      </div>
+      <div class="admin-modal-field admin-modal-full">
+        <label class="admin-modal-label">Banner image <span style="font-weight:400;color:#888">(upload or URL)</span></label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:white;white-space:nowrap" id="editSpotFileLbl">
+            📁 Browse…
+            <input type="file" id="editSpotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+          </label>
+          <input class="admin-modal-input" id="editSpotImageUrl" type="url" placeholder="…or paste https:// URL" value="${esc(s.imageUrl || '')}" style="flex:1;min-width:160px">
+        </div>
+        <div id="editSpotImgPreviewWrap" style="margin-top:8px;${s.imageUrl ? '' : 'display:none'}">
+          <img id="editSpotImgPreview" src="${esc(s.imageUrl || '')}" alt="Preview" style="max-width:100%;max-height:140px;border-radius:6px;border:1.5px solid var(--border);object-fit:cover">
+        </div>
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Badge text</label>
+        <input class="admin-modal-input" id="editSpotBadgeText" maxlength="40" value="${esc(s.badgeText || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Badge color</label>
+        <input class="admin-modal-input" id="editSpotBadgeColor" type="color" value="${esc(s.badgeColor || '#C0392B')}" style="height:38px;padding:2px 6px">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">CTA button text</label>
+        <input class="admin-modal-input" id="editSpotCtaText" maxlength="60" value="${esc(s.ctaText || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">CTA button URL</label>
+        <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(s.ctaUrl || '')}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Type</label>
+        <select class="admin-modal-select" id="editSpotType">
+          <option value="ad" ${s.type === 'ad' || !s.type ? 'selected' : ''}>📣 Ad</option>
+          <option value="event" ${s.type === 'event' ? 'selected' : ''}>🎉 Event</option>
+          <option value="news" ${s.type === 'news' ? 'selected' : ''}>📰 News</option>
+          <option value="promo" ${s.type === 'promo' ? 'selected' : ''}>🔥 Promo</option>
+        </select>
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Display order</label>
+        <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" value="${s.order ?? 0}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Show from</label>
+        <input class="admin-modal-input" id="editSpotStart" type="datetime-local" value="${toDatetimeLocal(s.startDate)}">
+      </div>
+      <div class="admin-modal-field">
+        <label class="admin-modal-label">Show until</label>
+        <input class="admin-modal-input" id="editSpotEnd" type="datetime-local" value="${toDatetimeLocal(s.endDate)}">
+      </div>
+    </div>`;
+}
+
+async function openEditSpotlight(id: string): Promise<void> {
+  let s: AdminSpotlight;
+  try { s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`); }
+  catch (err) { notify(err.message, 'error'); return; }
+
+  openModal(`✏️ Edit Spotlight`, spotlightFormHtml(s), async () => {
+    const urlInput = document.getElementById('editSpotImageUrl') as HTMLInputElement | null;
+    const fileData = urlInput?.getAttribute('data-file-data') || '';
+    const imageUrl = fileData || urlInput?.value.trim() || s.imageUrl || '';
+    const payload = {
+      title:      (document.getElementById('editSpotTitle') as HTMLInputElement)?.value.trim(),
+      subtitle:   (document.getElementById('editSpotSubtitle') as HTMLInputElement)?.value.trim(),
+      body:       (document.getElementById('editSpotBody') as HTMLTextAreaElement)?.value.trim(),
+      imageUrl,
+      badgeText:  (document.getElementById('editSpotBadgeText') as HTMLInputElement)?.value.trim(),
+      badgeColor: (document.getElementById('editSpotBadgeColor') as HTMLInputElement)?.value.trim(),
+      ctaText:    (document.getElementById('editSpotCtaText') as HTMLInputElement)?.value.trim(),
+      ctaUrl:     (document.getElementById('editSpotCtaUrl') as HTMLInputElement)?.value.trim(),
+      type:       (document.getElementById('editSpotType') as HTMLSelectElement)?.value,
+      order:      parseInt((document.getElementById('editSpotOrder') as HTMLInputElement)?.value || '0', 10),
+      startDate:  (document.getElementById('editSpotStart') as HTMLInputElement)?.value || null,
+      endDate:    (document.getElementById('editSpotEnd') as HTMLInputElement)?.value || null,
+    };
+    if (!payload.title) throw new Error('Title is required.');
+    await api(`/api/admin/spotlights/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
+    showSpotlights();
+  });
+
+  // Wire file picker after modal renders
+  requestAnimationFrame(() => {
+    document.getElementById('editSpotImageFile')?.addEventListener('change', async function(this: HTMLInputElement) {
+      const file = this.files?.[0];
+      if (!file) return;
+      const lbl = document.getElementById('editSpotFileLbl');
+      if (lbl) lbl.textContent = `📁 ${file.name}`;
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const urlInput2 = document.getElementById('editSpotImageUrl') as HTMLInputElement | null;
+        if (urlInput2) { urlInput2.value = ''; urlInput2.setAttribute('data-file-data', dataUrl); }
+        const wrap = document.getElementById('editSpotImgPreviewWrap') as HTMLDivElement | null;
+        const img  = document.getElementById('editSpotImgPreview') as HTMLImageElement | null;
+        if (wrap && img) { img.src = dataUrl; wrap.style.display = 'block'; }
+      } catch (_) {}
+    });
+    document.getElementById('editSpotImageUrl')?.addEventListener('blur', function(this: HTMLInputElement) {
+      const wrap = document.getElementById('editSpotImgPreviewWrap') as HTMLDivElement | null;
+      const img  = document.getElementById('editSpotImgPreview') as HTMLImageElement | null;
+      if (wrap && img && this.value.trim()) { img.src = this.value.trim(); wrap.style.display = 'block'; }
+    });
+  });
+}
+
 async function showAnnouncements(): Promise<void> {
   try {
     const data = await api('/api/admin/announcements');
@@ -2468,6 +2891,59 @@ document.addEventListener('click', async e => {
       await api(`/api/admin/${parentType}s/${encodeURIComponent(parentId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
       showComments(1);
       notify('Comment removed.', 'success');
+    } catch (err) { notify(err.message, 'error'); }
+    return;
+  }
+
+  // Restore from trash
+  const restoreBtn = (e.target as HTMLElement).closest<HTMLElement>('[data-restore-type]');
+  if (restoreBtn) {
+    const type = restoreBtn.dataset.restoreType;
+    const id   = restoreBtn.dataset.restoreId;
+    if (!await confirmAction(`Restore this ${type}? It will become visible again.`, {
+      title: 'Restore item',
+      confirmText: 'Restore',
+      tone: 'primary',
+    })) return;
+    try {
+      await api(`/api/admin/trash/${encodeURIComponent(type)}/${encodeURIComponent(id)}/restore`, { method: 'PUT' });
+      showTrash();
+      notify(`${capitalize(type)} restored successfully.`, 'success');
+    } catch (err) { notify(err.message, 'error'); }
+    return;
+  }
+
+  // View spotlight
+  const viewSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-view-spot]');
+  if (viewSpot) { openViewSpotlight(viewSpot.dataset.viewSpot); return; }
+
+  // Edit spotlight
+  const editSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-edit-spot]');
+  if (editSpot) { openEditSpotlight(editSpot.dataset.editSpot); return; }
+
+  // Toggle spotlight
+  const toggleSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-toggle-spot]');
+  if (toggleSpot) {
+    try {
+      await api(`/api/admin/spotlights/${encodeURIComponent(toggleSpot.dataset.toggleSpot)}/toggle`, { method: 'PUT' });
+      showSpotlights();
+      notify('Spotlight status updated.', 'success');
+    } catch (err) { notify(err.message, 'error'); }
+    return;
+  }
+
+  // Delete spotlight
+  const delSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-del-spot]');
+  if (delSpot) {
+    if (!await confirmAction('Delete this spotlight?', {
+      title: 'Delete spotlight',
+      confirmText: 'Delete spotlight',
+      tone: 'danger',
+    })) return;
+    try {
+      await api(`/api/admin/spotlights/${encodeURIComponent(delSpot.dataset.delSpot)}`, { method: 'DELETE' });
+      showSpotlights();
+      notify('Spotlight deleted.', 'success');
     } catch (err) { notify(err.message, 'error'); }
     return;
   }

@@ -23,6 +23,8 @@ const newsSchema = new mongoose.Schema({
   authorName:  { type: String, default: '' },
   createdBy:   { type: String, default: '' },
   publishedAt: { type: Date, default: null },
+  deleted:     { type: Boolean, default: false },
+  deletedAt:   { type: Date, default: null },
   createdAt:   { type: Date, default: Date.now },
   updatedAt:   { type: Date, default: Date.now },
 }, { collection: 'news' });

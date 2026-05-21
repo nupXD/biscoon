@@ -25,6 +25,7 @@ import announcementRoutes from './routes/announcements';
 import marketRoutes from './routes/market';
 import moderationRoutes from './routes/moderation';
 import newsRoutes from './routes/news';
+import spotlightRoutes from './routes/spotlight';
 import { captureException } from './config/monitoring';
 
 const app = express();
@@ -124,6 +125,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/spotlight', spotlightRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Endpoint not found.' });

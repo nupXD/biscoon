@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema({
   passwordResetExpiresAt: { type: Date },
   savedListings: [{ type: String }],
   createdBy: { type: String },
+  deleted:   { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { collection: 'users' });

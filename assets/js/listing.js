@@ -1347,10 +1347,10 @@ function renderInteractiveGallery(listing) {
     return `<div class="listing-detail-gallery single-default">${getDefaultListingImageMarkup(listing.category)}</div>`;
   }
   return `
-    <div class="listing-gallery-shell" data-gallery>
-      <button class="listing-gallery-main" type="button" data-gallery-open="${escapeHtml(images[0])}">
+    <div class="listing-gallery-shell" data-gallery data-pswp-gallery>
+      <a class="listing-gallery-main" href="${escapeHtml(images[0])}" data-pswp-src="${escapeHtml(images[0])}" aria-label="Open listing image">
         <img src="${escapeHtml(images[0])}" alt="${escapeHtml(listing.title || 'Listing image')}">
-      </button>
+      </a>
       ${images.length > 1 ? `
         <div class="listing-gallery-thumbs">
           ${images.map((image, index) => `
@@ -1431,7 +1431,10 @@ function bindListingModalInteractions(body) {
       const mainImage = shell?.querySelector('.listing-gallery-main img');
       const mainButton = shell?.querySelector('.listing-gallery-main');
       if (mainImage) mainImage.src = button.dataset.galleryThumb;
-      if (mainButton) mainButton.dataset.galleryOpen = button.dataset.galleryThumb;
+      if (mainButton) {
+        mainButton.dataset.pswpSrc = button.dataset.galleryThumb;
+        mainButton.setAttribute('href', button.dataset.galleryThumb);
+      }
       shell?.querySelectorAll('[data-gallery-thumb]').forEach(item => item.classList.toggle('active', item === button));
     });
   });

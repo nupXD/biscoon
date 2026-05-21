@@ -25,9 +25,8 @@
     <a href="../community/literature.html">साहित्य</a>
     <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
-  <a class="btn-ghost" href="login.html">साइन इन</a>
   <a class="btn-primary" href="signup.html">साइन अप</a>
-  <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer">
   
@@ -58,7 +57,7 @@
 <div class="breadcrumb">
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
-  <span>साइन इन</span>
+  <span aria-current="page">साइन इन</span>
 </div>
 <section class="auth-page">
   <div class="auth-hero">
@@ -69,21 +68,20 @@
     <div class="auth-card">
       <form id="loginForm" action="#" method="post">
         <div class="form-group">
-          <label class="form-label" for="email">इमेल ठेगाना / Email</label>
-          <input class="form-input" id="email" name="email" type="email" placeholder="you@example.com" required />
+          <label class="form-label required" for="email">इमेल ठेगाना / Email</label>
+          <input class="form-input" id="email" name="email" type="email" placeholder="you@example.com" required autocomplete="email" />
         </div>
         <div class="form-group">
-          <label class="form-label" for="password">पासवर्ड / Password</label>
-          <input class="form-input" id="password" name="password" type="password" placeholder="••••••••" required />
+          <label class="form-label required" for="password">पासवर्ड / Password</label>
+          <input class="form-input" id="password" name="password" type="password" placeholder="••••••••" required autocomplete="current-password" />
         </div>
         <div id="authMessage" class="form-helper"></div>
         <div class="form-row">
           <label><input type="checkbox" name="remember" /> Remember me</label>
-          <a href="#" class="pages-auth-login-inline-5">Forgot password?</a>
+          <button type="button" class="pages-auth-login-inline-5 btn-link" id="forgotPasswordBtn">Forgot password?</button>
         </div>
         <button class="btn-primary auth-button" type="submit">साइन इन गर्नुहोस्</button>
         <div class="auth-footer">नयाँ हुनुहुन्छ? <a href="signup.html">यहाँ साइन अप गर्नुहोस्</a></div>
-        <div class="auth-footer" style="margin-top:8px;font-size:12px"><a href="../admin/login.html" style="color:var(--gray-400)">Admin panel →</a></div>
       </form>
     </div>
     <aside class="auth-panel">

@@ -25,12 +25,16 @@
     <a href="../community/literature.html">साहित्य</a>
     <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="../auth/login.html">साइन इन</a>
     <a class="btn-primary" href="../auth/signup.html">साइन अप</a>
   </div>
   <div class="user-dropdown pages-post-listing-inline-3" id="userDropdown">
-    <button class="user-btn" id="userBtn">
+    <button class="user-btn" id="userBtn" type="button">
       <span class="user-avatar">👤</span>
       <span class="user-name" id="userName">Profile</span>
       <span class="dropdown-arrow">▼</span>
@@ -42,7 +46,7 @@
       <a href="#" id="logoutBtn">🚪 Logout</a>
     </div>
   </div>
-  <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer">
   
@@ -73,12 +77,12 @@
 <div class="breadcrumb">
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
-  <span>Post a Listing</span>
+  <span aria-current="page">Post a Listing</span>
 </div>
 <section class="post-page">
   <div class="post-hero">
     <div class="page-hero-eyebrow">Biscoon · Post Listing</div>
-    <div class="page-hero-title"><span class="emoji">✍️</span>Post a Listing</div>
+    <div class="page-hero-title"><span class="emoji" aria-hidden="true">✍️</span>Post a Listing</div>
     <div class="page-hero-devanagari">सूची प्रकाशित गर्नुहोस्</div>
     <p class="page-hero-desc">Create a new listing for jobs, housing, services, businesses, or events, and connect with Nepali communities across the world.</p>
   </div>

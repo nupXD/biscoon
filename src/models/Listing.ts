@@ -31,6 +31,8 @@ const listingSchema = new mongoose.Schema({
   tags: [{ type: String }],
   images: [{ type: String }],
   comments: [listingCommentSchema],
+  deleted:   { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { collection: 'listings' });
@@ -40,6 +42,7 @@ listingSchema.index({ category: 1, createdAt: -1 });
 listingSchema.index({ category: 1, subcategory: 1, createdAt: -1 });
 // userId index for "my listings" queries
 listingSchema.index({ userId: 1, createdAt: -1 });
+listingSchema.index({ deleted: 1, createdAt: -1 });
 
 listingSchema.index({
   title: 'text',

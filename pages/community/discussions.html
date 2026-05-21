@@ -26,6 +26,10 @@
     <a href="discussions.html" class="active">Discussions</a>
     <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="../auth/login.html">साइन इन</a>
     <a class="btn-primary" href="../auth/signup.html">साइन अप</a>
@@ -43,7 +47,7 @@
       <a href="#" id="logoutBtn">🚪 Logout</a>
     </div>
   </div>
-  <button class="hamburger" id="hamburger" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer">
   <a href="../marketplace/kinbech.html">किनबेच</a>
@@ -72,11 +76,11 @@
 <div class="breadcrumb">
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
-  <span>Discussions</span>
+  <span aria-current="page">Discussions</span>
 </div>
 <div class="page-hero">
   <div class="page-hero-eyebrow">Biscoon · Community</div>
-  <div class="page-hero-title"><span class="emoji">💬</span>Discussions</div>
+  <div class="page-hero-title"><span class="emoji" aria-hidden="true">💬</span>Discussions</div>
   <div class="page-hero-devanagari">छलफल</div>
   <div class="page-hero-desc">Ask questions, share advice, and keep conversations organized with comments and replies.</div>
 </div>
@@ -105,7 +109,7 @@
           <option value="newcomers">Newcomers</option>
         </select>
       </div>
-      <div id="discussionList" class="discussion-list">Loading discussions...</div>
+      <div id="discussionList" class="discussion-list" aria-live="polite" aria-label="Discussion topics">Loading discussions...</div>
     </aside>
     <section class="discussion-detail-panel" id="discussionDetail">
       <div class="discussion-empty">Choose a topic to read comments and replies.</div>
@@ -122,7 +126,7 @@
     <form id="discussionForm">
       <div class="form-row--two">
         <div class="form-group">
-          <label class="form-label" for="discussionTitle">Topic title</label>
+          <label class="form-label required" for="discussionTitle">Topic title</label>
           <input class="form-input" id="discussionTitle" name="title" type="text" maxlength="140" required />
         </div>
         <div class="form-group">
@@ -138,7 +142,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label" for="discussionBody">Details</label>
+        <label class="form-label required" for="discussionBody">Details</label>
         <textarea class="form-input" id="discussionBody" name="body" rows="5" required></textarea>
       </div>
       <div class="form-group">

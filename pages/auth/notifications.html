@@ -18,6 +18,10 @@
     <a href="../marketplace/services.html">सेवाहरू</a>
     <a href="../community/discussions.html">Discussions</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="login.html">साइन इन</a>
     <a class="btn-primary" href="signup.html">साइन अप</a>
@@ -31,14 +35,25 @@
   <a href="../marketplace/services.html">सेवाहरू</a>
   <a href="../community/discussions.html">Discussions</a>
   <div class="mobile-drawer-btns" id="mobileBtns">
-    <a class="btn-ghost notifications-inline-1" href="login.html">साइन इन</a>
-    <a class="btn-primary notifications-inline-1" href="signup.html">साइन अप</a>
+    <a class="btn-ghost" href="login.html">साइन इन</a>
+    <a class="btn-primary" href="signup.html">साइन अप</a>
+  </div>
+  <div class="mobile-user-menu" id="mobileUserMenu">
+    <div class="mobile-user-info">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="mobileUserName">Profile</span>
+    </div>
+    <a href="profile.html">📋 My Profile</a>
+    <a href="activity.html">🧾 My Activity</a>
+    <a href="notifications.html" aria-current="page">🔔 Notifications</a>
+    <a href="../post/listing.html">➕ Add Listing</a>
+    <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
   </div>
 </div>
 <div class="breadcrumb">
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
-  <span>Notifications</span>
+  <span aria-current="page">Notifications</span>
 </div>
 <main class="notifications-page">
   <section class="notifications-head">
@@ -48,9 +63,22 @@
     </div>
     <button class="btn-ghost" id="markAllNotificationsRead" type="button">Mark all as read</button>
   </section>
-  <section class="notifications-list" id="notificationsList">Loading notifications...</section>
+  <section class="notifications-list" id="notificationsList" aria-live="polite">
+    <div class="loading-placeholder" id="notificationsLoading">
+      <div class="loading-spinner"></div>
+      <p>Loading notifications…</p>
+    </div>
+  </section>
 </main>
 <script src="../../assets/js/biscoon.js"></script>
 <script src="../../assets/js/notifications.js"></script>
+<script>
+  setTimeout(function() {
+    var el = document.getElementById('notificationsLoading');
+    if (el && el.parentElement.contains(el)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Could not load notifications</h3><p>Something went wrong. <button class="btn-ghost" onclick="location.reload()" style="display:inline;padding:4px 10px;font-size:13px;">Try again</button></p></div>';
+    }
+  }, 10000);
+</script>
 </body>
 </html>

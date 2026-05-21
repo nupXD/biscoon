@@ -7,6 +7,7 @@ import Listing from '../models/Listing';
 import Discussion from '../models/Discussion';
 import Conversation from '../models/Conversation';
 import Announcement from '../models/Announcement';
+import HeroSpotlight from '../models/HeroSpotlight';
 import Report from '../models/Report';
 import News from '../models/News';
 import AdminAuditLog from '../models/AdminAuditLog';
@@ -177,6 +178,21 @@ function getBase64Bytes(value: string): number {
   return Math.max(0, Math.floor((sanitized.length * 3) / 4) - padding);
 }
 
+const MAX_SPOTLIGHT_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function cleanSpotlightImage(value: unknown): string | null {
+  const image = typeof value === 'string' ? value.trim() : '';
+  if (!image) return null;
+  if (/^https?:\/\//i.test(image) || image.startsWith('/uploads/')) return image;
+  if (!image.startsWith('data:image/')) return null;
+  const parts = image.match(/^data:(image\/[^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i);
+  if (!parts) return null;
+  const mimeType = parts[1].toLowerCase();
+  const base64 = parts[2].replace(/\s+/g, '');
+  if (getBase64Bytes(base64) > MAX_SPOTLIGHT_IMAGE_BYTES) return null;
+  return saveBase64Upload({ folder: 'spotlight', mimeType, base64 });
+}
+
 function parseNewsMediaDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
   const match = /^data:((?:image|video)\/[^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i.exec(dataUrl);
   if (!match) return null;
@@ -324,9 +340,9 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
       { $sort: { count: -1 } },
       { $limit: 15 },
     ]),
-    User.find(regularUserQuery(), { id: 1, name: 1, email: 1, role: 1, createdAt: 1 })
+    User.find(regularUserQuery({ deleted: { $ne: true } }), { id: 1, name: 1, email: 1, role: 1, createdAt: 1 })
       .sort({ createdAt: -1 }).limit(8),
-    Listing.find({}, { id: 1, title: 1, category: 1, userId: 1, location: 1, createdAt: 1 })
+    Listing.find({ deleted: { $ne: true } }, { id: 1, title: 1, category: 1, userId: 1, location: 1, createdAt: 1 })
       .sort({ createdAt: -1 }).limit(8),
   ]);
 
@@ -398,7 +414,7 @@ router.get('/users', requirePermission('users'), async (req: Request, res: Respo
   const limit  = Math.min(50, parseInt(req.query.limit as string) || 20);
   const search = String(req.query.search || '').trim();
 
-  const query = withSearch(regularUserQuery(), search);
+  const query = withSearch(regularUserQuery({ deleted: { $ne: true } }), search);
 
   const [users, total] = await Promise.all([
     User.find(query, SAFE_USER_PROJECTION).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
@@ -438,16 +454,19 @@ router.delete('/users/:id', requirePermission('users'), async (req: Request, res
   const ownedListings = await Listing.find({ userId: user.id }, { id: 1 });
   const ownedListingIds = ownedListings.map((listing: any) => listing.id);
 
+  const now = new Date();
   await Promise.all([
-    Listing.deleteMany({ userId: user.id }),
+    Listing.updateMany({ userId: user.id }, { $set: { deleted: true, deletedAt: now } }),
     ownedListingIds.length
       ? User.updateMany(
         { savedListings: { $in: ownedListingIds } },
-        { $pull: { savedListings: { $in: ownedListingIds } }, $set: { updatedAt: new Date() } }
+        { $pull: { savedListings: { $in: ownedListingIds } }, $set: { updatedAt: now } }
       )
       : Promise.resolve(),
-    User.deleteOne({ id: user.id }),
   ]);
+  user.deleted = true;
+  user.deletedAt = now;
+  await user.save();
   await recordAdminAudit(req, {
     action: 'regular_user.deleted',
     targetType: 'user',
@@ -588,7 +607,9 @@ router.delete('/staff/:id', requireSuperAdmin, async (req: Request, res: Respons
     res.status(400).json({ error: 'Super admin accounts cannot be deleted here.' }); return;
   }
 
-  await User.deleteOne({ id: staff.id });
+  staff.deleted = true;
+  staff.deletedAt = new Date();
+  await staff.save();
   await recordAdminAudit(req, {
     action: 'admin_user.deleted',
     targetType: 'staff',
@@ -605,7 +626,7 @@ router.get('/news', requirePermission('news'), async (req: Request, res: Respons
   const status = cleanString(req.query.status);
   const category = cleanString(req.query.category);
 
-  let query: any = {};
+  let query: any = { deleted: { $ne: true } };
   if (status && status !== 'all') query.status = status === 'published' ? 'published' : 'draft';
   if (category && category !== 'all') query.category = category;
   if (search) query = { ...query, $text: { $search: search } };
@@ -672,8 +693,11 @@ router.put('/news/:id', requirePermission('news'), async (req: Request, res: Res
 });
 
 router.delete('/news/:id', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
-  const article: any = await News.findOneAndDelete({ id: req.params.id });
+  const article = await News.findOne({ id: req.params.id, deleted: { $ne: true } });
   if (!article) { res.status(404).json({ error: 'News article not found.' }); return; }
+  article.deleted = true;
+  article.deletedAt = new Date();
+  await article.save();
   await recordAdminAudit(req, {
     action: 'news.deleted',
     targetType: 'news',
@@ -690,7 +714,7 @@ router.get('/listings', requirePermission('listings'), async (req: Request, res:
   const search   = String(req.query.search || '').trim();
   const category = String(req.query.category || '').trim();
 
-  const query: any = {};
+  const query: any = { deleted: { $ne: true } };
   Object.assign(query, listingCategoryFilter(category, ''));
   if (search) query.$text = { $search: search };
 
@@ -736,12 +760,11 @@ router.put('/listings/:id', requirePermission('listings'), async (req: Request, 
 });
 
 router.delete('/listings/:id', requirePermission('listings'), async (req: Request, res: Response): Promise<void> => {
-  const listing: any = await Listing.findOneAndDelete({ id: req.params.id });
+  const listing = await Listing.findOne({ id: req.params.id, deleted: { $ne: true } });
   if (!listing) { res.status(404).json({ error: 'Listing not found.' }); return; }
-  await User.updateMany(
-    { savedListings: listing.id },
-    { $pull: { savedListings: listing.id }, $set: { updatedAt: new Date() } }
-  );
+  listing.deleted = true;
+  listing.deletedAt = new Date();
+  await listing.save();
   es.deleteListing(listing.id).catch(() => {});
   await recordAdminAudit(req, {
     action: 'listing.deleted',
@@ -759,8 +782,8 @@ router.get('/discussions', requirePermission('discussions'), async (req: Request
   const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
 
   const [docs, total] = await Promise.all([
-    Discussion.find({}, { body: 0 }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-    Discussion.countDocuments(),
+    Discussion.find({ deleted: { $ne: true } }, { body: 0 }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+    Discussion.countDocuments({ deleted: { $ne: true } }),
   ]);
 
   res.json({
@@ -847,8 +870,11 @@ router.put('/discussions/:id', requirePermission('discussions'), async (req: Req
 });
 
 router.delete('/discussions/:id', requirePermission('discussions'), async (req: Request, res: Response): Promise<void> => {
-  const d: any = await Discussion.findOneAndDelete({ id: req.params.id });
+  const d = await Discussion.findOne({ id: req.params.id, deleted: { $ne: true } });
   if (!d) { res.status(404).json({ error: 'Discussion not found.' }); return; }
+  d.deleted = true;
+  d.deletedAt = new Date();
+  await d.save();
   es.deleteDiscussion(d.id).catch(() => {});
   await recordAdminAudit(req, {
     action: 'discussion.deleted',
@@ -1042,7 +1068,7 @@ router.delete('/discussions/:discussionId/comments/:commentId', requirePermissio
 
 /* -- Announcements -- */
 router.get('/announcements', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
-  const items = await Announcement.find().sort({ createdAt: -1 });
+  const items = await Announcement.find({ deleted: { $ne: true } }).sort({ createdAt: -1 });
   res.json({ announcements: items });
 });
 
@@ -1085,12 +1111,151 @@ router.put('/announcements/:id/toggle', requirePermission('announcements'), asyn
 });
 
 router.delete('/announcements/:id', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
-  const ann: any = await Announcement.findOneAndDelete({ id: req.params.id });
+  const ann = await Announcement.findOne({ id: req.params.id, deleted: { $ne: true } });
+  if (ann) { ann.deleted = true; ann.deletedAt = new Date(); await ann.save(); }
   await recordAdminAudit(req, {
     action: 'announcement.deleted',
     targetType: 'announcement',
     targetId: ann?.id || req.params.id,
     targetTitle: ann?.title || '',
+  });
+  res.json({ ok: true });
+});
+
+/* -- Trash (soft-deleted content) -- */
+router.get('/trash', requireSuperAdmin, async (_req: Request, res: Response): Promise<void> => {
+  const filter = { deleted: true };
+  const [listings, discussions, news, announcements, spotlights, users] = await Promise.all([
+    Listing.find(filter, { id: 1, title: 1, category: 1, userId: 1, deletedAt: 1 }).sort({ deletedAt: -1 }).limit(200),
+    Discussion.find(filter, { id: 1, title: 1, authorName: 1, deletedAt: 1 }).sort({ deletedAt: -1 }).limit(200),
+    News.find(filter, { id: 1, title: 1, status: 1, deletedAt: 1 }).sort({ deletedAt: -1 }).limit(200),
+    Announcement.find(filter, { id: 1, title: 1, deletedAt: 1 }).sort({ deletedAt: -1 }).limit(200),
+    HeroSpotlight.find(filter, { id: 1, title: 1, type: 1, deletedAt: 1 }).sort({ deletedAt: -1 }).limit(200),
+    User.find(filter, { id: 1, name: 1, email: 1, role: 1, deletedAt: 1 }).sort({ deletedAt: -1 }).limit(200),
+  ]);
+  res.json({ listings, discussions, news, announcements, spotlights, users });
+});
+
+router.put('/trash/:type/:id/restore', requireSuperAdmin, async (req: Request, res: Response): Promise<void> => {
+  const type = req.params.type as string;
+  const id   = req.params.id as string;
+  const ModelMap: Record<string, any> = {
+    listing: Listing, discussion: Discussion, news: News,
+    announcement: Announcement, spotlight: HeroSpotlight, user: User,
+  };
+  const Model = ModelMap[type];
+  if (!Model) { res.status(400).json({ error: 'Unknown type.' }); return; }
+  const doc = await Model.findOne({ id, deleted: true });
+  if (!doc) { res.status(404).json({ error: 'Not found in trash.' }); return; }
+  doc.deleted = false;
+  doc.deletedAt = null;
+  await doc.save();
+  await recordAdminAudit(req, {
+    action: `${type}.restored`,
+    targetType: type,
+    targetId: doc.id,
+    targetTitle: doc.title || doc.name || doc.email || '',
+  });
+  res.json({ ok: true });
+});
+
+/* -- Hero Spotlights -- */
+router.get('/spotlights', requirePermission('announcements'), async (_req: Request, res: Response): Promise<void> => {
+  const items = await HeroSpotlight.find({ deleted: { $ne: true } }).sort({ order: 1, createdAt: -1 });
+  res.json({ spotlights: items });
+});
+
+router.get('/spotlights/:id', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
+  const spot = await HeroSpotlight.findOne({ id: req.params.id });
+  if (!spot) { res.status(404).json({ error: 'Not found.' }); return; }
+  res.json(spot);
+});
+
+router.post('/spotlights', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
+  const req_ = req as AuthRequest;
+  const { title, subtitle, body, badgeText, badgeColor, imageUrl, ctaText, ctaUrl, type, order, startDate, endDate } = req.body;
+  if (!title?.trim()) { res.status(400).json({ error: 'Title is required.' }); return; }
+  if (!imageUrl?.trim()) { res.status(400).json({ error: 'Image is required.' }); return; }
+  const savedImageUrl = cleanSpotlightImage(imageUrl);
+  if (!savedImageUrl) { res.status(400).json({ error: 'Invalid image. Provide an https:// URL or upload a JPG/PNG/WebP under 5MB.' }); return; }
+  const spot = new HeroSpotlight({
+    id: uuidv4(),
+    title: title.trim(),
+    subtitle: subtitle?.trim() || '',
+    body: body?.trim() || '',
+    badgeText: badgeText?.trim() || '',
+    badgeColor: badgeColor?.trim() || '#C0392B',
+    imageUrl: savedImageUrl,
+    ctaText: ctaText?.trim() || '',
+    ctaUrl: ctaUrl?.trim() || '',
+    type: type || 'ad',
+    order: typeof order === 'number' ? order : 0,
+    startDate: startDate ? new Date(startDate) : null,
+    endDate: endDate ? new Date(endDate) : null,
+    createdBy: req_.user!.name || req_.user!.email,
+  });
+  await spot.save();
+  await recordAdminAudit(req, {
+    action: 'spotlight.created',
+    targetType: 'spotlight',
+    targetId: spot.id,
+    targetTitle: spot.title,
+  });
+  res.json({ ok: true, id: spot.id });
+});
+
+router.put('/spotlights/:id', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
+  const spot = await HeroSpotlight.findOne({ id: req.params.id });
+  if (!spot) { res.status(404).json({ error: 'Not found.' }); return; }
+  const { title, subtitle, body, badgeText, badgeColor, imageUrl, ctaText, ctaUrl, type, order, startDate, endDate } = req.body;
+  if (title?.trim()) spot.title = title.trim();
+  if (subtitle !== undefined) spot.subtitle = subtitle.trim();
+  if (body !== undefined) spot.body = body.trim();
+  if (badgeText !== undefined) spot.badgeText = badgeText.trim();
+  if (badgeColor !== undefined) spot.badgeColor = badgeColor.trim();
+  if (imageUrl?.trim()) {
+    const saved = cleanSpotlightImage(imageUrl);
+    if (saved) spot.imageUrl = saved;
+  }
+  if (ctaText !== undefined) spot.ctaText = ctaText.trim();
+  if (ctaUrl !== undefined) spot.ctaUrl = ctaUrl.trim();
+  if (type) spot.type = type;
+  if (typeof order === 'number') spot.order = order;
+  if (startDate !== undefined) spot.startDate = startDate ? new Date(startDate) : undefined;
+  if (endDate !== undefined) spot.endDate = endDate ? new Date(endDate) : undefined;
+  await spot.save();
+  await recordAdminAudit(req, {
+    action: 'spotlight.updated',
+    targetType: 'spotlight',
+    targetId: spot.id,
+    targetTitle: spot.title,
+  });
+  res.json({ ok: true });
+});
+
+router.put('/spotlights/:id/toggle', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
+  const spot = await HeroSpotlight.findOne({ id: req.params.id });
+  if (!spot) { res.status(404).json({ error: 'Not found.' }); return; }
+  spot.active = !spot.active;
+  await spot.save();
+  await recordAdminAudit(req, {
+    action: 'spotlight.toggled',
+    targetType: 'spotlight',
+    targetId: spot.id,
+    targetTitle: spot.title,
+    metadata: { active: spot.active },
+  });
+  res.json({ ok: true, active: spot.active });
+});
+
+router.delete('/spotlights/:id', requirePermission('announcements'), async (req: Request, res: Response): Promise<void> => {
+  const spot = await HeroSpotlight.findOne({ id: req.params.id, deleted: { $ne: true } });
+  if (spot) { spot.deleted = true; spot.deletedAt = new Date(); await spot.save(); }
+  await recordAdminAudit(req, {
+    action: 'spotlight.deleted',
+    targetType: 'spotlight',
+    targetId: spot?.id || req.params.id,
+    targetTitle: spot?.title || '',
   });
   res.json({ ok: true });
 });

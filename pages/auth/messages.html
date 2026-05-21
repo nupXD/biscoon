@@ -18,6 +18,10 @@
     <a href="../marketplace/services.html">सेवाहरू</a>
     <a href="../community/discussions.html">Discussions</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="login.html">साइन इन</a>
     <a class="btn-primary" href="signup.html">साइन अप</a>
@@ -31,14 +35,25 @@
   <a href="../marketplace/services.html">सेवाहरू</a>
   <a href="../community/discussions.html">Discussions</a>
   <div class="mobile-drawer-btns" id="mobileBtns">
-    <a class="btn-ghost messages-inline-1" href="login.html">साइन इन</a>
-    <a class="btn-primary messages-inline-1" href="signup.html">साइन अप</a>
+    <a class="btn-ghost" href="login.html">साइन इन</a>
+    <a class="btn-primary" href="signup.html">साइन अप</a>
+  </div>
+  <div class="mobile-user-menu" id="mobileUserMenu">
+    <div class="mobile-user-info">
+      <span class="user-avatar">👤</span>
+      <span class="user-name" id="mobileUserName">Profile</span>
+    </div>
+    <a href="profile.html">📋 My Profile</a>
+    <a href="activity.html">🧾 My Activity</a>
+    <a href="messages.html" aria-current="page">✉️ Messages</a>
+    <a href="../post/listing.html">➕ Add Listing</a>
+    <a href="#" id="mobileLogoutBtn">🚪 Logout</a>
   </div>
 </div>
 <div class="breadcrumb">
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
-  <span>Messages</span>
+  <span aria-current="page">Messages</span>
 </div>
 <main class="messages-page">
   <div class="messages-layout">
@@ -47,7 +62,12 @@
         <h1>Messages</h1>
         <p>Private conversations with listing posters.</p>
       </div>
-      <div class="messages-list" id="messagesList">Loading...</div>
+      <div class="messages-list" id="messagesList" aria-live="polite">
+        <div class="loading-placeholder" id="messagesLoading">
+          <div class="loading-spinner"></div>
+          <p>Loading…</p>
+        </div>
+      </div>
     </aside>
     <section class="messages-thread" id="messagesThread">
       <div class="messages-thread-empty">

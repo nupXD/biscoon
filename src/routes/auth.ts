@@ -93,6 +93,10 @@ async function authenticateLogin(body: unknown): Promise<{ user?: any; status?: 
     return { status: 401, error: 'Invalid email or password.' };
   }
 
+  if (user.deleted) {
+    return { status: 403, error: 'This account has been deactivated. Contact support if you believe this is an error.' };
+  }
+
   const passwordMatches = await bcrypt.compare(password, user.password);
   if (!passwordMatches) {
     return { status: 401, error: 'Invalid email or password.' };

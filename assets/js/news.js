@@ -123,7 +123,31 @@ function newsMediaBlock(media = {}) {
   return `<figure class="news-inline-media">${mediaHtml}${caption}</figure>`;
 }
 
+function newsBodyLooksHtml(value = '') {
+  return /<\/?[a-z][\s\S]*>/i.test(String(value || ''));
+}
+
+function newsHtmlBody(value = '', mediaItems = []) {
+  const mediaMap = Object.fromEntries((mediaItems || []).map(item => [item.id, item]));
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = String(value || '');
+  wrapper.querySelectorAll('p').forEach(paragraph => {
+    const mediaMatch = /^\[\[media:([a-zA-Z0-9_-]+)\]\]$/.exec(paragraph.textContent?.trim() || '');
+    if (!mediaMatch) return;
+    const mediaHtml = newsMediaBlock(mediaMap[mediaMatch[1]]);
+    if (!mediaHtml) {
+      paragraph.remove();
+      return;
+    }
+    const template = document.createElement('template');
+    template.innerHTML = mediaHtml;
+    paragraph.replaceWith(template.content.cloneNode(true));
+  });
+  return wrapper.innerHTML;
+}
+
 function articleBodyHtml(value, mediaItems = []) {
+  if (newsBodyLooksHtml(value)) return newsHtmlBody(value, mediaItems);
   const mediaMap = Object.fromEntries((mediaItems || []).map(item => [item.id, item]));
   const lines = String(value || '').split(/\r?\n/);
   const html = [];

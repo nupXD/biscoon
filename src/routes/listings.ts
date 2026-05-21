@@ -216,7 +216,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 
   // MongoDB fallback
-  let query: any = listingCategoryFilter(category, subcategory);
+  let query: any = { deleted: { $ne: true }, ...listingCategoryFilter(category, subcategory) };
   if (search) query = { $text: { $search: search }, ...query };
 
   const [listings, total] = await Promise.all([
@@ -475,11 +475,9 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response): Promi
     res.status(403).json({ error: 'You do not have permission to delete this listing.' }); return;
   }
 
-  await Listing.deleteOne({ id: listing.id });
-  await User.updateMany(
-    { savedListings: listing.id },
-    { $pull: { savedListings: listing.id }, $set: { updatedAt: new Date() } }
-  );
+  listing.deleted = true;
+  listing.deletedAt = new Date();
+  await listing.save();
   es.deleteListing(listing.id).catch(() => {});
   res.json({ success: true, message: 'Listing deleted successfully.' });
 });

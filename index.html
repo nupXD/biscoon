@@ -7,6 +7,7 @@
 <meta name="description" content="Connecting 4.5 million Nepalis worldwide through community, commerce, and culture."/>
 <link rel="stylesheet" href="assets/css/main.css"/>
 <link rel="stylesheet" href="./assets/css/pages/index.css"/>
+<link rel="stylesheet" href="assets/vendor/swiper/swiper-bundle.min.css"/>
 </head>
 <body>
 
@@ -173,34 +174,38 @@
 </div>
 
 <!-- HERO -->
-<section class="hero">
-  <div class="hero-eyebrow">⛰ INTEGRATING NEPALI CLIMATE ACROSS GLOBAL NEPALIS</div>
-  <span class="biscoon-name">Biscoon</span>
-  <span class="biscoon-sub">The Global Nepali Ecosystem</span>
-  <div class="hero-devanagari">नेपाली जलवायु — विश्वभर एकीकृत</div>
-  <p class="hero-desc">Connect with 4.5 million Nepalis worldwide — find housing, jobs, services, and community wherever you are.</p>
-  <div class="search-bar index-inline-7">
-    <select class="search-select" id="searchCategory">
-      <option value="">सबै श्रेणी</option>
-      <option value="jobs">💼 रोजगार</option>
-      <option value="housing">🏠 घर / कोठा</option>
-      <option value="pg">🏡 Paying Guest</option>
-      <option value="services">🔧 सेवाहरू</option>
-      <option value="student">🎓 विद्यार्थी</option>
-      <option value="immigration">🛂 Immigration</option>
-      <option value="discussions">💬 Discussions</option>
-    </select>
-    <input type="text" class="search-input" placeholder="Search jobs, housing, services, discussions…" id="searchInput"/>
-    <button class="search-btn" aria-label="Search listings">खोज्नुस्</button>
+<section class="hero" id="heroSection">
+  <div class="hero-content">
+    <div class="hero-eyebrow">⛰ INTEGRATING NEPALI CLIMATE ACROSS GLOBAL NEPALIS</div>
+    <span class="biscoon-name">Biscoon</span>
+    <span class="biscoon-sub">The Global Nepali Ecosystem</span>
+    <div class="hero-devanagari">नेपाली जलवायु — विश्वभर एकीकृत</div>
+    <p class="hero-desc">Connect with 4.5 million Nepalis worldwide — find housing, jobs, services, and community wherever you are.</p>
+    <div class="search-bar index-inline-7">
+      <select class="search-select" id="searchCategory">
+        <option value="">सबै श्रेणी</option>
+        <option value="jobs">💼 रोजगार</option>
+        <option value="housing">🏠 घर / कोठा</option>
+        <option value="pg">🏡 Paying Guest</option>
+        <option value="services">🔧 सेवाहरू</option>
+        <option value="student">🎓 विद्यार्थी</option>
+        <option value="immigration">🛂 Immigration</option>
+        <option value="discussions">💬 Discussions</option>
+      </select>
+      <input type="text" class="search-input" placeholder="Search jobs, housing, services, discussions…" id="searchInput"/>
+      <button class="search-btn" aria-label="Search listings">खोज्नुस्</button>
+    </div>
+    <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" class="index-inline-8"> · Detecting…</span></div>
+    <div class="stats-strip">
+      <div class="stat-cell"><span class="stat-num">4.5M+</span><span class="stat-lbl">Global Nepalis</span></div>
+      <div class="stat-cell"><span class="stat-num">39</span><span class="stat-lbl">Categories</span></div>
+      <div class="stat-cell"><span class="stat-num">90+</span><span class="stat-lbl">Countries</span></div>
+      <div class="stat-cell"><span class="stat-num">Free</span><span class="stat-lbl">To list</span></div>
+      <a class="stat-cell pg-stat" href="pages/housing/paying-guest.html"><span class="stat-num">🏡</span><span class="stat-lbl">शःशुल्क पाहुना</span></a>
+    </div>
   </div>
-  <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" class="index-inline-8"> · Detecting…</span></div>
-  <div class="stats-strip">
-    <div class="stat-cell"><span class="stat-num">4.5M+</span><span class="stat-lbl">Global Nepalis</span></div>
-    <div class="stat-cell"><span class="stat-num">39</span><span class="stat-lbl">Categories</span></div>
-    <div class="stat-cell"><span class="stat-num">90+</span><span class="stat-lbl">Countries</span></div>
-    <div class="stat-cell"><span class="stat-num">Free</span><span class="stat-lbl">To list</span></div>
-    <a class="stat-cell pg-stat" href="pages/housing/paying-guest.html"><span class="stat-num">🏡</span><span class="stat-lbl">शःशुल्क पाहुना</span></a>
-  </div>
+  <!-- SPOTLIGHT panel (right side, populated by JS) -->
+  <div id="heroSpotlightWrap" class="hero-spotlight-panel"></div>
 </section>
 
 <section class="search-results-panel index-inline-9" id="searchResultsPanel">
@@ -447,6 +452,7 @@
   <p class="index-inline-21">नेपाली जलवायु — विश्वभर एकीकृत</p>
 </div>
 
+<script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
 <script src="assets/js/biscoon.js"></script>
 <script src="assets/js/ticker.js"></script>
 </body>

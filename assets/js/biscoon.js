@@ -300,6 +300,7 @@ document.addEventListener("DOMContentLoaded", function() {
   guardPostingPage();
   loadWeather();
   checkSiteAnnouncement();
+  initHeroSpotlight();
   initCounterAnimation();
   initScrollReveal();
   const urlSearch = new URLSearchParams(window.location.search).get("search");
@@ -455,6 +456,68 @@ async function checkSiteAnnouncement() {
     banner.querySelector(".site-banner-close").addEventListener("click", () => {
       sessionStorage.setItem(DISMISS_KEY, announcement.id);
       banner.remove();
+    });
+  } catch (_) {
+  }
+}
+async function initHeroSpotlight() {
+  const wrap = document.getElementById("heroSpotlightWrap");
+  if (!wrap) return;
+  try {
+    const res = await fetch(`${getApiBase()}/api/spotlight/active`);
+    if (!res.ok) return;
+    const { spotlights } = await res.json();
+    if (!spotlights || spotlights.length === 0) return;
+    const safeUrl = (u) => {
+      if (!u) return "";
+      if (u.startsWith("/uploads/")) return u;
+      try {
+        const p = new URL(u);
+        return p.protocol === "https:" || p.protocol === "http:" ? u : "";
+      } catch {
+        return "";
+      }
+    };
+    const buildSlide = (s) => {
+      const img = safeUrl(s.imageUrl);
+      const cta = s.ctaText && s.ctaUrl ? safeUrl(s.ctaUrl) : "";
+      const typeLabel = { ad: "AD", event: "EVENT", news: "NEWS", promo: "PROMO" }[s.type || "ad"] || "AD";
+      const badgeHtml = s.badgeText ? `<span class="spotlight-badge" style="background:${escapeHtml(s.badgeColor || "#C0392B")}">${escapeHtml(s.badgeText)}</span>` : `<span class="spotlight-badge spotlight-badge-type">${typeLabel}</span>`;
+      const ctaHtml = cta ? `<a href="${escapeHtml(cta)}" class="spotlight-cta" rel="noopener">${escapeHtml(s.ctaText)}</a>` : "";
+      const cssImg = img.replace(/"/g, "%22");
+      return `<div class="swiper-slide spotlight-slide" style="background-image:url(&quot;${cssImg}&quot;)">
+        <div class="spotlight-overlay"></div>
+        <div class="spotlight-content">
+          ${badgeHtml}
+          <h2 class="spotlight-title">${escapeHtml(s.title)}</h2>
+          ${s.subtitle ? `<p class="spotlight-subtitle">${escapeHtml(s.subtitle)}</p>` : ""}
+          ${s.body ? `<p class="spotlight-body">${escapeHtml(s.body)}</p>` : ""}
+          ${ctaHtml}
+        </div>
+      </div>`;
+    };
+    const swiperDiv = document.createElement("div");
+    swiperDiv.className = "swiper spotlight-swiper";
+    const wrapperDiv = document.createElement("div");
+    wrapperDiv.className = "swiper-wrapper";
+    wrapperDiv.innerHTML = spotlights.map(buildSlide).join("");
+    swiperDiv.appendChild(wrapperDiv);
+    if (spotlights.length > 1) {
+      const pag = document.createElement("div");
+      pag.className = "swiper-pagination spotlight-pagination";
+      swiperDiv.appendChild(pag);
+    }
+    wrap.appendChild(swiperDiv);
+    document.getElementById("heroSection")?.classList.add("hero--has-spotlight");
+    const Swiper = window.Swiper;
+    if (!Swiper) return;
+    new Swiper(".spotlight-swiper", {
+      loop: spotlights.length > 1,
+      autoplay: spotlights.length > 1 ? { delay: 6e3, disableOnInteraction: false, pauseOnMouseEnter: true } : false,
+      speed: 700,
+      pagination: spotlights.length > 1 ? { el: ".spotlight-pagination", clickable: true } : false,
+      keyboard: { enabled: true },
+      a11y: { enabled: true }
     });
   } catch (_) {
   }

@@ -23,6 +23,10 @@
     <a href="../community/literature.html">साहित्य</a>
     <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   </div>
+  <form class="nav-search" role="search">
+    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+    <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
+  </form>
   <div class="nav-ctas" id="navCtas">
     <a class="btn-ghost" href="../auth/login.html">साइन इन</a>
     <a class="btn-primary" href="../auth/signup.html">साइन अप</a>
@@ -71,26 +75,28 @@
 
 <div class="page-hero">
   <div class="page-hero-eyebrow">💼 JOBS · EMPLOYMENT · रोजगार</div>
-  <h1 class="page-hero-title"><span class="emoji">💼</span>Job Listings</h1>
+  <h1 class="page-hero-title"><span class="emoji" aria-hidden="true">💼</span>Job Listings</h1>
   <div class="page-hero-devanagari">रोजगार</div>
   <p class="page-hero-desc">Find Nepali-friendly jobs across the USA — OPT, CPT, H1B, and green card sponsor opportunities.</p>
   <div class="page-hero-stats"><div class="page-hero-stat"><span class="num">850+</span><span class="lbl">Active listings</span></div><div class="page-hero-stat"><span class="num">340+</span><span class="lbl">OPT-friendly</span></div><div class="page-hero-stat"><span class="num">180+</span><span class="lbl">H1B sponsors</span></div><div class="page-hero-stat"><span class="num">All levels</span><span class="lbl">Entry to Senior</span></div></div>
 </div>
-<div class="breadcrumb"><a href="../../index.html">🏠 Biscoon</a><span class="sep">›</span><span>Job Listings — रोजगार</span></div>
+<div class="breadcrumb"><a href="../../index.html">🏠 Biscoon</a><span class="sep">›</span><span aria-current="page">Job Listings — रोजगार</span></div>
 <div class="filter-sort-bar pages-jobs-jobs-inline-3">
-  <input type="text" class="search-input pages-jobs-jobs-inline-4" id="searchInput" placeholder="Search Job Listings…"/>
-  <input type="hidden" id="searchCategory" value="jobs"/>
-  <div class="filter-chips">
-    <button class="chip active" data-filter="all">All Jobs</button>
-    <button class="chip" data-filter="opt">OPT Friendly</button>
-    <button class="chip" data-filter="h1b">H1B Sponsor</button>
-    <button class="chip" data-filter="remote">Remote</button>
-    <button class="chip" data-filter="parttime">Part-time</button>
-    <button class="chip" data-filter="healthcare">Healthcare</button>
-    <button class="chip" data-filter="tech">Tech</button>
-    <button class="chip" data-filter="education">Education</button>
+  <form role="search" onsubmit="event.preventDefault(); doSearch()">
+    <input type="text" class="search-input pages-jobs-jobs-inline-4" id="searchInput" placeholder="Search Job Listings…" aria-label="Search job listings"/>
+    <input type="hidden" id="searchCategory" value="jobs"/>
+  </form>
+  <div class="filter-chips" role="group" aria-label="Filter jobs by type">
+    <button class="chip active" data-filter="all" aria-pressed="true">All Jobs</button>
+    <button class="chip" data-filter="opt" aria-pressed="false">OPT Friendly</button>
+    <button class="chip" data-filter="h1b" aria-pressed="false">H1B Sponsor</button>
+    <button class="chip" data-filter="remote" aria-pressed="false">Remote</button>
+    <button class="chip" data-filter="parttime" aria-pressed="false">Part-time</button>
+    <button class="chip" data-filter="healthcare" aria-pressed="false">Healthcare</button>
+    <button class="chip" data-filter="tech" aria-pressed="false">Tech</button>
+    <button class="chip" data-filter="education" aria-pressed="false">Education</button>
   </div>
-  <select class="sort-select"><option>Newest first</option><option>Price: Low</option><option>Price: High</option></select>
+  <select class="sort-select" aria-label="Sort listings"><option>Newest first</option><option>Price: Low</option><option>Price: High</option></select>
 </div>
 <div class="page-layout">
   <div class="page-main">
@@ -104,12 +110,12 @@
 <a class="listing-card" data-cat="tech" href="#"><div class="listing-thumb">🧑‍🔬</div><div class="listing-body"><div class="listing-title">Research Associate — Biotech, PhD preferred</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 4d ago</span><span>MIT-affiliated lab</span></div><div class="listing-tags"><span class="tag tag-blue">OPT</span><span class="tag tag-navy">Lab visa OK</span></div></div><div class="listing-price">$65,000–80,000</div></a>
 <a class="listing-card" href="#"><div class="listing-thumb">🏪</div><div class="listing-body"><div class="listing-title">Store Manager — Nepali grocery, Lowell</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 5d ago</span><span>Everest Grocery</span></div><div class="listing-tags"><span class="tag tag-gold">Nepali-owned</span><span class="tag tag-gray">Full-time</span></div></div><div class="listing-price">$45–55k</div></a>
 <a class="listing-card" data-cat="parttime" href="#"><div class="listing-thumb">✈️</div><div class="listing-body"><div class="listing-title">Airport Shuttle Driver — BOS/PVD routes</div><div class="listing-meta"><span>📍 Boston Metro</span><span>🕐 1w ago</span></div><div class="listing-tags"><span class="tag tag-gray">Driver's license req'd</span></div></div><div class="listing-price">$18–22/hr</div></a>
-    <div class="pagination">
-      <button class="pg-btn disabled">← Prev</button>
-      <button class="pg-btn active">1</button>
-      <button class="pg-btn">2</button>
-      <button class="pg-btn">3</button>
-      <button class="pg-btn">→ Next</button>
+    <div class="pagination" role="navigation" aria-label="Pagination">
+      <button class="pg-btn disabled" aria-disabled="true" disabled>← Prev</button>
+      <button class="pg-btn active" aria-current="page">1</button>
+      <button class="pg-btn" aria-disabled="true" disabled>2</button>
+      <button class="pg-btn" aria-disabled="true" disabled>3</button>
+      <button class="pg-btn" aria-disabled="true" disabled>→ Next</button>
     </div>
   </div>
   

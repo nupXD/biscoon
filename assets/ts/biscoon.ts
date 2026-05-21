@@ -53,6 +53,19 @@ interface Discussion {
   createdAt?: string;
 }
 
+interface HeroSpotlight {
+  id: string;
+  title: string;
+  subtitle?: string;
+  body?: string;
+  badgeText?: string;
+  badgeColor?: string;
+  imageUrl: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  type?: string;
+}
+
 interface ListingStats {
   total: number;
   week: number;
@@ -465,6 +478,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Announcement banner ──
   checkSiteAnnouncement();
 
+  // ── Hero Spotlight ──
+  initHeroSpotlight();
+
   // ── Counter animation + scroll reveals ──
   initCounterAnimation();
   initScrollReveal();
@@ -646,6 +662,81 @@ async function checkSiteAnnouncement(): Promise<void> {
     (banner.querySelector('.site-banner-close') as HTMLButtonElement).addEventListener('click', () => {
       sessionStorage.setItem(DISMISS_KEY, announcement.id);
       banner.remove();
+    });
+  } catch (_) {}
+}
+
+// ── Hero Spotlight ──
+async function initHeroSpotlight(): Promise<void> {
+  const wrap = document.getElementById('heroSpotlightWrap');
+  if (!wrap) return;
+  try {
+    const res = await fetch(`${getApiBase()}/api/spotlight/active`);
+    if (!res.ok) return;
+    const { spotlights }: { spotlights: HeroSpotlight[] } = await res.json();
+    if (!spotlights || spotlights.length === 0) return;
+
+    // Accept uploads/ paths AND http/https URLs
+    const safeUrl = (u?: string): string => {
+      if (!u) return '';
+      if (u.startsWith('/uploads/')) return u;
+      try { const p = new URL(u); return (p.protocol === 'https:' || p.protocol === 'http:') ? u : ''; } catch { return ''; }
+    };
+
+    const buildSlide = (s: HeroSpotlight): string => {
+      const img = safeUrl(s.imageUrl);
+      const cta = s.ctaText && s.ctaUrl ? safeUrl(s.ctaUrl) : '';
+      const typeLabel = ({ ad: 'AD', event: 'EVENT', news: 'NEWS', promo: 'PROMO' })[s.type || 'ad'] || 'AD';
+      const badgeHtml = s.badgeText
+        ? `<span class="spotlight-badge" style="background:${escapeHtml(s.badgeColor || '#C0392B')}">${escapeHtml(s.badgeText)}</span>`
+        : `<span class="spotlight-badge spotlight-badge-type">${typeLabel}</span>`;
+      const ctaHtml = cta
+        ? `<a href="${escapeHtml(cta)}" class="spotlight-cta" rel="noopener">${escapeHtml(s.ctaText!)}</a>`
+        : '';
+      // Use double quotes for style attribute; encode only " in URL to avoid breaking attribute boundary
+      const cssImg = img.replace(/"/g, '%22');
+      return `<div class="swiper-slide spotlight-slide" style="background-image:url(&quot;${cssImg}&quot;)">
+        <div class="spotlight-overlay"></div>
+        <div class="spotlight-content">
+          ${badgeHtml}
+          <h2 class="spotlight-title">${escapeHtml(s.title)}</h2>
+          ${s.subtitle ? `<p class="spotlight-subtitle">${escapeHtml(s.subtitle)}</p>` : ''}
+          ${s.body ? `<p class="spotlight-body">${escapeHtml(s.body)}</p>` : ''}
+          ${ctaHtml}
+        </div>
+      </div>`;
+    };
+
+    const swiperDiv = document.createElement('div');
+    swiperDiv.className = 'swiper spotlight-swiper';
+
+    const wrapperDiv = document.createElement('div');
+    wrapperDiv.className = 'swiper-wrapper';
+    wrapperDiv.innerHTML = spotlights.map(buildSlide).join('');
+    swiperDiv.appendChild(wrapperDiv);
+
+    if (spotlights.length > 1) {
+      const pag = document.createElement('div');
+      pag.className = 'swiper-pagination spotlight-pagination';
+      swiperDiv.appendChild(pag);
+    }
+
+    wrap.appendChild(swiperDiv);
+
+    // Activate 2-column hero layout
+    document.getElementById('heroSection')?.classList.add('hero--has-spotlight');
+
+    const Swiper = (window as any).Swiper;
+    if (!Swiper) return;
+    new Swiper('.spotlight-swiper', {
+      loop: spotlights.length > 1,
+      autoplay: spotlights.length > 1
+        ? { delay: 6000, disableOnInteraction: false, pauseOnMouseEnter: true }
+        : false,
+      speed: 700,
+      pagination: spotlights.length > 1 ? { el: '.spotlight-pagination', clickable: true } : false,
+      keyboard: { enabled: true },
+      a11y: { enabled: true },
     });
   } catch (_) {}
 }

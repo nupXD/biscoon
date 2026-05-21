@@ -19,6 +19,8 @@ export interface IUser extends Document {
   passwordResetExpiresAt?: Date;
   savedListings: string[];
   createdBy?: string;
+  deleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +69,8 @@ export interface IListing extends Document {
   images: string[];
   comments: IComment[];
   commentCount: number;
+  deleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,6 +86,8 @@ export interface IDiscussion extends Document {
   tags: string[];
   comments: IComment[];
   commentCount: number;
+  deleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,6 +107,8 @@ export interface INews extends Document {
   createdBy: string;
   publishedAt?: Date;
   media?: Array<{ id: string; url: string; type: string; caption?: string }>;
+  deleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -127,6 +135,30 @@ export interface IAnnouncement extends Document {
   active: boolean;
   createdBy: string;
   expiresAt?: Date;
+  deleted: boolean;
+  deletedAt?: Date;
+  createdAt: Date;
+}
+
+// ── HeroSpotlight ─────────────────────────────────────────────────────────────
+export interface IHeroSpotlight extends Document {
+  id: string;
+  title: string;
+  subtitle: string;
+  body: string;
+  badgeText: string;
+  badgeColor: string;
+  imageUrl: string;
+  ctaText: string;
+  ctaUrl: string;
+  type: 'ad' | 'event' | 'news' | 'promo';
+  active: boolean;
+  order: number;
+  startDate?: Date;
+  endDate?: Date;
+  createdBy: string;
+  deleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
 }
 
