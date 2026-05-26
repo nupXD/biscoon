@@ -215,9 +215,32 @@ function initScrollReveal() {
     });
   });
 }
+function initScrollProgress() {
+  const bar = document.createElement("div");
+  bar.className = "scroll-progress";
+  document.body.prepend(bar);
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight <= 0) {
+        ticking = false;
+        return;
+      }
+      const pct = Math.min(100, scrollTop / docHeight * 100);
+      bar.style.width = pct + "%";
+      bar.classList.toggle("visible", scrollTop > 60);
+      ticking = false;
+    });
+  }, { passive: true });
+}
 document.addEventListener("DOMContentLoaded", function() {
   loadEnhancementPlugins();
   ensureNewsNavLink();
+  initScrollProgress();
   document.addEventListener("click", function(e) {
     const d = document.getElementById("mobileDrawer");
     const h = document.getElementById("hamburger");

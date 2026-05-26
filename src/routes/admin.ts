@@ -371,6 +371,32 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
   });
 });
 
+/* -- Global search -- */
+router.get('/search', async (req: Request, res: Response): Promise<void> => {
+  const q = cleanString(req.query.q);
+  if (!q || q.length < 2) { res.json({ results: [] }); return; }
+
+  const safe = escapeRegExp(q);
+  const opts = { $regex: safe, $options: 'i' };
+  const limit = 5;
+
+  const [users, listings, discussions, news] = await Promise.all([
+    User.find({ $or: [{ name: opts }, { email: opts }] }, { name: 1, email: 1, role: 1 }).limit(limit),
+    Listing.find({ deleted: { $ne: true }, $or: [{ title: opts }, { location: opts }, { category: opts }] }, { title: 1, category: 1, location: 1 }).limit(limit),
+    Discussion.find({ deleted: { $ne: true }, $or: [{ title: opts }, { authorName: opts }, { category: opts }] }, { title: 1, authorName: 1, category: 1 }).limit(limit),
+    News.find({ $or: [{ title: opts }, { summary: opts }, { category: opts }, { authorName: opts }] }, { title: 1, category: 1, status: 1 }).limit(limit),
+  ]);
+
+  res.json({
+    results: [
+      ...users.map((u: any) => ({ type: 'user', id: u.id || u._id, label: u.name, sub: u.email, role: u.role })),
+      ...listings.map((l: any) => ({ type: 'listing', id: l.id, label: l.title, sub: l.location || l.category, category: l.category })),
+      ...discussions.map((d: any) => ({ type: 'discussion', id: d.id, label: d.title, sub: d.authorName || d.category, category: d.category })),
+      ...news.map((n: any) => ({ type: 'news', id: n.id || n._id, label: n.title, sub: n.category, status: n.status })),
+    ],
+  });
+});
+
 router.get('/audit-logs', requireSuperAdmin, async (req: Request, res: Response): Promise<void> => {
   const { page, limit, skip } = getPagination(req.query, { defaultLimit: 25, maxLimit: 100 });
   const action = cleanString(req.query.action);
@@ -780,10 +806,21 @@ router.delete('/listings/:id', requirePermission('listings'), async (req: Reques
 router.get('/discussions', requirePermission('discussions'), async (req: Request, res: Response): Promise<void> => {
   const page  = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+  const search = cleanString(req.query.search);
+
+  const baseQuery: any = { deleted: { $ne: true } };
+  if (search) {
+    const safeSearch = escapeRegExp(search);
+    baseQuery.$or = [
+      { title: { $regex: safeSearch, $options: 'i' } },
+      { authorName: { $regex: safeSearch, $options: 'i' } },
+      { category: { $regex: safeSearch, $options: 'i' } },
+    ];
+  }
 
   const [docs, total] = await Promise.all([
-    Discussion.find({ deleted: { $ne: true } }, { body: 0 }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-    Discussion.countDocuments({ deleted: { $ne: true } }),
+    Discussion.find(baseQuery, { body: 0 }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+    Discussion.countDocuments(baseQuery),
   ]);
 
   res.json({
@@ -964,9 +1001,10 @@ router.get('/users/:id/content', requirePermission('users'), async (req: Request
 
 /* -- Comments moderation -- */
 router.get('/comments', requirePermission('comments'), async (req: Request, res: Response): Promise<void> => {
-  const type  = req.query.type || 'all';
-  const page  = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(50, parseInt(req.query.limit as string) || 25);
+  const type   = req.query.type || 'all';
+  const page   = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit  = Math.min(50, parseInt(req.query.limit as string) || 25);
+  const search = cleanString(req.query.search).toLowerCase();
 
   const results: any[] = [];
 
@@ -989,8 +1027,17 @@ router.get('/comments', requirePermission('comments'), async (req: Request, res:
   }
 
   results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const total = results.length;
-  res.json({ comments: results.slice((page - 1) * limit, page * limit), total, page, pages: Math.ceil(total / limit) });
+
+  const filtered = search
+    ? results.filter(c =>
+        c.body?.toLowerCase().includes(search) ||
+        c.authorName?.toLowerCase().includes(search) ||
+        c.parentTitle?.toLowerCase().includes(search)
+      )
+    : results;
+
+  const total = filtered.length;
+  res.json({ comments: filtered.slice((page - 1) * limit, page * limit), total, page, pages: Math.ceil(total / limit) });
 });
 
 /* -- Reports / Moderation -- */

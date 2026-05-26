@@ -8,8 +8,11 @@
 .discussion-list-panel,.discussion-detail-panel{border:1.5px solid var(--border);border-radius:8px;background:white;min-width:0}
 .discussion-toolbar{display:grid;grid-template-columns:1fr 130px;gap:8px;padding:14px;border-bottom:1px solid var(--border);background:var(--off-white)}
 .discussion-list{display:flex;flex-direction:column;max-height:760px;overflow:auto}
-.discussion-list-item{border:0;border-bottom:1px solid var(--border);background:white;text-align:left;padding:14px 16px;cursor:pointer;color:inherit;transition:background .15s,border-color .15s}
-.discussion-list-item:hover,.discussion-list-item.active{background:var(--red-ultra)}
+.discussion-list-item{border:0;border-bottom:1px solid var(--border);background:white;text-align:left;padding:14px 16px;cursor:pointer;color:inherit;transition:background 150ms ease-out, border-color 150ms ease-out, transform 150ms var(--ease-out)}
+@media (hover: hover) and (pointer: fine) {
+  .discussion-list-item:hover{background:var(--red-ultra);transform:translateX(3px)}
+}
+.discussion-list-item.active{background:var(--red-ultra)}
 .discussion-list-item.active{border-left:3px solid var(--red)}
 .discussion-list-title{font-size:14px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:5px}
 .discussion-list-meta{font-size:11px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap}
@@ -40,13 +43,44 @@
 .discussion-modal{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:20px}
 .discussion-modal.open{display:flex}
 .discussion-modal-backdrop{position:absolute;inset:0;background:rgba(13,27,62,.5);backdrop-filter:blur(3px)}
+.discussion-modal.open .discussion-modal-backdrop { animation: backdropFadeIn 200ms ease-out both }
 .discussion-modal-panel{position:relative;width:min(680px,100%);max-height:calc(100vh - 40px);overflow:auto;background:white;border-radius:8px;border:1px solid var(--border);box-shadow:0 24px 70px rgba(13,27,62,.25);padding:22px}
+.discussion-modal.open .discussion-modal-panel { animation: discussionModalIn 280ms var(--ease-out) both }
 .discussion-modal-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
 .discussion-modal-head h2{font-family:"Cormorant Garamond",serif;font-size:30px;color:var(--navy);line-height:1.1}
-.discussion-modal-close{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--gray-600);font-size:24px;line-height:1;cursor:pointer}
+.discussion-modal-close{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--gray-600);font-size:24px;line-height:1;cursor:pointer;transition:border-color 150ms ease-out,color 150ms ease-out,transform 120ms var(--ease-out)}
 .discussion-modal-close:hover{border-color:var(--red);color:var(--red)}
+.discussion-modal-close:active{transform:scale(0.88)}
 .discussion-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
 body.discussion-modal-open{overflow:hidden}
+
+/* ── COMMENT CARD ENTRY ── */
+@keyframes commentIn {
+  from { opacity: 0; transform: translateY(6px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+.comment-card { animation: commentIn 240ms var(--ease-out) both }
+.comment-card:nth-child(1) { animation-delay: 0ms }
+.comment-card:nth-child(2) { animation-delay: 40ms }
+.comment-card:nth-child(3) { animation-delay: 80ms }
+.comment-card:nth-child(4) { animation-delay: 110ms }
+.comment-card:nth-child(n+5) { animation-delay: 130ms }
+
+/* ── DISCUSSION TOPIC ENTRANCE ── */
+.discussion-topic-title { animation: authCardIn 320ms var(--ease-out) 0ms both }
+.discussion-topic-meta  { animation: authCardIn 320ms var(--ease-out) 50ms both }
+.discussion-topic-body  { animation: authCardIn 320ms var(--ease-out) 90ms both }
+
+/* ── REPLY TOGGLE BUTTON ── */
+.reply-toggle { transition: color 150ms ease-out, transform 120ms var(--ease-out) }
+.reply-toggle:active { transform: scale(0.95) }
+
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  .comment-card, .discussion-topic-title, .discussion-topic-meta, .discussion-topic-body { animation: none }
+  .discussion-modal.open .discussion-modal-panel,
+  .discussion-modal.open .discussion-modal-backdrop { animation: none }
+}
 .pages-community-discussions-inline-1{color:#93c5fd}
 .pages-community-discussions-inline-2{color:#fbbf24}
 .pages-community-discussions-inline-3{color:#86efac}

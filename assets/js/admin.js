@@ -12,8 +12,8 @@ const _s = {
   listings: { page: 1, category: "", search: "" },
   events: { page: 1, search: "" },
   news: { page: 1, status: "all", category: "", search: "" },
-  discussions: { page: 1 },
-  comments: { page: 1, type: "all" },
+  discussions: { page: 1, search: "" },
+  comments: { page: 1, type: "all", search: "" },
   reports: { page: 1, status: "open" },
   spotlight: {},
   announcements: {},
@@ -170,6 +170,197 @@ function setupAdminShell() {
     localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(collapsed));
   });
   refreshBtn?.addEventListener("click", () => refreshCurrentView(true));
+  setupGlobalSearch();
+}
+function setupGlobalSearch() {
+  const overlay = document.createElement("div");
+  overlay.id = "adminGlobalSearch";
+  overlay.className = "admin-gs-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Global search");
+  const box = document.createElement("div");
+  box.className = "admin-gs-box";
+  const inputRow = document.createElement("div");
+  inputRow.className = "admin-gs-input-row";
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "admin-gs-icon");
+  svg.setAttribute("width", "18");
+  svg.setAttribute("height", "18");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("aria-hidden", "true");
+  const c = document.createElementNS(ns, "circle");
+  c.setAttribute("cx", "6.5");
+  c.setAttribute("cy", "6.5");
+  c.setAttribute("r", "4.5");
+  c.setAttribute("stroke", "currentColor");
+  c.setAttribute("stroke-width", "1.6");
+  const p = document.createElementNS(ns, "path");
+  p.setAttribute("d", "M10.5 10.5L14 14");
+  p.setAttribute("stroke", "currentColor");
+  p.setAttribute("stroke-width", "1.6");
+  p.setAttribute("stroke-linecap", "round");
+  svg.appendChild(c);
+  svg.appendChild(p);
+  const input = document.createElement("input");
+  input.id = "adminGsInput";
+  input.className = "admin-gs-input";
+  input.type = "search";
+  input.placeholder = "Search users, listings, discussions, news\u2026";
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("spellcheck", "false");
+  const escKbd = document.createElement("kbd");
+  escKbd.className = "admin-gs-esc";
+  escKbd.textContent = "Esc";
+  inputRow.appendChild(svg);
+  inputRow.appendChild(input);
+  inputRow.appendChild(escKbd);
+  const results = document.createElement("div");
+  results.id = "adminGsResults";
+  results.className = "admin-gs-results";
+  box.appendChild(inputRow);
+  box.appendChild(results);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  let timer;
+  let activeIdx = -1;
+  function openSearch() {
+    overlay.classList.add("open");
+    input.value = "";
+    results.textContent = "";
+    activeIdx = -1;
+    setTimeout(() => input.focus(), 60);
+  }
+  function closeSearch() {
+    overlay.classList.remove("open");
+    input.blur();
+  }
+  document.getElementById("adminSearchTrigger")?.addEventListener("click", openSearch);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeSearch();
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      openSearch();
+      return;
+    }
+    if (e.key === "Escape" && overlay.classList.contains("open")) {
+      closeSearch();
+      return;
+    }
+    if (!overlay.classList.contains("open")) return;
+    const items = results.querySelectorAll(".admin-gs-item");
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+      highlightItem(items);
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      highlightItem(items);
+    }
+    if (e.key === "Enter" && activeIdx >= 0) {
+      e.preventDefault();
+      items[activeIdx]?.click();
+    }
+  });
+  function highlightItem(items) {
+    items.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+    items[activeIdx]?.scrollIntoView({ block: "nearest" });
+  }
+  function hint(text) {
+    results.textContent = "";
+    const d = document.createElement("div");
+    d.className = "admin-gs-hint";
+    d.textContent = text;
+    results.appendChild(d);
+  }
+  const ICONS = { user: "\u{1F464}", listing: "\u{1F4CB}", discussion: "\u{1F4AC}", news: "\u{1F4F0}" };
+  const COLORS = { user: "blue", listing: "green", discussion: "purple", news: "red" };
+  function buildItem(item) {
+    const btn = document.createElement("button");
+    btn.className = "admin-gs-item";
+    btn.dataset.gsType = String(item.type || "");
+    btn.dataset.gsId = String(item.id || "");
+    const ico = document.createElement("span");
+    ico.className = "admin-gs-item-icon";
+    ico.textContent = ICONS[item.type] || "\u{1F4C4}";
+    const body = document.createElement("span");
+    body.className = "admin-gs-item-body";
+    const lbl = document.createElement("span");
+    lbl.className = "admin-gs-item-label";
+    lbl.textContent = String(item.label || "\u2014");
+    const sub = document.createElement("span");
+    sub.className = "admin-gs-item-sub";
+    sub.textContent = String(item.sub || item.category || "");
+    body.appendChild(lbl);
+    body.appendChild(sub);
+    const bdg = document.createElement("span");
+    bdg.className = `admin-badge admin-badge-${COLORS[item.type] || "gray"}`;
+    bdg.textContent = String(item.type);
+    btn.appendChild(ico);
+    btn.appendChild(body);
+    btn.appendChild(bdg);
+    btn.addEventListener("click", () => {
+      const type = btn.dataset.gsType;
+      const id = btn.dataset.gsId;
+      closeSearch();
+      if (type === "user") {
+        navigate("users");
+        setTimeout(() => document.querySelector(`[data-view-user="${CSS.escape(id)}"]`)?.click(), 600);
+      } else if (type === "listing") {
+        navigate("listings");
+        setTimeout(() => document.querySelector(`[data-view-listing="${CSS.escape(id)}"]`)?.click(), 600);
+      } else if (type === "discussion") {
+        navigate("discussions");
+        setTimeout(() => document.querySelector(`[data-view-discussion="${CSS.escape(id)}"]`)?.click(), 600);
+      } else if (type === "news") {
+        navigate("news");
+      }
+    });
+    return btn;
+  }
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    activeIdx = -1;
+    clearTimeout(timer);
+    if (q.length < 2) {
+      q.length ? hint("Type at least 2 characters\u2026") : results.textContent = "";
+      return;
+    }
+    hint("Searching\u2026");
+    timer = setTimeout(async () => {
+      var _a;
+      try {
+        const data = await api(`/api/admin/search?q=${encodeURIComponent(q)}`);
+        results.textContent = "";
+        if (!data.results.length) {
+          hint("No results found.");
+          return;
+        }
+        const grouped = {};
+        for (const r of data.results) {
+          (grouped[_a = r.type] ?? (grouped[_a] = [])).push(r);
+        }
+        for (const [type, items] of Object.entries(grouped)) {
+          const grp = document.createElement("div");
+          grp.className = "admin-gs-group";
+          const lbl = document.createElement("div");
+          lbl.className = "admin-gs-group-label";
+          lbl.textContent = capitalize(type === "news" ? "News" : type + "s");
+          grp.appendChild(lbl);
+          for (const item of items) grp.appendChild(buildItem(item));
+          results.appendChild(grp);
+        }
+      } catch {
+        hint("Search failed. Try again.");
+      }
+    }, 260);
+  });
 }
 function refreshCurrentView(showToast = false) {
   const handlers = {
@@ -1426,11 +1617,12 @@ async function openNewsEditor(id = "") {
 }
 async function showDiscussions(page) {
   if (page !== void 0) _s.discussions.page = page;
-  const { page: p } = _s.discussions;
+  const { page: p, search } = _s.discussions;
   try {
-    const data = await api(`/api/admin/discussions?page=${p}&limit=20`);
+    const data = await api(`/api/admin/discussions?${new URLSearchParams({ page: String(p), limit: "20", search })}`);
     content(`
       <div class="admin-toolbar">
+        <input class="admin-search" id="discussionSearch" type="search" placeholder="Search discussions\u2026" value="${esc(search)}">
         <button class="admin-btn admin-btn-primary" data-create-discussion>+ Add Discussion</button>
         <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} discussion${data.total !== 1 ? "s" : ""}</span>
       </div>
@@ -1453,15 +1645,23 @@ async function showDiscussions(page) {
         ${pager(data.page, data.pages, "discussions")}
       </div>
     `);
+    let timer;
+    document.getElementById("discussionSearch")?.addEventListener("input", (e) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        _s.discussions.search = e.target.value.trim();
+        showDiscussions(1);
+      }, 380);
+    });
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
 }
 async function showComments(page) {
   if (page !== void 0) _s.comments.page = page;
-  const { page: p, type } = _s.comments;
+  const { page: p, type, search } = _s.comments;
   try {
-    const data = await api(`/api/admin/comments?${new URLSearchParams({ page: String(p), limit: String(25), type })}`);
+    const data = await api(`/api/admin/comments?${new URLSearchParams({ page: String(p), limit: String(25), type, search })}`);
     content(`
       <div class="admin-toolbar">
         ${tabs(
@@ -1469,6 +1669,7 @@ async function showComments(page) {
       type,
       "comment-type"
     )}
+        <input class="admin-search" id="commentSearch" type="search" placeholder="Search comments\u2026" value="${esc(search)}">
         <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} comment${data.total !== 1 ? "s" : ""}</span>
       </div>
       <div class="admin-card">
@@ -1486,6 +1687,14 @@ async function showComments(page) {
         ${pager(data.page, data.pages, "comments")}
       </div>
     `);
+    let timer;
+    document.getElementById("commentSearch")?.addEventListener("input", (e) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        _s.comments.search = e.target.value.trim();
+        showComments(1);
+      }, 380);
+    });
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }

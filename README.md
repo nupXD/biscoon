@@ -126,7 +126,17 @@ The frontend uses an Emil Kowalski-inspired motion system applied consistently a
 - **Category card scroll-reveal** — the category grid fades in with a 35 ms stagger between cards, triggered by `IntersectionObserver` when the section enters the viewport.
 - **Section scroll-reveal** — journal, heatmap, Facebook groups, calendar, and CTA sections fade up from `translateY(28px)` as they scroll into view.
 - **Counter animation** — stat numbers (`.stat-num`, `.hmap-num`) animate from 0 to their target value with a cubic ease-out over 1 100 ms when they first enter the viewport.
+- **Page hero entrance** — all category page hero elements (eyebrow, title, Devanagari label, description, stats) stagger in with `pageHeroFadeUp` from 40 ms to 340 ms.
+- **Scroll progress bar** — a 2 px red bar fixed at the top of the viewport tracks reading progress, throttled with `requestAnimationFrame` and a passive scroll listener.
 - **`prefers-reduced-motion`** — all entrance animations and counter animations are disabled when the user has requested reduced motion.
+
+### Visual Design
+
+- **Auth page hero** — login, signup, and profile hero sections use a dark navy gradient (`var(--navy) → #1e1460`) with a Devanagari watermark (`नेपाल`) and a red radial glow, replacing the earlier light gradient.
+- **Auth stat panel** — the sidebar panel on auth pages uses a matching dark navy gradient with frosted stat blocks (`rgba(255,255,255,.06)`) for a glassmorphism look.
+- **Category card emoji containers** — each `.cat-emoji` renders inside a 48 × 48 px rounded container. Seven color tints cycle by `nth-child` position: red → blue → green → amber → purple → orange → sky.
+- **Page hero dot pattern** — all category page heroes (`page-hero`) show a subtle radial-gradient dot grid overlay on the background, adding depth without distracting from content.
+- **Colored filter chips** — `.chip:active` delivers scale feedback; `.sort-select:focus` matches the red focus ring of form inputs for consistency.
 
 ### Profile Management
 
@@ -221,8 +231,14 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 
 **Discussions section:**
 - Paginated list of all discussion topics with author, category, and comment count.
+- Live search by title, author, or category.
 - Create official admin discussions.
 - View, edit, or delete any discussion.
+
+**Comments section:**
+- All listing and discussion comments in one moderation queue.
+- Live search by comment body, author name, or parent title.
+- Filter by type (All / Listing Comments / Discussion Comments).
 
 **Reports section:**
 - Review user-submitted reports.
@@ -245,7 +261,8 @@ A protected admin panel at `/pages/admin/dashboard.html` gives operators full vi
 - Refresh current view button and polished loading skeletons.
 - Toast notifications for saves, deletes, uploads, report status changes, and errors.
 - Custom confirmation dialogs replace native browser confirm boxes.
-- Press `/` to focus the visible search box.
+- **Global search** (`⌘K` / `Ctrl+K`) — spotlight-style overlay that searches users, listings, discussions, and news simultaneously, with grouped results, keyboard navigation (↑ ↓ Enter), and deep-link navigation to the matching record.
+- Press `/` to focus the visible per-view search box.
 - Clickable stat cards that navigate directly to the relevant section.
 - Horizontal bar chart showing listing counts by category.
 - Clickable recent users and recent listings mini-cards.
@@ -1261,6 +1278,18 @@ Returns the authenticated user's own reports (paginated).
 
 All admin endpoints require `Authorization: Bearer <token>` plus an admin role. Specific endpoints additionally require the matching permission key.
 
+#### `GET /api/admin/search`
+
+Cross-entity search across users, listings, discussions, and news. Requires an admin token.
+
+Query parameters:
+
+```text
+q   — search term (minimum 2 characters)
+```
+
+Returns up to 5 results per entity type, grouped as `results[]` with `type`, `id`, `label`, and `sub` fields.
+
 #### `GET /api/admin/stats`
 
 Dashboard analytics: user counts (today/week/month), listing counts, discussion counts, conversation count, by-category breakdown, recent users, recent listings.
@@ -1312,8 +1341,8 @@ DELETE /api/admin/listings/:id
 #### Discussions (`discussions` permission)
 
 ```
-GET    /api/admin/discussions
-POST   /api/admin/discussions       — create a discussion as the signed-in admin
+GET    /api/admin/discussions        — paginated; ?search=&page=
+POST   /api/admin/discussions        — create a discussion as the signed-in admin
 GET    /api/admin/discussions/:id    — includes all comments
 PUT    /api/admin/discussions/:id
 DELETE /api/admin/discussions/:id
@@ -1322,7 +1351,7 @@ DELETE /api/admin/discussions/:id
 #### Comments (`comments` permission)
 
 ```
-GET    /api/admin/comments           — all listing + discussion comments; ?type=listing|discussion|all
+GET    /api/admin/comments           — all listing + discussion comments; ?type=listing|discussion|all&search=
 DELETE /api/admin/listings/:listingId/comments/:commentId
 DELETE /api/admin/discussions/:discussionId/comments/:commentId
 ```

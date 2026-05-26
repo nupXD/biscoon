@@ -5,9 +5,11 @@
 .messages-sidebar-head h1{font-family:"Cormorant Garamond",serif;font-size:28px;line-height:1.1;color:var(--navy);margin-bottom:4px}
 .messages-sidebar-head p{font-size:13px;color:var(--text-muted)}
 .messages-list{display:flex;flex-direction:column}
-.messages-conv-card{display:block;padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;text-decoration:none;color:inherit;transition:background .12s}
+.messages-conv-card{display:block;padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;text-decoration:none;color:inherit;transition:background 150ms ease-out, transform 150ms var(--ease-out)}
 .messages-conv-card:last-child{border-bottom:none}
-.messages-conv-card:hover{background:var(--red-ultra)}
+@media (hover: hover) and (pointer: fine) {
+  .messages-conv-card:hover{background:var(--red-ultra);transform:translateX(2px)}
+}
 .messages-conv-card.active{background:var(--red-ultra);border-left:3px solid var(--red)}
 .messages-conv-card.unread{border-left:3px solid var(--red)}
 .messages-conv-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
@@ -42,8 +44,8 @@
 
 .messages-reply-form{padding:12px 22px 16px;border-top:1.5px solid var(--border);display:flex;flex-direction:column;gap:8px}
 .messages-reply-input-row{display:flex;gap:10px;align-items:flex-end}
-.messages-reply-form textarea{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13.5px;font-family:inherit;resize:none;min-height:60px;max-height:140px;outline:none;transition:border-color .15s}
-.messages-reply-form textarea:focus{border-color:var(--red)}
+.messages-reply-form textarea{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13.5px;font-family:inherit;resize:none;min-height:60px;max-height:140px;outline:none;transition:border-color 150ms ease-out,box-shadow 150ms ease-out}
+.messages-reply-form textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(192,57,43,.1)}
 .messages-attach-btn{flex-shrink:0;width:40px;height:40px;border:1.5px solid var(--border);border-radius:8px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:border-color .15s,background .15s;padding:0}
 .messages-attach-btn:hover{border-color:var(--red);background:var(--red-ultra)}
 .messages-reply-form .btn-primary{flex-shrink:0;padding:10px 18px;white-space:nowrap;align-self:flex-end}
@@ -69,7 +71,7 @@
 
 .messages-send-modal{position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center}
 .messages-send-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}
-.messages-send-panel{position:relative;z-index:1;background:white;border-radius:12px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.messages-send-panel{position:relative;z-index:1;background:white;border-radius:12px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:modalPanelIn 260ms var(--ease-out) both}
 .messages-send-panel h3{font-family:"Cormorant Garamond",serif;font-size:24px;color:var(--navy);margin-bottom:6px}
 .messages-send-panel p{font-size:13px;color:var(--text-muted);margin-bottom:18px}
 .messages-send-panel textarea{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;min-height:90px;outline:none;transition:border-color .15s;margin-bottom:14px}
@@ -78,6 +80,22 @@
 .messages-send-error{font-size:13px;color:var(--red);margin-bottom:10px}
 
 .messages-inline-1{flex:1;text-align:center}
+
+/* ── MESSAGE BUBBLE ENTRANCE ── */
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.97) }
+  to   { opacity: 1; transform: translateY(0) scale(1) }
+}
+.messages-bubble-row { animation: bubbleIn 200ms var(--ease-out) both }
+
+/* ── ATTACH BUTTON ACTIVE ── */
+.messages-attach-btn:active { transform: scale(0.92) }
+.messages-attach-btn { transition: border-color 150ms ease-out, background 150ms ease-out, transform 120ms var(--ease-out) }
+
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  .messages-bubble-row, .messages-send-panel { animation: none }
+}
 
 @media(max-width:768px){
   .messages-page{padding:20px 16px 48px}

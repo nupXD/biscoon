@@ -412,3 +412,49 @@
 @media (prefers-reduced-motion: reduce) {
   .spotlight-cta { transition: none }
 }
+
+/* ── Category card visual refresh ── */
+.cat-card {
+  min-height: 116px;
+  border-radius: 14px;
+}
+.cat-emoji {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  font-size: 24px;
+  line-height: 1;
+  background: rgba(192,57,43,.10);
+  transition: transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)), background 200ms ease-out;
+}
+/* 7-color rotation for emoji containers */
+.cat-card:nth-child(7n+1) .cat-emoji { background: rgba(192,57,43,.10) }
+.cat-card:nth-child(7n+2) .cat-emoji { background: rgba(37,99,235,.10) }
+.cat-card:nth-child(7n+3) .cat-emoji { background: rgba(16,185,129,.10) }
+.cat-card:nth-child(7n+4) .cat-emoji { background: rgba(245,158,11,.10) }
+.cat-card:nth-child(7n+5) .cat-emoji { background: rgba(124,58,237,.10) }
+.cat-card:nth-child(7n+6) .cat-emoji { background: rgba(234,88,12,.10) }
+.cat-card:nth-child(7n+7) .cat-emoji { background: rgba(14,165,233,.10) }
+/* On hover, emoji container tints shift to red */
+@media (hover: hover) and (pointer: fine) {
+  .cat-card:hover .cat-emoji,
+  .cat-card:focus-visible .cat-emoji {
+    background: rgba(192,57,43,.15);
+  }
+}
+
+/* ── Stats strip — bigger numbers, subtle accent ── */
+.stat-num { font-size: 26px }
+.stats-strip { border-radius: 14px }
+
+/* ── Hero visual accent: subtle left border on hero-content ── */
+@media (min-width: 901px) {
+  .hero--has-spotlight .hero-content {
+    border-right: 1px solid rgba(192,57,43,.08);
+    padding-right: 36px;
+  }
+}

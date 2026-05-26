@@ -416,3 +416,66 @@ button,input,select,textarea{font:inherit}
 .admin-login-divider{height:1px;background:#f0f2f5;margin:24px 0}
 .admin-login-hint{font-size:12px;color:#6b7a8d;background:#f8f9fb;border-radius:8px;padding:10px 14px;text-align:left}
 .admin-login-hint strong{color:#1a2332}
+
+/* ── Search trigger button ── */
+.admin-search-trigger { color: var(--admin-muted) }
+.admin-search-trigger:hover { color: var(--admin-ink) }
+
+/* ── Global Search Overlay ── */
+.admin-gs-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10, 17, 30, 0.52);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: clamp(60px, 12vh, 130px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 160ms ease-out;
+}
+.admin-gs-overlay.open { opacity: 1; pointer-events: auto }
+.admin-gs-box {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 28px 80px rgba(10,17,30,.30), 0 4px 20px rgba(10,17,30,.12);
+  width: 100%; max-width: 600px; overflow: hidden;
+  transform: translateY(10px) scale(.98);
+  transition: transform 180ms cubic-bezier(0.23,1,0.32,1);
+}
+.admin-gs-overlay.open .admin-gs-box { transform: translateY(0) scale(1) }
+.admin-gs-input-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 20px; border-bottom: 1px solid #eef2f7;
+}
+.admin-gs-icon { flex-shrink: 0; color: #9aaab8 }
+.admin-gs-input {
+  flex: 1; border: none; outline: none; font-size: 17px;
+  font-family: inherit; color: #172033; background: transparent;
+}
+.admin-gs-input::placeholder { color: #b0bcc8 }
+.admin-gs-esc {
+  flex-shrink: 0; font-size: 11px; padding: 3px 7px;
+  background: #f1f4f8; border: 1px solid #dde4ed; border-radius: 5px;
+  color: #6b7a8d; font-family: inherit; cursor: default;
+}
+.admin-gs-results { max-height: 420px; overflow-y: auto; padding: 8px 0 }
+.admin-gs-hint, .admin-gs-empty {
+  padding: 20px 24px; font-size: 13px; color: #9aaab8; text-align: center;
+}
+.admin-gs-group { padding: 6px 0 }
+.admin-gs-group-label {
+  padding: 6px 20px 4px; font-size: 10.5px; font-weight: 700;
+  color: #9aaab8; text-transform: uppercase; letter-spacing: .1em;
+}
+.admin-gs-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; background: none; border: none;
+  padding: 10px 20px; cursor: pointer;
+  transition: background 120ms ease-out;
+}
+.admin-gs-item:hover, .admin-gs-item.active { background: #f5f8ff }
+.admin-gs-item-icon { font-size: 18px; flex-shrink: 0; width: 28px; text-align: center }
+.admin-gs-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px }
+.admin-gs-item-label { font-size: 14px; font-weight: 600; color: #172033; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.admin-gs-item-sub   { font-size: 12px; color: #9aaab8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+@media (max-width: 640px) {
+  .admin-gs-overlay { padding-top: 20px; align-items: flex-end; padding: 0 }
+  .admin-gs-box { border-radius: 14px 14px 0 0; max-width: 100% }
+}

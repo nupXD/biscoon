@@ -141,11 +141,13 @@ nav {
 .nav-links a.pg-link { color: var(--red); font-weight: 600; background: var(--red-ultra); margin-left: 4px }
 .nav-links a.pg-link:hover { background: var(--red-light) }
 .nav-ctas { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto }
-.nav-search { display: flex; align-items: center; gap: 6px; margin-left: 16px; min-width: 200px; max-width: 280px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: white }
+.nav-search { display: flex; align-items: center; gap: 6px; margin-left: 16px; min-width: 200px; max-width: 280px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: white; transition: border-color 150ms ease-out, box-shadow 150ms ease-out }
+.nav-search:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px rgba(192,57,43,.1) }
 .nav-search-input { flex: 1; border: none; outline: none; font-size: 13px; padding: 8px 0; background: transparent; color: var(--text); min-width: 120px }
 .nav-search-input::placeholder { color: var(--gray-400) }
-.nav-search-btn { border: none; background: transparent; color: var(--red); font-size: 14px; padding: 8px 10px; border-radius: 999px; cursor: pointer; transition: background .15s }
+.nav-search-btn { border: none; background: transparent; color: var(--red); font-size: 14px; padding: 8px 10px; border-radius: 999px; cursor: pointer; transition: background 150ms ease-out, transform 120ms var(--ease-out) }
 .nav-search-btn:hover { background: rgba(192,57,43,.08) }
+.nav-search-btn:active { transform: scale(0.9) }
 .btn-ghost { padding: 7px 16px; border: 1.5px solid var(--border); border-radius: 8px; background: transparent; font-size: 13px; font-family: 'Noto Sans Devanagari', sans-serif; color: var(--gray-700); cursor: pointer; transition: border-color 150ms ease-out, color 150ms ease-out, transform 120ms var(--ease-out) }
 .btn-ghost:hover { border-color: var(--red); color: var(--red) }
 .btn-ghost:active { transform: scale(0.97) }
@@ -294,8 +296,9 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 .search-select { padding: 11px 14px; border: none; border-right: 1.5px solid var(--border); background: var(--off-white); font-size: 13px; color: var(--text); cursor: pointer; font-family: 'Noto Sans Devanagari', sans-serif; min-width: 155px; outline: none }
 .search-input { flex: 1; padding: 11px 16px; border: none; font-size: 14px; font-family: 'IBM Plex Sans', sans-serif; color: var(--text); outline: none; background: white }
 .search-input::placeholder { color: #bbb }
-.search-btn { padding: 11px 24px; background: var(--red); border: none; color: white; font-size: 14px; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 600; cursor: pointer; transition: background .15s; white-space: nowrap }
+.search-btn { padding: 11px 24px; background: var(--red); border: none; color: white; font-size: 14px; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 600; cursor: pointer; transition: background 150ms ease-out, transform 120ms var(--ease-out); white-space: nowrap }
 .search-btn:hover { background: var(--red-dark) }
+.search-btn:active { transform: scale(0.97) }
 
 /* ── FILTER / SORT BAR ── */
 .filter-sort-bar {
@@ -608,6 +611,47 @@ a.stat-cell:hover { background: rgba(192,57,43,.06); border-radius: 8px }
 .loading-spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--red); border-radius: 50%; animation: spin .7s linear infinite }
 @keyframes spin { to { transform: rotate(360deg) } }
 
+/* ── SKELETON LOADER ── */
+@keyframes shimmer {
+  from { background-position: -400px 0 }
+  to   { background-position: 400px 0 }
+}
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-card {
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: white;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.skeleton-thumb { width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0 }
+.skeleton-body { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center }
+.skeleton-line { height: 12px }
+.skeleton-line-short { height: 12px; width: 60% }
+.skeleton-line-xs { height: 10px; width: 40% }
+
+/* ── PAGE SCROLL PROGRESS ── */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--red);
+  z-index: 9999;
+  width: 0%;
+  transition: width 80ms linear;
+  pointer-events: none;
+  opacity: 0;
+}
+.scroll-progress.visible { opacity: 1 }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) { .page-layout { grid-template-columns: 1fr } .page-sidebar { display: none } }
 @media (max-width: 900px) { .nav-links { display: none } .nav-search { display: none } .hamburger { display: flex } .nav-ctas { display: none } .footer-grid { grid-template-columns: 1fr 1fr } }
@@ -695,11 +739,101 @@ a.stat-cell:hover { background: rgba(192,57,43,.06); border-radius: 8px }
 .listing-card:nth-child(5) { animation-delay: 180ms }
 .listing-card:nth-child(n+6) { animation-delay: 200ms }
 
+/* ── LISTING MODAL ENTRY ANIMATION ── */
+@keyframes modalPanelIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97) }
+  to   { opacity: 1; transform: translateY(0) scale(1) }
+}
+@keyframes backdropFadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+.listing-modal.open .listing-modal-panel {
+  animation: modalPanelIn 280ms var(--ease-out) both;
+}
+.listing-modal.open .listing-modal-backdrop {
+  animation: backdropFadeIn 200ms ease-out both;
+}
+.listing-modal-close {
+  transition: border-color 150ms ease-out, color 150ms ease-out, background 150ms ease-out, transform 120ms var(--ease-out);
+}
+.listing-modal-close:active { transform: scale(0.88) }
+
+/* ── SUGGEST PANEL ENTRY ── */
+@keyframes suggestPanelIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97) }
+  to   { opacity: 1; transform: translateY(0) scale(1) }
+}
+.biscoon-suggest-panel:not([hidden]) {
+  animation: suggestPanelIn 160ms var(--ease-out) both;
+  transform-origin: top center;
+}
+
+/* ── CARD ACTION ACTIVE ── */
+.card-action { transition: background 150ms ease-out, transform 120ms var(--ease-out) }
+.card-action:active { transform: scale(0.97) }
+
+/* ── DISCUSSION/NOTIFICATION MODAL ENTRY ── */
+@keyframes discussionModalIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96) }
+  to   { opacity: 1; transform: translateY(0) scale(1) }
+}
+
+/* ── NOTIFICATION CARD ENTRY STAGGER ── */
+@keyframes notifCardIn {
+  from { opacity: 0; transform: translateY(8px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+/* ── AUTH CARD ENTRANCE ── */
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(20px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+/* ── FOOTER LINK HOVER IMPROVEMENT ── */
+.footer-col ul li a { transition: color 150ms ease-out, transform 150ms var(--ease-out); display: inline-block }
+@media (hover: hover) and (pointer: fine) {
+  .footer-col ul li a:hover { color: white; transform: translateX(3px) }
+}
+
+/* ── PAGE HERO: dot-pattern accent + entrance animations ── */
+.page-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
+}
+.page-hero > * { position: relative; z-index: 1 }
+@keyframes pageHeroFadeUp {
+  from { opacity: 0; transform: translateY(16px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+.page-hero-eyebrow    { animation: pageHeroFadeUp 440ms var(--ease-out)  40ms both }
+.page-hero-title      { animation: pageHeroFadeUp 500ms var(--ease-out) 110ms both }
+.page-hero-devanagari { animation: pageHeroFadeUp 420ms var(--ease-out) 200ms both }
+.page-hero-desc       { animation: pageHeroFadeUp 420ms var(--ease-out) 270ms both }
+.page-hero-stats      { animation: pageHeroFadeUp 400ms var(--ease-out) 340ms both }
+.page-hero .search-bar { animation: pageHeroFadeUp 400ms var(--ease-out) 320ms both }
+
+/* ── CHIP FILTER: active state ── */
+.chip:active { transform: scale(0.96); transition-duration: 100ms }
+.sort-select { transition: border-color 150ms ease-out, box-shadow 150ms ease-out }
+.sort-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(192,57,43,.1); outline: none }
+
 /* ── PREFERS REDUCED MOTION ── */
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none !important }
   .loading-spinner { animation-duration: 1.5s }
   .listing-card { animation: none }
+  .listing-modal.open .listing-modal-panel,
+  .listing-modal.open .listing-modal-backdrop,
+  .biscoon-suggest-panel:not([hidden]) { animation: none }
+  .page-hero-eyebrow, .page-hero-title, .page-hero-devanagari,
+  .page-hero-desc, .page-hero-stats, .page-hero .search-bar { animation: none }
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
