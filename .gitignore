@@ -5,6 +5,7 @@ dist/
 data/users.json
 data/*.db
 data/mongo/
+data/logs/
 uploads/
 .claude/
 .codex/

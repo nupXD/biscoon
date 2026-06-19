@@ -1,5 +1,5 @@
 import app from './src/app';
-import { PORT, isProduction } from './src/config/env';
+import { MONGODB_URI, PORT, isProduction } from './src/config/env';
 import connectDatabase from './src/config/database';
 import mongoose from 'mongoose';
 import { ensureIndices, isAvailable } from './src/services/elasticsearch';
@@ -74,6 +74,13 @@ connectDatabase()
     listenWithFallback(PORT);
   })
   .catch(err => {
-    console.error('✗ MongoDB connection error:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    captureException(err, { source: 'databaseStartup' });
+    console.error('✗ MongoDB connection error:', message);
+    if (!isProduction && /ECONNREFUSED|ServerSelection/i.test(message)) {
+      console.error(`MongoDB is not running at ${MONGODB_URI}.`);
+      console.error('Start it in another terminal with: npm run mongo');
+      console.error('Then run the app with: npm run dev');
+    }
     process.exit(1);
   });
