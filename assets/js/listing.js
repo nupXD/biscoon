@@ -243,7 +243,7 @@ const LISTING_FORM_PROFILES = {
       title: 'Title is required.',
       description: 'Description is required.',
       subcategory: 'Specific type is required.',
-      location: 'Area and state are required.',
+      location: 'Location is required.',
       contactEmail: 'Email is required.',
       price: 'Price or rate is required.',
       availability: 'Availability or timing is required.',
@@ -689,19 +689,34 @@ function toggleListingForm(enabled) {
 function setListingAuthState() {
   const token = getToken();
   const form = document.getElementById('listingForm');
+  const gate = document.getElementById('listingAuthGate');
+  const fields = document.getElementById('listingFormFields');
+  const submitRow = document.getElementById('listingSubmitRow');
   const guard = document.getElementById('listingGuardMessage');
   const signinLink = document.getElementById('listingSigninLink');
+  const gateLink = document.getElementById('listingGateSignin');
   if (!form) return;
 
+  const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+  const loginHref = `../auth/login.html?redirect=${redirect}`;
+  if (gateLink) gateLink.href = loginHref;
+  if (signinLink) signinLink.href = loginHref;
+
   if (token) {
-    if (guard) guard.style.display = 'none';
-    if (signinLink) signinLink.style.display = 'none';
+    if (gate) gate.hidden = true;
+    if (fields) fields.hidden = false;
+    if (submitRow) submitRow.hidden = false;
+    if (guard) { guard.hidden = true; guard.textContent = ''; }
+    if (signinLink) signinLink.hidden = true;
     showListingMessage('', 'success');
     toggleListingForm(true);
   } else {
-    if (guard) guard.style.display = 'block';
-    if (signinLink) signinLink.style.display = '';
-    showListingMessage('Please log in to publish, edit, or delete your listings.', 'error');
+    if (gate) gate.hidden = false;
+    if (fields) fields.hidden = true;
+    if (submitRow) submitRow.hidden = true;
+    if (guard) { guard.hidden = true; guard.textContent = ''; }
+    if (signinLink) signinLink.hidden = true;
+    showListingMessage('', 'success');
     toggleListingForm(false);
   }
 }
@@ -825,8 +840,18 @@ function safeExternalHref(value) {
   }
 }
 
-function getCategoryPreset(category) {
-  return CATEGORY_FIELD_PRESETS[category] || DEFAULT_FIELD_PRESET;
+function getCategoryPreset(category, subcategory = '') {
+  const parent = CATEGORY_FIELD_PRESETS[category] || DEFAULT_FIELD_PRESET;
+  const specificKey = normalizeListingCategory(subcategory);
+  const specific = specificKey && CATEGORY_FIELD_PRESETS[specificKey]
+    ? CATEGORY_FIELD_PRESETS[specificKey]
+    : null;
+  if (!specific || specificKey === category) return parent;
+  return {
+    ...parent,
+    availabilityPlaceholder: specific.availabilityPlaceholder || parent.availabilityPlaceholder,
+    availability: specific.availability || parent.availability,
+  };
 }
 
 function getCategoryContext(category, subcategory = '') {
@@ -873,64 +898,45 @@ function setSidebarList(id, items = []) {
 
 function applyCategoryGuide(category, subcategory = '') {
   const guide = getCategoryGuide(category, subcategory);
-  const guideEl = document.getElementById('categoryFieldGuide');
-  if (guideEl) {
-    guideEl.innerHTML = [
-      renderGuideList('Must include', guide.must, 'must'),
-      renderGuideList('Useful if relevant', guide.useful, 'useful'),
-      renderGuideList('Can skip', guide.skip, 'skip'),
-    ].join('');
-  }
-
-  if (Array.isArray(guide.sections)) {
-    setText('sectionPlacementTitle', guide.sections[0]);
-    setText('sectionOfferingTitle', guide.sections[1]);
-    setText('sectionContactTitle', guide.sections[2]);
-    setText('sectionSearchTitle', guide.sections[3]);
-  }
-  setText('sidebarBestTitle', guide.bestTitle);
-  setSidebarList('sidebarBestList', guide.best);
-  setSidebarList('sidebarNextList', guide.next);
-  setSidebarList('sidebarTypesList', guide.types);
+  const tips = (guide.best || []).slice(0, 3);
+  if (tips.length) setSidebarList('sidebarBestList', tips);
 }
 
 function applyCategoryContext(category, subcategory = '') {
   const context = getCategoryContext(category, subcategory);
   applyCategoryGuide(category, subcategory);
-  const contextEl = document.getElementById('categoryContext');
-  if (contextEl) {
-    contextEl.innerHTML = `
-      <strong>${escapeHtml(context.label)}</strong>
-      <span>${escapeHtml(context.hint)}</span>
-    `;
-  }
 
-  setText('titleLabel', context.titleLabel);
-  setPlaceholder('title', context.titlePlaceholder);
-  setText('titleNote', context.titleNote);
-  setText('descriptionLabel', context.descriptionLabel);
-  setPlaceholder('description', context.descriptionPlaceholder);
-  setText('areaLabel', context.areaLabel);
-  setText('locationTypeLabel', context.locationTypeLabel);
-  setText('priceLabel', context.priceLabel);
-  setPlaceholder('price', context.pricePlaceholder);
-  setText('priceNoteLabel', context.priceNoteLabel);
-  setPlaceholder('priceNote', context.priceNotePlaceholder);
-  setText('contactPreferenceLabel', context.contactPreferenceLabel);
-  setText('linkLabel', context.linkLabel);
-  setText('tagsLabel', context.tagsLabel || 'Tags / keywords');
-  setPlaceholder('tags', context.tagsPlaceholder);
-  setText('tagsNote', context.tagsNote);
-  setText('imagesLabel', context.imagesLabel);
-  setText('imagesNote', context.imagesNote);
-  setLocationTypeOptions(context.locationTypes);
+  // Keep placeholders short — long category copy made the form feel heavy.
+  const shortTitle = {
+    jobs: 'e.g. Full-stack developer — Boston / remote',
+    housing: 'e.g. Sunny room in Allston — $950/mo',
+    marketplace: 'e.g. IKEA desk for sale — good condition',
+    community: 'e.g. Dashain meetup — this Saturday',
+    photography: 'e.g. Street photos from Kathmandu',
+  };
+  const shortDesc = {
+    jobs: 'Role, pay range if known, schedule, and who should apply.',
+    housing: 'Room/home details, rent, move-in date, and house rules.',
+    marketplace: 'Condition, what’s included, pickup/delivery, and price notes.',
+    community: 'What it is, who it’s for, when/where, and how to join.',
+    photography: 'Caption or story behind the photos.',
+  };
+  setPlaceholder('title', shortTitle[category] || 'Clear headline for your listing');
+  setPlaceholder('description', shortDesc[category] || 'What is it, who is it for, and any must-know details.');
+  setPlaceholder('price', context.pricePlaceholder || 'e.g. $120, free, negotiable');
+  setText('imagesNote', 'Up to 6 photos. Clear shots help people respond faster.');
+  setText('subcategoryLabel', category === 'photography' ? 'Photo style' : 'Type');
+  setText('availabilityLabel', category === 'community' || subcategory === 'events' ? 'Date / timing' : 'Availability');
+  if (document.getElementById('locationType') && Array.isArray(context.locationTypes) && context.locationTypes.length) {
+    setLocationTypeOptions(context.locationTypes);
+  }
 }
 
 function updateImageLimitCopy(category) {
   const note = document.getElementById('imagesNote');
   if (!note) return;
   const limit = getMaxListingImages(category);
-  note.textContent = `${note.textContent} You can add up to ${limit} photo${limit === 1 ? '' : 's'}.`;
+  note.textContent = `Up to ${limit} photo${limit === 1 ? '' : 's'}. Clear shots help people respond faster.`;
 }
 
 function enforceImageLimitForCurrentCategory() {
@@ -967,7 +973,6 @@ function applyListingFormProfile(category, subcategory = '') {
 
   setFieldRequired('availability', profile.required.availability && profile.visible.availability);
   setFieldRequired('area', profile.required.location && profile.visible.location);
-  setFieldRequired('state', profile.required.location && profile.visible.location);
   setFieldRequired('price', profile.required.price && profile.visible.price);
   setFieldRequired('contactEmail', profile.required.contactEmail && profile.visible.contact);
 
@@ -987,9 +992,40 @@ function setDatalistOptions(id, values = []) {
 function renderQuickPicks(containerId, values = [], targetId) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = values.slice(0, 7).map(value => `
-    <button class="dynamic-suggestion" type="button" data-fill-target="${escapeHtml(targetId)}" data-fill-value="${escapeHtml(value)}">${escapeHtml(value)}</button>
-  `).join('');
+  const currentRaw = (document.getElementById(targetId)?.value || '').trim();
+  const current = currentRaw.toLowerCase();
+  let list = Array.from(new Set((values || []).map(value => String(value || '').trim()).filter(Boolean)));
+
+  if (currentRaw && !list.some(value => value.toLowerCase() === current)) {
+    list.unshift(currentRaw);
+  }
+
+  const matchIndex = list.findIndex(value => value.toLowerCase() === current);
+  if (matchIndex > 0) {
+    const [match] = list.splice(matchIndex, 1);
+    list.unshift(match);
+  }
+
+  container.innerHTML = list.slice(0, 6).map(value => {
+    const active = value.toLowerCase() === current;
+    return `<button class="dynamic-suggestion${active ? ' is-active' : ''}" type="button" aria-pressed="${active ? 'true' : 'false'}" data-fill-target="${escapeHtml(targetId)}" data-fill-value="${escapeHtml(value)}">${escapeHtml(value)}</button>`;
+  }).join('');
+}
+
+function syncQuickPickActive(targetId) {
+  const input = document.getElementById(targetId);
+  const containerId = targetId === 'subcategory'
+    ? 'subcategoryQuickPicks'
+    : targetId === 'availability'
+      ? 'availabilityQuickPicks'
+      : '';
+  if (!input || !containerId) return;
+  const current = input.value.trim().toLowerCase();
+  document.querySelectorAll(`#${containerId} .dynamic-suggestion`).forEach(button => {
+    const active = (button.dataset.fillValue || '').trim().toLowerCase() === current;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
 }
 
 function updateCategoryDependentFields(options = {}) {
@@ -1002,15 +1038,15 @@ function updateCategoryDependentFields(options = {}) {
   if (category.value !== normalizedCategory) category.value = normalizedCategory;
   const selectedSubcategory = options.clearValues ? '' : subcategory.value;
   const profileKey = getActiveListingProfileKey(normalizedCategory, selectedSubcategory);
-  const preset = getCategoryPreset(normalizedCategory);
+  const preset = getCategoryPreset(normalizedCategory, selectedSubcategory);
   applyCategoryContext(normalizedCategory, selectedSubcategory);
   applyListingFormProfile(normalizedCategory, selectedSubcategory);
   updateImageLimitCopy(normalizedCategory);
   subcategory.placeholder = preset.subcategoryPlaceholder;
   availability.placeholder = preset.availabilityPlaceholder;
-  setText('subcategoryLabel', profileKey === 'photography' ? 'Photo style / genre' : 'Specific type');
-  setText('availabilityLabel', profileKey === 'event' ? 'Date / timing' : 'Availability / timing');
-  setText('subcategoryNote', normalizedCategory ? 'Choose one of these common options or type your own.' : 'Use a short searchable label people can filter by.');
+  setText('subcategoryLabel', profileKey === 'photography' ? 'Photo style' : 'Type');
+  setText('availabilityLabel', profileKey === 'event' ? 'Date / timing' : 'Availability');
+  setText('subcategoryNote', '');
   setDatalistOptions('subcategorySuggestions', preset.subcategories);
   setDatalistOptions('availabilitySuggestions', preset.availability);
   renderQuickPicks('subcategoryQuickPicks', preset.subcategories, 'subcategory');
@@ -1089,27 +1125,32 @@ async function mapFormToListing() {
   const tags = document.getElementById('tags');
   const imagesUpload = document.getElementById('imagesUpload');
   const normalizedCategory = normalizeListingCategory(category.value.trim());
-  const profile = getActiveListingFormProfile(normalizedCategory, subcategory.value);
+  const profile = getActiveListingFormProfile(normalizedCategory, subcategory?.value || '');
+  const areaValue = area?.value.trim() || '';
+  const stateValue = state?.value.trim() || '';
+  // Prefer the single Location field; fall back to area + state if both exist.
   const specificLocation = profile.visible.location
-    ? formatSpecificLocation(area.value, state.value)
-    : (profile.defaults.location || `${getCategoryContext(normalizedCategory, subcategory.value).label} post`);
+    ? (stateValue ? formatSpecificLocation(areaValue, stateValue) : areaValue)
+    : (profile.defaults.location || `${getCategoryContext(normalizedCategory, subcategory?.value || '').label} post`);
   if (location) location.value = specificLocation;
 
+  const val = (el) => (el?.value || '').trim();
+
   return {
-    title: title.value.trim(),
-    description: description.value.trim(),
+    title: val(title),
+    description: val(description),
     category: normalizedCategory,
-    subcategory: subcategory.value.trim(),
-    availability: profile.visible.availability ? availability.value.trim() : (profile.defaults.availability || ''),
-    price: profile.visible.price ? price.value.trim() : (profile.defaults.price || ''),
-    priceNote: profile.visible.price ? priceNote.value.trim() : (profile.defaults.priceNote || ''),
+    subcategory: val(subcategory),
+    availability: profile.visible.availability ? val(availability) : (profile.defaults.availability || ''),
+    price: profile.visible.price ? val(price) : (profile.defaults.price || ''),
+    priceNote: profile.visible.price ? val(priceNote) : (profile.defaults.priceNote || ''),
     location: specificLocation,
-    locationType: profile.visible.location ? locationType.value.trim() : (profile.defaults.locationType || ''),
-    contactEmail: profile.visible.contact ? contactEmail.value.trim() : (profile.defaults.contactEmail || ''),
-    contactPhone: profile.visible.contact ? contactPhone.value.trim() : (profile.defaults.contactPhone || ''),
-    contactPreference: profile.visible.contact ? contactPreference.value.trim() : (profile.defaults.contactPreference || ''),
-    externalLink: profile.visible.link ? externalLink.value.trim() : (profile.defaults.externalLink || ''),
-    tags: serializeTags(tags.value),
+    locationType: profile.visible.location ? (val(locationType) || 'in-person') : (profile.defaults.locationType || ''),
+    contactEmail: profile.visible.contact ? val(contactEmail) : (profile.defaults.contactEmail || ''),
+    contactPhone: profile.visible.contact ? val(contactPhone) : (profile.defaults.contactPhone || ''),
+    contactPreference: profile.visible.contact ? (val(contactPreference) || 'email') : (profile.defaults.contactPreference || 'email'),
+    externalLink: profile.visible.link ? val(externalLink) : (profile.defaults.externalLink || ''),
+    tags: serializeTags(val(tags)),
     images: await serializeImages(imagesUpload),
   };
 }
@@ -1493,8 +1534,14 @@ async function loadListing(id) {
   document.getElementById('availability').value = listing.availability || '';
   document.getElementById('title').value = listing.title || '';
   document.getElementById('description').value = listing.description || '';
-  document.getElementById('area').value = locationParts.area;
-  document.getElementById('state').value = locationParts.state;
+    const areaEl = document.getElementById('area');
+  const stateEl = document.getElementById('state');
+  if (areaEl) {
+    // Simplified form uses one Location field — keep full location string there.
+    areaEl.value = listing.location || locationParts.area || '';
+  }
+  if (stateEl && stateEl.type !== 'hidden') stateEl.value = locationParts.state;
+  else if (stateEl) stateEl.value = '';
   document.getElementById('locationType').value = listing.locationType || 'in-person';
   document.getElementById('location').value = listing.location || '';
   document.getElementById('price').value = listing.price || '';
@@ -1585,23 +1632,19 @@ function updateListingProgress() {
   const photoScore = profile.required.photos ? Math.min(editingListingImages.length, 1) : Math.min(editingListingImages.length, 1);
   const score = Math.min(100, Math.round(((filled + photoScore) / (fields.length + 1)) * 100));
   progress.style.width = `${score}%`;
-  label.textContent = score < 45 ? (isPhotographyPost ? 'Needs photo basics' : 'Needs basics') : score < 85 ? 'Almost ready' : 'Ready to publish';
+  const status = score < 45
+    ? (isPhotographyPost ? 'Needs photo basics' : 'Needs basics')
+    : score < 85
+      ? 'Almost ready'
+      : 'Ready to publish';
+  label.textContent = status;
+  label.dataset.strength = score < 45 ? 'low' : score < 85 ? 'mid' : 'high';
+  const wrap = document.getElementById('listingProgress');
+  if (wrap) wrap.dataset.strength = label.dataset.strength;
 }
 
 function ensureListingProgress() {
-  const form = document.getElementById('listingForm');
-  if (!form || document.getElementById('listingProgress')) return;
-  const progress = document.createElement('div');
-  progress.id = 'listingProgress';
-  progress.className = 'listing-progress';
-  progress.innerHTML = `
-    <div class="listing-progress-top">
-      <span>Listing strength</span>
-      <strong id="listingProgressLabel">Needs basics</strong>
-    </div>
-    <div class="listing-progress-track"><span id="listingProgressFill"></span></div>
-  `;
-  form.insertBefore(progress, form.querySelector('.form-section'));
+  // Intentionally no-op: keep the form focused on essentials.
 }
 
 function bindInteractiveForm() {
@@ -1614,6 +1657,9 @@ function bindInteractiveForm() {
     if (event.target.id === 'subcategory') {
       updateCategoryDependentFields();
     }
+    if (event.target.id === 'availability') {
+      syncQuickPickActive('availability');
+    }
   });
   document.addEventListener('change', event => {
     if (event.target.id === 'myListingsSort') {
@@ -1624,10 +1670,15 @@ function bindInteractiveForm() {
   document.addEventListener('click', event => {
     const quickPick = event.target.closest('[data-fill-target][data-fill-value]');
     if (quickPick) {
+      event.preventDefault();
       const input = document.getElementById(quickPick.dataset.fillTarget);
       if (input) {
-        input.value = quickPick.dataset.fillValue;
+        const nextValue = quickPick.dataset.fillValue || '';
+        input.value = input.value.trim().toLowerCase() === nextValue.trim().toLowerCase() ? '' : nextValue;
         input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        syncQuickPickActive(quickPick.dataset.fillTarget);
+        updateListingProgress();
       }
       return;
     }
@@ -1678,6 +1729,36 @@ function bindInteractiveForm() {
   }
   updateCategoryDependentFields();
   updateListingProgress();
+}
+
+function ensureTagQuickPicks() {
+  const tags = document.getElementById('tags');
+  const note = document.getElementById('tagsNote');
+  if (!tags || document.getElementById('tagQuickPicks')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'tagQuickPicks';
+  wrap.className = 'dynamic-suggestions';
+  const suggestions = ['used', 'like new', 'negotiable', 'moving sale', 'pickup only', 'delivery available', 'cash only'];
+  wrap.innerHTML = suggestions.map(value =>
+    `<button class="dynamic-suggestion" type="button" data-tag-add="${escapeHtml(value)}">${escapeHtml(value)}</button>`
+  ).join('');
+  (note?.parentNode || tags.parentNode).insertBefore(wrap, note ? note.nextSibling : tags.nextSibling);
+
+  wrap.addEventListener('click', event => {
+    const button = event.target.closest('[data-tag-add]');
+    if (!button) return;
+    event.preventDefault();
+    const tag = button.dataset.tagAdd;
+    const parts = tags.value.split(',').map(part => part.trim()).filter(Boolean);
+    const exists = parts.some(part => part.toLowerCase() === tag.toLowerCase());
+    tags.value = exists
+      ? parts.filter(part => part.toLowerCase() !== tag.toLowerCase()).join(', ')
+      : [...parts, tag].join(', ');
+    button.classList.toggle('is-active', !exists);
+    button.setAttribute('aria-pressed', exists ? 'false' : 'true');
+    tags.dispatchEvent(new Event('input', { bubbles: true }));
+    updateListingProgress();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', function () {

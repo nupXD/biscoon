@@ -11,14 +11,17 @@ const _s = {
   users: { page: 1, search: "", kind: "regular" },
   listings: { page: 1, category: "", search: "" },
   events: { page: 1, search: "" },
-  news: { page: 1, status: "all", category: "", search: "" },
+  news: { page: 1, status: "all", category: "", search: "", featured: "all", range: "all" },
   discussions: { page: 1, search: "" },
   comments: { page: 1, type: "all", search: "" },
   reports: { page: 1, status: "open" },
   spotlight: {},
   announcements: {},
-  audit: { page: 1, action: "all", targetType: "all", search: "" }
+  audit: { page: 1, action: "all", targetType: "all", search: "" },
+  dashboard: { range: "all", updatedAt: 0 }
 };
+let _dashRefreshTimer = null;
+let _dashUpdatedTimer = null;
 document.addEventListener("DOMContentLoaded", async () => {
   setupAdminShell();
   _token = localStorage.getItem(ADMIN_TOKEN_KEY) || "";
@@ -107,6 +110,7 @@ function navigate(view) {
     content('<div class="admin-error">You do not have permission to open this admin section.</div>');
     return;
   }
+  stopDashboardAutoRefresh();
   _view = view;
   document.querySelectorAll(".admin-nav-link").forEach((l) => l.classList.toggle("active", l.dataset.view === view));
   document.getElementById("viewTitle").textContent = VIEW_TITLES[view] || view;
@@ -541,25 +545,96 @@ function tabs(options, active, attr) {
     (o) => `<button class="admin-tab${o.value === active ? " active" : ""}" data-${attr}="${o.value}">${o.label}</button>`
   ).join("")}</div>`;
 }
-async function showDashboard() {
+const DASH_RANGES = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "all", label: "All" }
+];
+function stopDashboardAutoRefresh() {
+  if (_dashRefreshTimer) {
+    clearInterval(_dashRefreshTimer);
+    _dashRefreshTimer = null;
+  }
+  if (_dashUpdatedTimer) {
+    clearInterval(_dashUpdatedTimer);
+    _dashUpdatedTimer = null;
+  }
+}
+function startDashboardAutoRefresh() {
+  stopDashboardAutoRefresh();
+  _dashRefreshTimer = setInterval(() => {
+    if (_view !== "dashboard" || document.hidden) return;
+    showDashboard(true);
+  }, 6e4);
+  _dashUpdatedTimer = setInterval(() => {
+    if (_view !== "dashboard") return;
+    const el = document.getElementById("dashUpdatedAt");
+    if (el && _s.dashboard.updatedAt) el.textContent = formatUpdatedAgo(_s.dashboard.updatedAt);
+  }, 1e3);
+}
+function formatUpdatedAgo(ts) {
+  const sec = Math.max(0, Math.floor((Date.now() - ts) / 1e3));
+  if (sec < 5) return "Updated just now";
+  if (sec < 60) return `Updated ${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  return `Updated ${min}m ago`;
+}
+function rangeTrendLabel(range) {
+  if (range === "today") return "today";
+  if (range === "7d") return "this week";
+  if (range === "30d") return "this month";
+  return "this week";
+}
+function animateStatValues(root = document) {
+  root.querySelectorAll("[data-count-to]").forEach((el) => {
+    const target = Number(el.dataset.countTo || 0);
+    const duration = 650;
+    const start = performance.now();
+    const from = 0;
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(from + (target - from) * eased).toLocaleString();
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  });
+}
+async function showDashboard(soft = false) {
   try {
+    if (!soft) content(loadingState("Dashboard"));
+    const range = _s.dashboard.range || "all";
     const [stats, feedData] = await Promise.all([
-      api("/api/admin/stats"),
+      api(`/api/admin/stats?range=${encodeURIComponent(range)}`),
       api("/api/admin/feed")
     ]);
+    if (_view !== "dashboard") return;
     const s = stats;
     const maxCat = s.byCategory[0]?.count || 1;
+    _s.dashboard.updatedAt = Date.now();
+    const trendLabel = rangeTrendLabel(range);
     content(`
       <div class="dash-header">
-        <div class="dash-greeting">Welcome back, ${esc(_me.name.split(" ")[0])} \u{1F44B}</div>
-        <button class="admin-btn admin-btn-ghost dash-refresh" id="dashRefresh">\u21BA Refresh</button>
+        <div>
+          <div class="dash-greeting">Welcome back, ${esc(_me.name.split(" ")[0])} \u{1F44B}</div>
+          <div class="dash-updated" id="dashUpdatedAt">${formatUpdatedAgo(_s.dashboard.updatedAt)}</div>
+        </div>
+        <div class="dash-header-actions">
+          <div class="dash-range" role="tablist" aria-label="Dashboard time range">
+            ${DASH_RANGES.map((r) => `
+              <button type="button" class="dash-range-btn${r.value === range ? " active" : ""}" data-dash-range="${r.value}" role="tab" aria-selected="${r.value === range}">${r.label}</button>
+            `).join("")}
+          </div>
+          <button class="admin-btn admin-btn-ghost dash-refresh" id="dashRefresh" type="button">\u21BA Refresh</button>
+        </div>
       </div>
 
       <div class="dash-stat-grid">
-        ${hasAdminPermission("users") ? statCard("\u{1F465}", "Total Users", s.users.total, s.users.thisWeek, s.users.today, "blue", "users") : ""}
-        ${hasAdminPermission("listings") ? statCard("\u{1F4CB}", "Total Listings", s.listings.total, s.listings.thisWeek, s.listings.today, "green", "listings") : ""}
-        ${hasAdminPermission("news") ? statCard("\u{1F4F0}", "Published News", s.news.total, s.news.thisWeek, null, "red", "news") : ""}
-        ${hasAdminPermission("discussions") ? statCard("\u{1F4AC}", "Discussions", s.discussions.total, s.discussions.thisWeek, null, "purple", "discussions") : ""}
+        ${hasAdminPermission("users") ? statCard("\u{1F465}", range === "all" ? "Total Users" : "Users", s.users.total, s.users.thisWeek, s.users.today, "blue", "users", trendLabel) : ""}
+        ${hasAdminPermission("listings") ? statCard("\u{1F4CB}", range === "all" ? "Total Listings" : "Listings", s.listings.total, s.listings.thisWeek, s.listings.today, "green", "listings", trendLabel) : ""}
+        ${hasAdminPermission("news") ? statCard("\u{1F4F0}", range === "all" ? "Published News" : "News", s.news.total, s.news.thisWeek, null, "red", "news", trendLabel) : ""}
+        ${hasAdminPermission("discussions") ? statCard("\u{1F4AC}", "Discussions", s.discussions.total, s.discussions.thisWeek, null, "purple", "discussions", trendLabel) : ""}
       </div>
 
       <div class="dash-quick-actions">
@@ -581,13 +656,16 @@ async function showDashboard() {
           </div>
           <div class="admin-feed">
             ${feedData.feed.map((f) => `
-              <div class="admin-feed-item dash-feed-clickable" data-feed-type="${f.type}">
-                <div class="admin-feed-icon admin-feed-icon-${f.type}">${f.icon}</div>
+              <div class="admin-feed-item dash-feed-clickable" data-feed-type="${esc(f.type)}" data-feed-id="${esc(f.id || "")}" tabindex="0" role="button">
+                <div class="admin-feed-icon admin-feed-icon-${esc(f.type)}">${f.icon}</div>
                 <div class="admin-feed-body">
                   <div class="admin-feed-title">${esc(f.title)}</div>
-                  <div class="admin-feed-sub">${esc(f.sub)}</div>
+                  <div class="admin-feed-sub"><span class="dash-feed-chip">${esc(f.type)}</span> ${esc(f.sub)}</div>
                 </div>
-                <div class="admin-feed-time">${fmtTime(f.date)}</div>
+                <div class="admin-feed-meta">
+                  <div class="admin-feed-time">${fmtTime(f.date)}</div>
+                  <div class="dash-feed-open">Open \u2192</div>
+                </div>
               </div>
             `).join("") || '<div class="admin-empty">No activity yet.</div>'}
           </div>
@@ -596,11 +674,11 @@ async function showDashboard() {
         ${hasAdminPermission("listings") ? `<div class="admin-card">
           <div class="admin-card-head">
             <span>Listings by Category</span>
-            <span class="dash-card-sub">${s.byCategory.length} categories</span>
+            <span class="dash-card-sub">${s.byCategory.length} categories \xB7 click to filter</span>
           </div>
           <div class="dash-bar-chart">
             ${s.byCategory.map((c) => `
-              <div class="dash-bar-row">
+              <div class="dash-bar-row dash-bar-clickable" data-nav-to="listings" data-listing-category="${esc(c.category)}" tabindex="0" role="button" title="Open ${esc(capitalize(c.category))} listings">
                 <div class="dash-bar-label" title="${esc(capitalize(c.category))}">${esc(capitalize(c.category))}</div>
                 <div class="dash-bar-track">
                   <div class="dash-bar-fill" style="width:${Math.round(c.count / maxCat * 100)}%"></div>
@@ -658,34 +736,85 @@ async function showDashboard() {
         </div>` : ""}
       </div>
     `);
+    animateStatValues();
+    startDashboardAutoRefresh();
     document.getElementById("dashRefresh")?.addEventListener("click", () => {
       content(loadingState("Refreshing dashboard"));
       showDashboard();
     });
+    document.querySelectorAll("[data-dash-range]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.dataset.dashRange;
+        if (!next || next === _s.dashboard.range) return;
+        _s.dashboard.range = next;
+        content(loadingState("Updating dashboard"));
+        showDashboard();
+      });
+    });
     document.querySelectorAll("[data-nav-to]").forEach((el) => {
-      el.addEventListener("click", () => {
+      const activate = () => {
         if (el.dataset.userKind) _s.users.kind = el.dataset.userKind;
+        if (el.dataset.listingCategory !== void 0) {
+          _s.listings.category = el.dataset.listingCategory || "";
+          _s.listings.page = 1;
+        }
         navigate(el.dataset.navTo);
+      };
+      el.addEventListener("click", activate);
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          activate();
+        }
       });
     });
     document.querySelectorAll(".dash-feed-clickable").forEach((el) => {
-      el.addEventListener("click", () => {
+      const activate = () => {
+        const type = el.dataset.feedType || "";
+        const id = el.dataset.feedId || "";
+        if (type === "listing" && id) {
+          navigate("listings");
+          setTimeout(() => {
+            const btn = document.querySelector(`[data-view-listing="${CSS.escape(id)}"]`);
+            btn?.click();
+          }, 350);
+          return;
+        }
+        if (type === "discussion" && id) {
+          navigate("discussions");
+          setTimeout(() => {
+            const btn = document.querySelector(`[data-view-discussion="${CSS.escape(id)}"]`);
+            btn?.click();
+          }, 350);
+          return;
+        }
+        if (type === "user" && id) {
+          navigate("users");
+          return;
+        }
         const map = { user: "users", listing: "listings", discussion: "discussions" };
-        if (map[el.dataset.feedType]) navigate(map[el.dataset.feedType]);
+        if (map[type]) navigate(map[type]);
+      };
+      el.addEventListener("click", activate);
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          activate();
+        }
       });
     });
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
 }
-function statCard(icon, label, value, weekCount, todayCount, color, navTo) {
+function statCard(icon, label, value, weekCount, todayCount, color, navTo, trendLabel = "this week") {
   const clickable = navTo && canAccessView(navTo);
-  const trendHtml = weekCount > 0 ? `<span class="dash-trend-up">\u2191 ${weekCount} this week</span>` : `<span class="dash-trend-zero">No new this week</span>`;
+  const trendHtml = weekCount > 0 ? `<span class="dash-trend-up">\u2191 ${weekCount} ${esc(trendLabel)}</span>` : `<span class="dash-trend-zero">No new ${esc(trendLabel)}</span>`;
   const todayHtml = todayCount !== null ? ` \xB7 <span class="dash-today-val">${todayCount} today</span>` : "";
-  return `<div class="admin-stat-card admin-stat-${color}${clickable ? " dash-stat-clickable" : ""}"${clickable ? ` data-nav-to="${navTo}"` : ""}>
+  return `<div class="admin-stat-card admin-stat-${color}${clickable ? " dash-stat-clickable" : ""}"${clickable ? ` data-nav-to="${navTo}" tabindex="0" role="button"` : ""}>
     <div class="admin-stat-icon">${icon}</div>
     <div class="admin-stat-content">
-      <div class="admin-stat-value">${Number(value).toLocaleString()}</div>
+      <div class="admin-stat-value" data-count-to="${Number(value) || 0}">0</div>
       <div class="admin-stat-label">${label}</div>
       <div class="dash-stat-footer">${trendHtml}${todayHtml}</div>
     </div>
@@ -840,6 +969,42 @@ function listingGallery(images = [], isPhotography = false) {
     `).join("")}
   </div>`;
 }
+function sectionHero(title, sub, actionsHtml = "") {
+  return `<div class="ix-hero">
+    <div>
+      <div class="ix-hero-title">${esc(title)}</div>
+      <div class="ix-hero-sub">${esc(sub)}</div>
+    </div>
+    <div class="ix-hero-actions">${actionsHtml}</div>
+  </div>`;
+}
+function sectionStat(label, value, active = false, attrs = "") {
+  return `<button type="button" class="ix-stat${active ? " active" : ""}" ${attrs}>
+    <span class="ix-stat-value" data-count-to="${Number(value) || 0}">0</span>
+    <span class="ix-stat-label">${esc(label)}</span>
+  </button>`;
+}
+function wireInteractiveRows(selector, openFn) {
+  document.querySelectorAll(selector).forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".ix-actions, .news-row-actions, button, select, a, input")) return;
+      openFn(row);
+    });
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openFn(row);
+      }
+    });
+  });
+}
+function bindSearch(id, onChange, delay = 350) {
+  let timer;
+  document.getElementById(id)?.addEventListener("input", (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => onChange(e.target.value.trim()), delay);
+  });
+}
 async function showUsers(page) {
   if (page !== void 0) _s.users.page = page;
   if (_s.users.kind === "staff") {
@@ -849,42 +1014,46 @@ async function showUsers(page) {
   const { page: p, search } = _s.users;
   try {
     const data = await api(`/api/admin/users?${new URLSearchParams({ page: String(p), limit: String(20), search })}`);
+    const withListings = (data.users || []).filter((u) => (u.listingCount || 0) > 0).length;
     content(`
-      <div class="admin-toolbar">
-        ${canManageStaff() ? tabs(
+      ${sectionHero("Users", "Review community accounts. Click a row to open the profile.", canManageStaff() ? tabs(
       [{ label: "Regular Users", value: "regular" }, { label: "Admin Users", value: "staff" }],
       _s.users.kind,
       "user-kind"
-    ) : ""}
-        <input class="admin-search" id="userSearch" type="search" placeholder="Search name or email\u2026" value="${esc(search)}">
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} regular user${data.total !== 1 ? "s" : ""}</span>
+    ) : "")}
+      <div class="ix-stat-grid">
+        ${sectionStat("Total users", data.total, true)}
+        ${sectionStat("With listings", withListings)}
+        ${sectionStat("On this page", (data.users || []).length)}
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Name", "Email", "Phone", "Listings", "Joined", "Actions"],
-      data.users.map((u) => [
-        `<span class="admin-link" data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="${u.listingCount}">${esc(u.name)}</span>`,
-        esc(u.email),
-        esc(u.phone || "\u2014"),
-        u.listingCount,
-        fmtDate(u.createdAt),
-        `<div class="admin-actions">
-              <button class="admin-btn admin-btn-ghost" data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="${u.listingCount}">\u{1F441} View</button>
-              <button class="admin-btn admin-btn-danger" data-del-user="${esc(u.id)}" data-del-name="${esc(u.name)}">\u{1F5D1}</button>
-            </div>`
-      ])
-    )}
+      <div class="admin-toolbar">
+        <input class="admin-search" id="userSearch" type="search" placeholder="Search name or email\u2026" value="${esc(search)}">
+        <span class="ix-count">${data.total.toLocaleString()} regular user${data.total !== 1 ? "s" : ""}</span>
+      </div>
+      <div class="admin-card ix-card">
+        ${(data.users || []).length ? `<div class="ix-list">
+          ${data.users.map((u) => `
+            <article class="ix-row" tabindex="0" role="button"
+              data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="${u.listingCount}">
+              <div class="ix-avatar" style="background:${userColor(u.name)}">${esc((u.name || "?").charAt(0).toUpperCase())}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc(u.name)}</div>
+                <div class="ix-meta">${esc(u.email)}${u.phone ? ` \xB7 ${esc(u.phone)}` : ""} \xB7 \u{1F4CB} ${u.listingCount || 0} listings \xB7 Joined ${fmtDate(u.createdAt)}</div>
+              </div>
+              <div class="ix-actions">
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="${u.listingCount}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-user="${esc(u.id)}" data-del-name="${esc(u.name)}">\u{1F5D1}</button>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No users match this search.</div>'}
         ${pager(data.page, data.pages, "users")}
       </div>
     `);
-    let timer;
-    document.getElementById("userSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.users.search = e.target.value.trim();
-        showUsers(1);
-      }, 380);
-    });
+    animateStatValues();
+    bindSearch("userSearch", (v) => {
+      _s.users.search = v;
+      showUsers(1);
+    }, 380);
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
@@ -900,41 +1069,44 @@ async function showStaffUsers(page) {
   try {
     const data = await api(`/api/admin/staff?${new URLSearchParams({ page: String(p), limit: String(20), search })}`);
     content(`
-      <div class="admin-toolbar">
-        ${tabs(
-      [{ label: "Regular Users", value: "regular" }, { label: "Admin Users", value: "staff" }],
-      _s.users.kind,
-      "user-kind"
-    )}
-        <input class="admin-search" id="userSearch" type="search" placeholder="Search admin users\u2026" value="${esc(search)}">
-        <button class="admin-btn admin-btn-primary" data-create-staff>+ Create Admin User</button>
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} admin user${data.total !== 1 ? "s" : ""}</span>
+      ${sectionHero("Admin Users", "Manage staff accounts and privileges.", `
+        ${tabs([{ label: "Regular Users", value: "regular" }, { label: "Admin Users", value: "staff" }], _s.users.kind, "user-kind")}
+        <button class="admin-btn admin-btn-primary" data-create-staff type="button">+ Create Admin User</button>
+      `)}
+      <div class="ix-stat-grid">
+        ${sectionStat("Admin users", data.total, true)}
+        ${sectionStat("On this page", (data.staff || []).length)}
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Name", "Email", "Role", "Privileges", "Created", "Actions"],
-      data.staff.map((staff) => [
-        esc(staff.name),
-        esc(staff.email),
-        roleBadge(staff.role),
-        staff.canEdit ? permissionSummary(staff.permissions) : badge("All privileges", "red"),
-        fmtDate(staff.createdAt),
-        `<div class="admin-actions">
-              ${staff.canEdit ? `<button class="admin-btn admin-btn-ghost" data-edit-staff="${esc(staff.id)}">\u270F\uFE0F Edit</button>
-                   <button class="admin-btn admin-btn-danger" data-del-staff="${esc(staff.id)}" data-del-name="${esc(staff.name)}">\u{1F5D1}</button>` : '<span class="admin-you">Protected</span>'}
-            </div>`
-      ])
-    )}
+      <div class="admin-toolbar">
+        <input class="admin-search" id="userSearch" type="search" placeholder="Search admin users\u2026" value="${esc(search)}">
+        <span class="ix-count">${data.total.toLocaleString()} admin user${data.total !== 1 ? "s" : ""}</span>
+      </div>
+      <div class="admin-card ix-card">
+        ${(data.staff || []).length ? `<div class="ix-list">
+          ${data.staff.map((staff) => `
+            <article class="ix-row" tabindex="0" role="button" data-edit-staff-row="${esc(staff.id)}" data-can-edit="${staff.canEdit ? "1" : "0"}">
+              <div class="ix-avatar" style="background:${userColor(staff.name)}">${esc((staff.name || "?").charAt(0).toUpperCase())}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc(staff.name)} ${roleBadge(staff.role)}</div>
+                <div class="ix-meta">${esc(staff.email)} \xB7 Created ${fmtDate(staff.createdAt)}</div>
+                <div class="ix-sub">${staff.canEdit ? permissionSummary(staff.permissions) : badge("All privileges", "red")}</div>
+              </div>
+              <div class="ix-actions">
+                ${staff.canEdit ? `<button class="admin-btn admin-btn-ghost" type="button" data-edit-staff="${esc(staff.id)}">\u270F\uFE0F Edit</button>
+                     <button class="admin-btn admin-btn-danger" type="button" data-del-staff="${esc(staff.id)}" data-del-name="${esc(staff.name)}">\u{1F5D1}</button>` : '<span class="admin-you">Protected</span>'}
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No admin users found.</div>'}
         ${pager(data.page, data.pages, "users")}
       </div>
     `);
-    let timer;
-    document.getElementById("userSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.users.search = e.target.value.trim();
-        showUsers(1);
-      }, 380);
+    animateStatValues();
+    bindSearch("userSearch", (v) => {
+      _s.users.search = v;
+      showUsers(1);
+    }, 380);
+    wireInteractiveRows("[data-edit-staff-row]", (row) => {
+      if (row.dataset.canEdit === "1") openEditStaffModal(row.dataset.editStaffRow);
     });
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
@@ -1121,44 +1293,54 @@ async function showListings(page) {
   const { page: p, category, search } = _s.listings;
   try {
     const data = await api(`/api/admin/listings?${new URLSearchParams({ page: String(p), limit: String(20), category, search })}`);
+    const topCats = CATEGORIES.filter(Boolean).slice(0, 8);
     content(`
+      ${sectionHero("Listings", "Inspect and moderate marketplace posts. Click a card to open details.")}
+      <div class="ix-chip-row">
+        <button type="button" class="ix-chip${!category ? " active" : ""}" data-listing-chip="">All</button>
+        ${topCats.map((c) => `<button type="button" class="ix-chip${category === c ? " active" : ""}" data-listing-chip="${esc(c)}">${esc(capitalize(c))}</button>`).join("")}
+      </div>
       <div class="admin-toolbar">
         <input class="admin-search" id="listingSearch" type="search" placeholder="Search listings\u2026" value="${esc(search)}">
         <select class="admin-select" id="listingCat">
           ${CATEGORIES.map((c) => `<option value="${esc(c)}"${c === category ? " selected" : ""}>${c ? capitalize(c) : "All categories"}</option>`).join("")}
         </select>
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} listing${data.total !== 1 ? "s" : ""}</span>
+        <span class="ix-count">${data.total.toLocaleString()} listing${data.total !== 1 ? "s" : ""}</span>
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Title", "Category", "Location", "Posted", "Actions"],
-      data.listings.map((l) => [
-        `<span class="admin-link" data-view-listing="${esc(l.id)}">${esc(l.title)}</span>`,
-        badge(l.category),
-        esc(l.location || "\u2014"),
-        fmtDate(l.createdAt),
-        `<div class="admin-actions">
-               <button class="admin-btn admin-btn-ghost" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
-               <button class="admin-btn admin-btn-ghost" data-edit-listing="${esc(l.id)}">\u270F\uFE0F Edit</button>
-               <button class="admin-btn admin-btn-danger" data-del-listing="${esc(l.id)}">\u{1F5D1}</button>
-             </div>`
-      ])
-    )}
+      <div class="admin-card ix-card">
+        ${(data.listings || []).length ? `<div class="ix-list">
+          ${data.listings.map((l) => `
+            <article class="ix-row" tabindex="0" role="button" data-open-listing="${esc(l.id)}">
+              <div class="ix-icon">${catEmoji(l.category)}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc(l.title)}</div>
+                <div class="ix-meta">${badge(l.category)} \xB7 ${esc(l.location || "No location")} \xB7 ${fmtDate(l.createdAt)}</div>
+              </div>
+              <div class="ix-actions">
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-edit-listing="${esc(l.id)}">\u270F\uFE0F Edit</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-listing="${esc(l.id)}">\u{1F5D1}</button>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No listings match these filters.</div>'}
         ${pager(data.page, data.pages, "listings")}
       </div>
     `);
-    let timer;
-    document.getElementById("listingSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.listings.search = e.target.value.trim();
-        showListings(1);
-      }, 380);
-    });
+    bindSearch("listingSearch", (v) => {
+      _s.listings.search = v;
+      showListings(1);
+    }, 380);
     document.getElementById("listingCat")?.addEventListener("change", (e) => {
       _s.listings.category = e.target.value;
       showListings(1);
     });
+    document.querySelectorAll("[data-listing-chip]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        _s.listings.category = btn.dataset.listingChip || "";
+        showListings(1);
+      });
+    });
+    wireInteractiveRows("[data-open-listing]", (row) => openViewListing(row.dataset.openListing));
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
@@ -1169,37 +1351,40 @@ async function showEvents(page) {
   try {
     const data = await api(`/api/admin/listings?${new URLSearchParams({ page: String(p), limit: String(20), category: "events", search })}`);
     content(`
+      ${sectionHero("Events", "Create and manage community events.", '<button class="admin-btn admin-btn-primary" data-create-event type="button">\uFF0B Add Event</button>')}
+      <div class="ix-stat-grid">
+        ${sectionStat("Events", data.total, true)}
+        ${sectionStat("On this page", (data.listings || []).length)}
+      </div>
       <div class="admin-toolbar">
         <input class="admin-search" id="eventSearch" type="search" placeholder="Search events\u2026" value="${esc(search)}">
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} event${data.total !== 1 ? "s" : ""}</span>
-        <button class="admin-btn" style="margin-left:auto;background:#C0392B;color:#fff;border-color:#C0392B" data-create-event>\uFF0B Add Event</button>
+        <span class="ix-count">${data.total.toLocaleString()} event${data.total !== 1 ? "s" : ""}</span>
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Title", "Date / Time", "Location", "Posted", "Actions"],
-      data.listings.map((l) => [
-        `<span class="admin-link" data-view-listing="${esc(l.id)}">${esc(l.title)}</span>`,
-        esc(l.availability || "\u2014"),
-        esc(l.location || "\u2014"),
-        fmtDate(l.createdAt),
-        `<div class="admin-actions">
-               <button class="admin-btn admin-btn-ghost" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
-               <button class="admin-btn admin-btn-ghost" data-edit-event="${esc(l.id)}">\u270F\uFE0F Edit</button>
-               <button class="admin-btn admin-btn-danger" data-del-event="${esc(l.id)}" data-del-title="${esc(l.title)}">\u{1F5D1}</button>
-             </div>`
-      ])
-    )}
+      <div class="admin-card ix-card">
+        ${(data.listings || []).length ? `<div class="ix-list">
+          ${data.listings.map((l) => `
+            <article class="ix-row" tabindex="0" role="button" data-open-listing="${esc(l.id)}">
+              <div class="ix-icon">\u{1F389}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc(l.title)}</div>
+                <div class="ix-meta">${esc(l.availability || "Date TBD")} \xB7 ${esc(l.location || "Location TBD")} \xB7 Posted ${fmtDate(l.createdAt)}</div>
+              </div>
+              <div class="ix-actions">
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-edit-event="${esc(l.id)}">\u270F\uFE0F Edit</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-event="${esc(l.id)}" data-del-title="${esc(l.title)}">\u{1F5D1}</button>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No events yet. Add one to get started.</div>'}
         ${pager(data.page, data.pages, "events")}
       </div>
     `);
-    let timer;
-    document.getElementById("eventSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.events.search = e.target.value.trim();
-        showEvents(1);
-      }, 380);
-    });
+    animateStatValues();
+    bindSearch("eventSearch", (v) => {
+      _s.events.search = v;
+      showEvents(1);
+    }, 380);
+    wireInteractiveRows("[data-open-listing]", (row) => openViewListing(row.dataset.openListing));
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
@@ -1439,108 +1624,369 @@ async function collectNewsPayload() {
   };
 }
 function newsFormHtml(article = {}) {
+  const status = article.status || "draft";
+  const category = article.category || "community";
+  const title = article.title || "";
+  const summary = article.summary || "";
   return `
-    <div class="admin-modal-grid">
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Headline</label>
-        <input class="admin-modal-input" id="newsTitle" maxlength="180" value="${esc(article.title || "")}">
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Summary / Standfirst</label>
-        <textarea class="admin-modal-textarea" id="newsSummary" rows="3" maxlength="360">${esc(article.summary || "")}</textarea>
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Category</label>
-        <select class="admin-modal-select" id="newsCategory">
-          ${NEWS_CATEGORIES.filter(Boolean).map((category) => `<option value="${category}"${category === (article.category || "community") ? " selected" : ""}>${newsCategoryLabel(category)}</option>`).join("")}
-        </select>
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Status</label>
-        <select class="admin-modal-select" id="newsStatus">
-          ${["draft", "published"].map((status) => `<option value="${status}"${status === (article.status || "draft") ? " selected" : ""}>${capitalize(status)}</option>`).join("")}
-        </select>
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Source</label>
-        <input class="admin-modal-input" id="newsSource" value="${esc(article.sourceName || "Biscoon Newsroom")}">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Author</label>
-        <input class="admin-modal-input" id="newsAuthor" value="${esc(article.authorName || "")}" placeholder="Optional">
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Image URL</label>
-        <input class="admin-modal-input" id="newsImageUrl" value="${esc(article.imageUrl || "")}" placeholder="https://... or leave blank">
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Upload Image</label>
-        <input class="admin-modal-input" id="newsImageFile" type="file" accept="image/*">
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Story Media</label>
-        <input class="admin-modal-input" id="newsMediaFiles" type="file" accept="image/*,video/*" multiple>
-        <div class="admin-news-help">Upload multiple images or videos. Use Insert to place media at the cursor in the article body.</div>
-        <div id="newsMediaLibrary">${newsMediaLibraryHtml()}</div>
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-check-row admin-check-row-compact">
-          <input type="checkbox" id="newsFeatured"${article.featured ? " checked" : ""}>
-          <span><strong>Feature this story</strong><small>Featured stories appear first on the public news page.</small></span>
-        </label>
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Article Body</label>
-        <div class="admin-news-formatbar">
-          <button type="button" class="admin-btn admin-btn-ghost" data-news-format="bold">Bold</button>
-          <button type="button" class="admin-btn admin-btn-ghost" data-news-format="h2">Heading</button>
-          <button type="button" class="admin-btn admin-btn-ghost" data-news-format="quote">Quote</button>
-          <button type="button" class="admin-btn admin-btn-ghost" data-news-format="font-serif">Serif</button>
-          <button type="button" class="admin-btn admin-btn-ghost" data-news-format="font-sans">Sans</button>
-          <button type="button" class="admin-btn admin-btn-ghost" data-news-format="font-mono">Mono</button>
+    <div class="news-editor-shell">
+      <div class="news-editor-main">
+        <div class="news-editor-section">
+          <div class="news-editor-section-label">Story basics</div>
+          <div class="admin-modal-field admin-modal-full">
+            <div class="news-field-head">
+              <label class="admin-modal-label" for="newsTitle">Headline</label>
+              <span class="news-char-count" id="newsTitleCount">${title.length}/180</span>
+            </div>
+            <input class="admin-modal-input" id="newsTitle" maxlength="180" value="${esc(title)}" placeholder="Write a clear, specific headline\u2026">
+          </div>
+          <div class="admin-modal-field admin-modal-full">
+            <div class="news-field-head">
+              <label class="admin-modal-label" for="newsSummary">Summary / Standfirst</label>
+              <span class="news-char-count" id="newsSummaryCount">${summary.length}/360</span>
+            </div>
+            <textarea class="admin-modal-textarea" id="newsSummary" rows="3" maxlength="360" placeholder="One or two sentences that sell the story\u2026">${esc(summary)}</textarea>
+          </div>
         </div>
-        <div class="admin-news-rich-editor" id="newsRichEditor"></div>
-        <textarea class="admin-modal-textarea admin-news-hidden-body" id="newsBody" rows="12">${esc(article.body || "")}</textarea>
+
+        <div class="news-editor-section">
+          <div class="news-editor-section-label">Publishing</div>
+          <div class="news-pill-row" role="group" aria-label="Status">
+            <button type="button" class="news-pill${status === "draft" ? " active" : ""}" data-news-status-pill="draft">Draft</button>
+            <button type="button" class="news-pill${status === "published" ? " active" : ""}" data-news-status-pill="published">Published</button>
+          </div>
+          <input type="hidden" id="newsStatus" value="${esc(status)}">
+
+          <div class="news-chip-row" role="group" aria-label="Category">
+            ${NEWS_CATEGORIES.filter(Boolean).map((cat) => `
+              <button type="button" class="news-chip${cat === category ? " active" : ""}" data-news-category-chip="${esc(cat)}">${esc(newsCategoryLabel(cat))}</button>
+            `).join("")}
+          </div>
+          <input type="hidden" id="newsCategory" value="${esc(category)}">
+
+          <label class="news-featured-toggle">
+            <input type="checkbox" id="newsFeatured"${article.featured ? " checked" : ""}>
+            <span class="news-featured-ui">
+              <strong>\u2605 Feature this story</strong>
+              <small>Pin it at the top of the public news page</small>
+            </span>
+          </label>
+
+          <div class="admin-modal-grid" style="margin-top:12px">
+            <div class="admin-modal-field">
+              <label class="admin-modal-label">Source</label>
+              <input class="admin-modal-input" id="newsSource" value="${esc(article.sourceName || "Biscoon Newsroom")}">
+            </div>
+            <div class="admin-modal-field">
+              <label class="admin-modal-label">Author</label>
+              <input class="admin-modal-input" id="newsAuthor" value="${esc(article.authorName || "")}" placeholder="Optional">
+            </div>
+          </div>
+        </div>
+
+        <div class="news-editor-section">
+          <div class="news-editor-section-label">Cover image</div>
+          <div class="news-dropzone" id="newsCoverDrop" tabindex="0">
+            <div class="news-dropzone-preview" id="newsCoverPreview">
+              ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
+            </div>
+            <div class="news-dropzone-actions">
+              <input class="admin-modal-input" id="newsImageUrl" value="${esc(article.imageUrl || "")}" placeholder="https://\u2026 or leave blank">
+              <label class="admin-btn admin-btn-ghost news-file-btn">
+                Choose file
+                <input id="newsImageFile" type="file" accept="image/*" hidden>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="news-editor-section">
+          <div class="news-editor-section-label">Story media</div>
+          <div class="news-dropzone news-dropzone-media" id="newsMediaDrop" tabindex="0">
+            <div class="news-dropzone-empty">Drop images or videos here, then insert them into the article body</div>
+            <label class="admin-btn admin-btn-ghost news-file-btn">
+              Choose files
+              <input id="newsMediaFiles" type="file" accept="image/*,video/*" multiple hidden>
+            </label>
+          </div>
+          <div id="newsMediaLibrary">${newsMediaLibraryHtml()}</div>
+        </div>
+
+        <div class="news-editor-section">
+          <div class="news-editor-section-label">Article body</div>
+          <div class="admin-news-formatbar" role="toolbar" aria-label="Article formatting">
+            <div class="admin-news-format-group">
+              <button type="button" class="admin-news-format-btn" data-news-format="bold" title="Bold (\u2318B)" aria-pressed="false"><strong>B</strong></button>
+              <button type="button" class="admin-news-format-btn" data-news-format="italic" title="Italic (\u2318I)" aria-pressed="false"><em>I</em></button>
+              <button type="button" class="admin-news-format-btn" data-news-format="h2" title="Heading" aria-pressed="false">H2</button>
+              <button type="button" class="admin-news-format-btn" data-news-format="quote" title="Quote" aria-pressed="false">\u201C\u201D</button>
+            </div>
+            <div class="admin-news-format-group">
+              <button type="button" class="admin-news-format-btn" data-news-format="bullet" title="Bullet list" aria-pressed="false">\u2022 List</button>
+              <button type="button" class="admin-news-format-btn" data-news-format="ordered" title="Numbered list" aria-pressed="false">1. List</button>
+            </div>
+            <div class="admin-news-format-group">
+              <button type="button" class="admin-news-format-btn" data-news-format="font-serif" title="Serif font" aria-pressed="false" style="font-family:Georgia,serif">Serif</button>
+              <button type="button" class="admin-news-format-btn" data-news-format="font-sans" title="Sans font" aria-pressed="false">Sans</button>
+              <button type="button" class="admin-news-format-btn" data-news-format="font-mono" title="Mono font" aria-pressed="false" style="font-family:monospace">Mono</button>
+            </div>
+            <div class="admin-news-format-group">
+              <button type="button" class="admin-news-format-btn" data-news-format="undo" title="Undo">\u21B6</button>
+              <button type="button" class="admin-news-format-btn" data-news-format="redo" title="Redo">\u21B7</button>
+              <button type="button" class="admin-news-format-btn" data-news-format="clear" title="Clear formatting">Clear</button>
+            </div>
+          </div>
+          <div class="admin-news-rich-editor" id="newsRichEditor"></div>
+          <div class="admin-news-editor-hint">Select text, then tap a toolbar button. Active formats stay highlighted.</div>
+          <textarea class="admin-modal-textarea admin-news-hidden-body" id="newsBody" rows="12">${esc(article.body || "")}</textarea>
+        </div>
       </div>
+
+      <aside class="news-editor-preview" aria-live="polite">
+        <div class="news-preview-label">Live preview</div>
+        <div class="news-preview-card">
+          <div class="news-preview-cover" id="newsPreviewCover">
+            ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="">` : "<span>Cover preview</span>"}
+          </div>
+          <div class="news-preview-badges">
+            <span class="admin-badge admin-badge-blue" id="newsPreviewCategory">${esc(newsCategoryLabel(category))}</span>
+            <span class="admin-badge ${status === "published" ? "admin-badge-green" : "admin-badge-gray"}" id="newsPreviewStatus">${esc(capitalize(status))}</span>
+            <span class="admin-badge admin-badge-red" id="newsPreviewFeatured" style="display:${article.featured ? "" : "none"}">Featured</span>
+          </div>
+          <h3 class="news-preview-title" id="newsPreviewTitle">${esc(title || "Your headline appears here")}</h3>
+          <p class="news-preview-summary" id="newsPreviewSummary">${esc(summary || "The standfirst will show here as you type.")}</p>
+          <div class="news-preview-byline" id="newsPreviewByline">${esc(article.sourceName || "Biscoon Newsroom")}${article.authorName ? " \xB7 " + esc(article.authorName) : ""}</div>
+        </div>
+        <div class="news-preview-hint">Preview updates as you edit. Save when ready.</div>
+      </aside>
     </div>
   `;
 }
+function wireNewsEditorInteractivity() {
+  const title = document.getElementById("newsTitle");
+  const summary = document.getElementById("newsSummary");
+  const source = document.getElementById("newsSource");
+  const author = document.getElementById("newsAuthor");
+  const imageUrl = document.getElementById("newsImageUrl");
+  const imageFile = document.getElementById("newsImageFile");
+  const featured = document.getElementById("newsFeatured");
+  const statusInput = document.getElementById("newsStatus");
+  const categoryInput = document.getElementById("newsCategory");
+  const saveBtn = document.getElementById("adminModalSave");
+  const previewTitle = document.getElementById("newsPreviewTitle");
+  const previewSummary = document.getElementById("newsPreviewSummary");
+  const previewByline = document.getElementById("newsPreviewByline");
+  const previewCategory = document.getElementById("newsPreviewCategory");
+  const previewStatus = document.getElementById("newsPreviewStatus");
+  const previewFeatured = document.getElementById("newsPreviewFeatured");
+  const previewCover = document.getElementById("newsPreviewCover");
+  const coverPreview = document.getElementById("newsCoverPreview");
+  const titleCount = document.getElementById("newsTitleCount");
+  const summaryCount = document.getElementById("newsSummaryCount");
+  function setCover(url) {
+    const html = url ? `<img src="${esc(url)}" alt="">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>';
+    if (coverPreview) coverPreview.innerHTML = html;
+    if (previewCover) {
+      previewCover.innerHTML = url ? `<img src="${esc(url)}" alt="">` : "<span>Cover preview</span>";
+    }
+  }
+  function refreshPreview() {
+    if (previewTitle) previewTitle.textContent = title?.value.trim() || "Your headline appears here";
+    if (previewSummary) previewSummary.textContent = summary?.value.trim() || "The standfirst will show here as you type.";
+    if (titleCount) titleCount.textContent = `${title?.value.length || 0}/180`;
+    if (summaryCount) summaryCount.textContent = `${summary?.value.length || 0}/360`;
+    if (previewByline) {
+      const src = source?.value.trim() || "Biscoon Newsroom";
+      const by = author?.value.trim();
+      previewByline.textContent = by ? `${src} \xB7 ${by}` : src;
+    }
+    if (previewCategory && categoryInput) previewCategory.textContent = newsCategoryLabel(categoryInput.value);
+    if (previewStatus && statusInput) {
+      previewStatus.textContent = capitalize(statusInput.value || "draft");
+      previewStatus.className = `admin-badge ${statusInput.value === "published" ? "admin-badge-green" : "admin-badge-gray"}`;
+    }
+    if (previewFeatured) previewFeatured.style.display = featured?.checked ? "" : "none";
+    if (saveBtn && statusInput) {
+      saveBtn.textContent = statusInput.value === "published" ? saveBtn.disabled ? "Saving\u2026" : "Publish Story" : saveBtn.disabled ? "Saving\u2026" : "Save Draft";
+    }
+  }
+  title?.addEventListener("input", refreshPreview);
+  summary?.addEventListener("input", refreshPreview);
+  source?.addEventListener("input", refreshPreview);
+  author?.addEventListener("input", refreshPreview);
+  featured?.addEventListener("change", refreshPreview);
+  document.querySelectorAll("[data-news-status-pill]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = btn.dataset.newsStatusPill || "draft";
+      if (statusInput) statusInput.value = value;
+      document.querySelectorAll("[data-news-status-pill]").forEach((el) => el.classList.toggle("active", el === btn));
+      refreshPreview();
+    });
+  });
+  document.querySelectorAll("[data-news-category-chip]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = btn.dataset.newsCategoryChip || "community";
+      if (categoryInput) categoryInput.value = value;
+      document.querySelectorAll("[data-news-category-chip]").forEach((el) => el.classList.toggle("active", el === btn));
+      refreshPreview();
+    });
+  });
+  imageUrl?.addEventListener("input", () => {
+    setCover(imageUrl.value.trim());
+  });
+  imageFile?.addEventListener("change", async () => {
+    const file = imageFile.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      if (imageUrl) imageUrl.value = dataUrl;
+      setCover(dataUrl);
+    } catch (err) {
+      notify(err.message || "Could not read image.", "error");
+    }
+  });
+  function bindDropzone(zoneId, onFiles) {
+    const zone = document.getElementById(zoneId);
+    if (!zone) return;
+    ["dragenter", "dragover"].forEach((evt) => {
+      zone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        zone.classList.add("is-dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      zone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        zone.classList.remove("is-dragover");
+      });
+    });
+    zone.addEventListener("drop", (e) => {
+      const files = e.dataTransfer?.files;
+      if (files?.length) onFiles(files);
+    });
+  }
+  bindDropzone("newsCoverDrop", async (files) => {
+    const file = files[0];
+    if (!file || !file.type.startsWith("image/")) {
+      notify("Please drop an image file.", "error");
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      if (imageUrl) imageUrl.value = dataUrl;
+      setCover(dataUrl);
+    } catch (err) {
+      notify(err.message || "Could not read image.", "error");
+    }
+  });
+  bindDropzone("newsMediaDrop", (files) => {
+    const input = document.getElementById("newsMediaFiles");
+    if (!input) return;
+    const dt = new DataTransfer();
+    Array.from(files).forEach((f) => dt.items.add(f));
+    input.files = dt.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  refreshPreview();
+}
 async function showNews(page) {
   if (page !== void 0) _s.news.page = page;
-  const { page: p, status, category, search } = _s.news;
+  const { page: p, status, category, search, featured, range } = _s.news;
   try {
-    const data = await api(`/api/admin/news?${new URLSearchParams({ page: String(p), limit: String(20), status, category, search })}`);
+    const params = new URLSearchParams({
+      page: String(p),
+      limit: String(20),
+      status,
+      category,
+      search,
+      featured,
+      range
+    });
+    const data = await api(`/api/admin/news?${params}`);
+    const summary = data.summary || { all: data.total, published: 0, draft: 0, featured: 0 };
     content(`
-      <div class="admin-toolbar">
+      <div class="news-hero">
+        <div class="news-hero-copy">
+          <div class="news-hero-title">Newsroom</div>
+          <div class="news-hero-sub">Draft, publish, feature, and moderate stories. Click a card or row to jump in.</div>
+        </div>
+        <div class="dash-header-actions">
+          <div class="dash-range" role="tablist" aria-label="News time range">
+            ${DASH_RANGES.map((r) => `
+              <button type="button" class="dash-range-btn${r.value === range ? " active" : ""}" data-news-range="${r.value}" role="tab" aria-selected="${r.value === range}">${r.label}</button>
+            `).join("")}
+          </div>
+          <button class="admin-btn admin-btn-primary" data-create-news type="button">+ Publish News</button>
+        </div>
+      </div>
+
+      <div class="news-stat-grid">
+        <button type="button" class="news-stat-card${status === "all" && featured === "all" ? " active" : ""}" data-news-filter-status="all" data-news-filter-featured="all">
+          <span class="news-stat-value" data-count-to="${summary.all || 0}">0</span>
+          <span class="news-stat-label">All stories</span>
+        </button>
+        <button type="button" class="news-stat-card${status === "published" ? " active" : ""}" data-news-filter-status="published" data-news-filter-featured="all">
+          <span class="news-stat-value" data-count-to="${summary.published || 0}">0</span>
+          <span class="news-stat-label">Published</span>
+        </button>
+        <button type="button" class="news-stat-card${status === "draft" ? " active" : ""}" data-news-filter-status="draft" data-news-filter-featured="all">
+          <span class="news-stat-value" data-count-to="${summary.draft || 0}">0</span>
+          <span class="news-stat-label">Drafts</span>
+        </button>
+        <button type="button" class="news-stat-card${featured === "yes" ? " active" : ""}" data-news-filter-status="all" data-news-filter-featured="yes">
+          <span class="news-stat-value" data-count-to="${summary.featured || 0}">0</span>
+          <span class="news-stat-label">Featured</span>
+        </button>
+      </div>
+
+      <div class="admin-toolbar news-toolbar">
         <input class="admin-search" id="newsSearch" type="search" placeholder="Search news\u2026" value="${esc(search)}">
-        <select class="admin-select" id="newsStatusFilter">
-          ${["all", "published", "draft"].map((value) => `<option value="${value}"${value === status ? " selected" : ""}>${value === "all" ? "All status" : capitalize(value)}</option>`).join("")}
-        </select>
+        <div class="admin-tabs" role="tablist">
+          ${[
+      { value: "all", label: "All" },
+      { value: "published", label: "Published" },
+      { value: "draft", label: "Draft" }
+    ].map((tab) => `<button type="button" class="admin-tab${status === tab.value ? " active" : ""}" data-news-status-tab="${tab.value}">${tab.label}</button>`).join("")}
+        </div>
         <select class="admin-select" id="newsCategoryFilter">
           ${NEWS_CATEGORIES.map((value) => `<option value="${esc(value)}"${value === category ? " selected" : ""}>${value ? newsCategoryLabel(value) : "All categories"}</option>`).join("")}
         </select>
-        <button class="admin-btn admin-btn-primary" data-create-news>+ Publish News</button>
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} stor${data.total === 1 ? "y" : "ies"}</span>
+        <button type="button" class="admin-btn${featured === "yes" ? " admin-btn-primary" : " admin-btn-ghost"}" data-news-featured-toggle aria-pressed="${featured === "yes"}">\u2605 Featured only</button>
+        <span class="news-toolbar-count">${data.total.toLocaleString()} stor${data.total === 1 ? "y" : "ies"}</span>
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Headline", "Category", "Status", "Featured", "Published", "Actions"],
-      data.news.map((article) => [
-        `<span class="admin-link" data-view-news="${esc(article.id)}">${esc(article.title)}</span>`,
-        badge(newsCategoryLabel(article.category), "blue"),
-        newsStatusBadge(article.status),
-        article.featured ? badge("Featured", "red") : '<span class="admin-muted">No</span>',
-        article.publishedAt ? fmtDate(article.publishedAt) : "\u2014",
-        `<div class="admin-actions">
-              <button class="admin-btn admin-btn-ghost" data-view-news="${esc(article.id)}">\u{1F441} View</button>
-              <button class="admin-btn admin-btn-ghost" data-edit-news="${esc(article.id)}">\u270F\uFE0F Edit</button>
-              <button class="admin-btn admin-btn-danger" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">\u{1F5D1}</button>
-            </div>`
-      ])
-    )}
+
+      <div class="admin-card news-table-card">
+        ${data.news.length ? `
+          <div class="news-list">
+            ${data.news.map((article) => `
+              <article class="news-row" data-news-open="${esc(article.id)}" tabindex="0" role="button">
+                <div class="news-row-thumb">
+                  ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="" loading="lazy">` : `<span>${esc((article.title || "N").charAt(0).toUpperCase())}</span>`}
+                </div>
+                <div class="news-row-body">
+                  <div class="news-row-title">${esc(article.title)}</div>
+                  <div class="news-row-meta">
+                    ${badge(newsCategoryLabel(article.category), "blue")}
+                    ${newsStatusBadge(article.status)}
+                    ${article.featured ? badge("Featured", "red") : ""}
+                    <span class="admin-muted">${article.publishedAt ? fmtDate(article.publishedAt) : "Not published"}</span>
+                  </div>
+                  ${article.summary ? `<div class="news-row-summary">${esc(article.summary)}</div>` : ""}
+                </div>
+                <div class="news-row-actions">
+                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-featured="${esc(article.id)}" data-featured="${article.featured ? "1" : "0"}" title="Toggle featured">${article.featured ? "\u2605" : "\u2606"}</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-status="${esc(article.id)}" data-status="${esc(article.status || "draft")}" title="Toggle publish">${article.status === "published" ? "Unpublish" : "Publish"}</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-edit-news="${esc(article.id)}">\u270F\uFE0F Edit</button>
+                  <button class="admin-btn admin-btn-danger" type="button" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">\u{1F5D1}</button>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        ` : '<div class="admin-empty">No stories match these filters.</div>'}
         ${pager(data.page, data.pages, "news")}
       </div>
     `);
+    animateStatValues();
     let timer;
     document.getElementById("newsSearch")?.addEventListener("input", (e) => {
       clearTimeout(timer);
@@ -1549,13 +1995,49 @@ async function showNews(page) {
         showNews(1);
       }, 350);
     });
-    document.getElementById("newsStatusFilter")?.addEventListener("change", (e) => {
-      _s.news.status = e.target.value;
-      showNews(1);
-    });
     document.getElementById("newsCategoryFilter")?.addEventListener("change", (e) => {
       _s.news.category = e.target.value;
       showNews(1);
+    });
+    document.querySelectorAll("[data-news-range]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.dataset.newsRange;
+        if (!next || next === _s.news.range) return;
+        _s.news.range = next;
+        showNews(1);
+      });
+    });
+    document.querySelectorAll("[data-news-filter-status]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        _s.news.status = btn.dataset.newsFilterStatus || "all";
+        _s.news.featured = btn.dataset.newsFilterFeatured || "all";
+        showNews(1);
+      });
+    });
+    document.querySelectorAll("[data-news-status-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        _s.news.status = btn.dataset.newsStatusTab || "all";
+        showNews(1);
+      });
+    });
+    document.querySelectorAll("[data-news-featured-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        _s.news.featured = _s.news.featured === "yes" ? "all" : "yes";
+        showNews(1);
+      });
+    });
+    document.querySelectorAll(".news-row").forEach((row) => {
+      const open = () => openViewNews(row.dataset.newsOpen);
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".news-row-actions")) return;
+        open();
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      });
     });
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
@@ -1607,12 +2089,15 @@ async function openNewsEditor(id = "") {
     });
     showNews(1);
   });
+  const modal = document.querySelector("#adminModalOverlay .admin-modal");
+  modal?.classList.add("admin-modal-wide");
   requestAnimationFrame(() => {
     window.BiscoonNewsEditor?.mount?.({
       element: "#newsRichEditor",
       textarea: "#newsBody",
       media: () => _newsMediaDraft
     });
+    wireNewsEditorInteractivity();
   });
 }
 async function showDiscussions(page) {
@@ -1620,38 +2105,45 @@ async function showDiscussions(page) {
   const { page: p, search } = _s.discussions;
   try {
     const data = await api(`/api/admin/discussions?${new URLSearchParams({ page: String(p), limit: "20", search })}`);
+    const totalComments = (data.discussions || []).reduce((sum, d) => sum + (d.commentCount || 0), 0);
     content(`
+      ${sectionHero("Discussions", "Moderate community threads. Click a row to open.", '<button class="admin-btn admin-btn-primary" data-create-discussion type="button">+ Add Discussion</button>')}
+      <div class="ix-stat-grid">
+        ${sectionStat("Discussions", data.total, true)}
+        ${sectionStat("Comments (page)", totalComments)}
+        ${sectionStat("On this page", (data.discussions || []).length)}
+      </div>
       <div class="admin-toolbar">
         <input class="admin-search" id="discussionSearch" type="search" placeholder="Search discussions\u2026" value="${esc(search)}">
-        <button class="admin-btn admin-btn-primary" data-create-discussion>+ Add Discussion</button>
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} discussion${data.total !== 1 ? "s" : ""}</span>
+        <span class="ix-count">${data.total.toLocaleString()} discussion${data.total !== 1 ? "s" : ""}</span>
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Title", "Author", "Category", "Comments", "Date", "Actions"],
-      data.discussions.map((d) => [
-        `<span class="admin-link" data-view-discussion="${esc(d.id)}">${esc(d.title)}</span>`,
-        esc(d.authorName),
-        badge(d.category),
-        d.commentCount,
-        fmtDate(d.createdAt),
-        `<div class="admin-actions">
-               <button class="admin-btn admin-btn-ghost" data-view-discussion="${esc(d.id)}">\u{1F441} View</button>
-               <button class="admin-btn admin-btn-ghost" data-edit-discussion="${esc(d.id)}">\u270F\uFE0F Edit</button>
-               <button class="admin-btn admin-btn-danger" data-del-discussion="${esc(d.id)}">\u{1F5D1}</button>
-             </div>`
-      ])
-    )}
+      <div class="admin-card ix-card">
+        ${(data.discussions || []).length ? `<div class="ix-list">
+          ${data.discussions.map((d) => `
+            <article class="ix-row" tabindex="0" role="button" data-open-discussion="${esc(d.id)}">
+              <div class="ix-icon">\u{1F4AC}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc(d.title)}</div>
+                <div class="ix-meta">${esc(d.authorName)} \xB7 ${badge(d.category)} \xB7 ${d.commentCount || 0} comments \xB7 ${fmtDate(d.createdAt)}</div>
+              </div>
+              <div class="ix-actions">
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-discussion="${esc(d.id)}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-edit-discussion="${esc(d.id)}">\u270F\uFE0F Edit</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-discussion="${esc(d.id)}">\u{1F5D1}</button>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No discussions found.</div>'}
         ${pager(data.page, data.pages, "discussions")}
       </div>
     `);
-    let timer;
-    document.getElementById("discussionSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.discussions.search = e.target.value.trim();
-        showDiscussions(1);
-      }, 380);
+    animateStatValues();
+    bindSearch("discussionSearch", (v) => {
+      _s.discussions.search = v;
+      showDiscussions(1);
+    }, 380);
+    wireInteractiveRows("[data-open-discussion]", (row) => {
+      const btn = row.querySelector("[data-view-discussion]");
+      btn?.click();
     });
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
@@ -1662,39 +2154,45 @@ async function showComments(page) {
   const { page: p, type, search } = _s.comments;
   try {
     const data = await api(`/api/admin/comments?${new URLSearchParams({ page: String(p), limit: String(25), type, search })}`);
+    const listingCount = (data.comments || []).filter((c) => c.parentType === "listing").length;
+    const discussionCount = (data.comments || []).filter((c) => c.parentType === "discussion").length;
     content(`
-      <div class="admin-toolbar">
-        ${tabs(
+      ${sectionHero("Comments", "Moderate user comments across listings and discussions.", tabs(
       [{ label: "All", value: "all" }, { label: "Listing Comments", value: "listing" }, { label: "Discussion Comments", value: "discussion" }],
       type,
       "comment-type"
-    )}
-        <input class="admin-search" id="commentSearch" type="search" placeholder="Search comments\u2026" value="${esc(search)}">
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} comment${data.total !== 1 ? "s" : ""}</span>
+    ))}
+      <div class="ix-stat-grid">
+        ${sectionStat("Total", data.total, type === "all")}
+        ${sectionStat("Listings (page)", listingCount, type === "listing")}
+        ${sectionStat("Discussions (page)", discussionCount, type === "discussion")}
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Comment", "Author", "On", "Type", "Date", "Action"],
-      data.comments.map((c) => [
-        `<span style="max-width:280px;display:block;white-space:normal;line-height:1.4">${esc(c.body)}</span>`,
-        esc(c.authorName),
-        esc(c.parentTitle),
-        badge(c.parentType, c.parentType === "listing" ? "green" : "blue"),
-        fmtDate(c.createdAt),
-        `<button class="admin-btn admin-btn-danger" data-del-comment data-comment-id="${esc(c.id)}" data-parent-id="${esc(c.parentId)}" data-parent-type="${esc(c.parentType)}">\u{1F5D1} Remove</button>`
-      ])
-    )}
+      <div class="admin-toolbar">
+        <input class="admin-search" id="commentSearch" type="search" placeholder="Search comments\u2026" value="${esc(search)}">
+        <span class="ix-count">${data.total.toLocaleString()} comment${data.total !== 1 ? "s" : ""}</span>
+      </div>
+      <div class="admin-card ix-card">
+        ${(data.comments || []).length ? `<div class="ix-list">
+          ${data.comments.map((c) => `
+            <article class="ix-row ix-row-static">
+              <div class="ix-icon">${c.parentType === "listing" ? "\u{1F4CB}" : "\u{1F4AC}"}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc((c.body || "").slice(0, 160))}${(c.body || "").length > 160 ? "\u2026" : ""}</div>
+                <div class="ix-meta">${esc(c.authorName)} \xB7 on ${esc(c.parentTitle)} \xB7 ${badge(c.parentType, c.parentType === "listing" ? "green" : "blue")} \xB7 ${fmtDate(c.createdAt)}</div>
+              </div>
+              <div class="ix-actions">
+                <button class="admin-btn admin-btn-danger" type="button" data-del-comment data-comment-id="${esc(c.id)}" data-parent-id="${esc(c.parentId)}" data-parent-type="${esc(c.parentType)}">\u{1F5D1} Remove</button>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No comments match these filters.</div>'}
         ${pager(data.page, data.pages, "comments")}
       </div>
     `);
-    let timer;
-    document.getElementById("commentSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.comments.search = e.target.value.trim();
-        showComments(1);
-      }, 380);
-    });
+    animateStatValues();
+    bindSearch("commentSearch", (v) => {
+      _s.comments.search = v;
+      showComments(1);
+    }, 380);
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
@@ -1705,8 +2203,7 @@ async function showReports(page) {
   try {
     const data = await api(`/api/admin/reports?${new URLSearchParams({ page: String(p), limit: String(25), status })}`);
     content(`
-      <div class="admin-toolbar">
-        ${tabs(
+      ${sectionHero("Reports", "Triage abuse reports. Change status inline without leaving the list.", tabs(
       [
         { label: "Open", value: "open" },
         { label: "Reviewing", value: "reviewing" },
@@ -1716,27 +2213,32 @@ async function showReports(page) {
       ],
       status,
       "report-status"
-    )}
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} report${data.total !== 1 ? "s" : ""}</span>
+    ))}
+      <div class="ix-stat-grid">
+        ${sectionStat("In filter", data.total, true)}
+        ${sectionStat("On this page", (data.reports || []).length)}
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Target", "Reason", "Reporter", "Details", "Status", "Date", "Action"],
-      data.reports.map((r) => [
-        `<strong>${esc(r.targetType)}</strong><br><span style="font-size:12px;color:#6b7a8d">${esc(r.targetId)}</span>`,
-        badge(r.reason, r.reason === "scam" || r.reason === "illegal" ? "red" : "blue"),
-        esc(r.reporterName || r.reporterId),
-        `<span style="max-width:260px;display:block;white-space:normal;line-height:1.4">${esc(r.details || "\u2014")}</span>`,
-        badge(r.status, r.status === "open" ? "red" : r.status === "resolved" ? "green" : "gray"),
-        fmtDate(r.createdAt),
-        `<select class="admin-select-sm" data-report-status-update="${esc(r.id)}" aria-label="Report status">
-              ${["open", "reviewing", "resolved", "dismissed"].map((value) => `<option value="${value}"${value === r.status ? " selected" : ""}>${capitalize(value)}</option>`).join("")}
-            </select>`
-      ])
-    )}
+      <div class="admin-card ix-card">
+        ${(data.reports || []).length ? `<div class="ix-list">
+          ${data.reports.map((r) => `
+            <article class="ix-row ix-row-static">
+              <div class="ix-icon">${r.reason === "scam" || r.reason === "illegal" ? "\u{1F6A8}" : "\u2691"}</div>
+              <div class="ix-body">
+                <div class="ix-title">${esc(r.targetType)} \xB7 ${badge(r.reason, r.reason === "scam" || r.reason === "illegal" ? "red" : "blue")} ${badge(r.status, r.status === "open" ? "red" : r.status === "resolved" ? "green" : "gray")}</div>
+                <div class="ix-meta">Reporter ${esc(r.reporterName || r.reporterId)} \xB7 ${fmtDate(r.createdAt)} \xB7 <span class="admin-muted">${esc(r.targetId)}</span></div>
+                <div class="ix-sub">${esc(r.details || "No details provided.")}</div>
+              </div>
+              <div class="ix-actions">
+                <select class="admin-select-sm" data-report-status-update="${esc(r.id)}" aria-label="Report status">
+                  ${["open", "reviewing", "resolved", "dismissed"].map((value) => `<option value="${value}"${value === r.status ? " selected" : ""}>${capitalize(value)}</option>`).join("")}
+                </select>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No reports in this status.</div>'}
         ${pager(data.page, data.pages, "reports")}
       </div>
     `);
+    animateStatValues();
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
@@ -1797,6 +2299,11 @@ async function showAuditLogs(page) {
       search
     })}`);
     content(`
+      ${sectionHero("Audit Logs", "Trace admin actions across the platform.")}
+      <div class="ix-stat-grid">
+        ${sectionStat("Events", data.total, true)}
+        ${sectionStat("On this page", (data.auditLogs || []).length)}
+      </div>
       <div class="admin-toolbar">
         <input class="admin-search" id="auditSearch" type="search" placeholder="Search actor, target, or action\u2026" value="${esc(search)}">
         <select class="admin-select" id="auditActionFilter">
@@ -1805,30 +2312,28 @@ async function showAuditLogs(page) {
         <select class="admin-select" id="auditTargetFilter">
           ${AUDIT_TARGET_TYPES.map((value) => `<option value="${esc(value)}"${value === targetType ? " selected" : ""}>${value === "all" ? "All targets" : auditLabel(value)}</option>`).join("")}
         </select>
-        <span style="font-size:12.5px;color:#6b7a8d">${data.total.toLocaleString()} audit event${data.total !== 1 ? "s" : ""}</span>
+        <span class="ix-count">${data.total.toLocaleString()} audit event${data.total !== 1 ? "s" : ""}</span>
       </div>
-      <div class="admin-card">
-        ${table(
-      ["Action", "Actor", "Target", "When", "Context"],
-      data.auditLogs.map((log) => [
-        auditActionBadge(log.action || "action"),
-        `<strong>${esc(log.actorName || "Admin")}</strong><br><span class="admin-muted">${esc(log.actorEmail || log.actorId || "")}</span>`,
-        `<strong>${esc(log.targetTitle || auditLabel(log.targetType || "target"))}</strong><br><span class="admin-muted">${esc(log.targetType || "")}${log.targetId ? ` \xB7 ${esc(log.targetId)}` : ""}</span>`,
-        `${fmtTime(log.createdAt)}<br><span class="admin-muted">${fmtDate(log.createdAt)}</span>`,
-        `<span style="max-width:260px;display:block;white-space:normal;line-height:1.4">${esc(formatAuditMetadata(log.metadata))}</span>`
-      ])
-    )}
+      <div class="admin-card ix-card">
+        ${(data.auditLogs || []).length ? `<div class="ix-list">
+          ${data.auditLogs.map((log) => `
+            <article class="ix-row ix-row-static">
+              <div class="ix-body">
+                <div class="ix-title">${auditActionBadge(log.action || "action")}</div>
+                <div class="ix-meta"><strong>${esc(log.actorName || "Admin")}</strong> \xB7 ${esc(log.actorEmail || log.actorId || "")} \xB7 ${fmtTime(log.createdAt)} \xB7 ${fmtDate(log.createdAt)}</div>
+                <div class="ix-sub">Target: ${esc(log.targetTitle || auditLabel(log.targetType || "target"))}${log.targetType ? ` (${esc(log.targetType)}${log.targetId ? ` \xB7 ${esc(log.targetId)}` : ""})` : ""}</div>
+                <div class="ix-sub admin-muted">${esc(formatAuditMetadata(log.metadata))}</div>
+              </div>
+            </article>`).join("")}
+        </div>` : '<div class="admin-empty">No audit events match these filters.</div>'}
         ${pager(data.page, data.pages, "audit")}
       </div>
     `);
-    let timer;
-    document.getElementById("auditSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.audit.search = e.target.value.trim();
-        showAuditLogs(1);
-      }, 350);
-    });
+    animateStatValues();
+    bindSearch("auditSearch", (v) => {
+      _s.audit.search = v;
+      showAuditLogs(1);
+    }, 350);
     document.getElementById("auditActionFilter")?.addEventListener("change", (e) => {
       _s.audit.action = e.target.value;
       showAuditLogs(1);
@@ -1849,65 +2354,46 @@ function formatAuditMetadata(metadata = {}) {
 async function showTrash() {
   try {
     const data = await api("/api/admin/trash");
-    const section = (label, icon, items, renderRow) => {
+    const restoreBtn = (type, id) => `<button class="admin-btn admin-btn-ghost" style="font-size:11px" data-restore-type="${esc(type)}" data-restore-id="${esc(id)}">\u21A9 Restore</button>`;
+    const trashTotal = (data.listings?.length || 0) + (data.discussions?.length || 0) + (data.news?.length || 0) + (data.announcements?.length || 0) + (data.spotlights?.length || 0) + (data.users?.length || 0);
+    const ixSection = (label, icon, items, metaFn, type) => {
       if (!items.length) return "";
       return `
-        <div class="admin-card" style="margin-bottom:24px">
-          <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-            <span>${icon}</span><span>${label}</span>
-            <span style="font-size:11px;font-weight:400;color:#888;margin-left:auto">${items.length} item${items.length !== 1 ? "s" : ""}</span>
+        <div class="admin-card ix-card" style="margin-bottom:20px">
+          <div class="ix-section-head">
+            <span>${icon} ${label}</span>
+            <span class="ix-count">${items.length} item${items.length !== 1 ? "s" : ""}</span>
           </div>
-          ${table(
-        ["Title / Name", "Info", "Deleted", "Restore"],
-        items.map(renderRow)
-      )}
+          <div class="ix-list">
+            ${items.map((item) => `
+              <article class="ix-row ix-row-static">
+                <div class="ix-body">
+                  <div class="ix-title">${esc(item.title || item.name || "(untitled)")}</div>
+                  <div class="ix-meta">${metaFn(item)} \xB7 Deleted ${fmtDate(item.deletedAt)}</div>
+                </div>
+                <div class="ix-actions">${restoreBtn(type, item.id)}</div>
+              </article>`).join("")}
+          </div>
         </div>`;
     };
-    const restoreBtn = (type, id) => `<button class="admin-btn admin-btn-ghost" style="font-size:11px" data-restore-type="${esc(type)}" data-restore-id="${esc(id)}">\u21A9 Restore</button>`;
     content(`
-      <div style="max-width:900px">
-        <div style="background:#fff8f0;border:1.5px solid #f5c97a;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:13px;color:#7a5000;line-height:1.5">
-          \u{1F310} <strong>The internet is forever.</strong> Deleted content is never truly gone \u2014 it's preserved here and invisible to regular users. Only super-admins can restore items.
-        </div>
-        ${section("Listings", "\u{1F4CB}", data.listings, (l) => [
-      esc(l.title || "(untitled)"),
-      badge(l.category || "", "gray"),
-      fmtDate(l.deletedAt),
-      restoreBtn("listing", l.id)
-    ])}
-        ${section("Discussions", "\u{1F4AC}", data.discussions, (d) => [
-      esc(d.title || "(untitled)"),
-      esc(d.authorName || ""),
-      fmtDate(d.deletedAt),
-      restoreBtn("discussion", d.id)
-    ])}
-        ${section("News", "\u{1F4F0}", data.news, (n) => [
-      esc(n.title || "(untitled)"),
-      badge(n.status || "draft", n.status === "published" ? "green" : "gray"),
-      fmtDate(n.deletedAt),
-      restoreBtn("news", n.id)
-    ])}
-        ${section("Announcements", "\u{1F4E2}", data.announcements, (a) => [
-      esc(a.title || "(untitled)"),
-      "",
-      fmtDate(a.deletedAt),
-      restoreBtn("announcement", a.id)
-    ])}
-        ${section("Spotlights", "\u{1F3AC}", data.spotlights, (s) => [
-      esc(s.title || "(untitled)"),
-      badge(s.type || "ad", "blue"),
-      fmtDate(s.deletedAt),
-      restoreBtn("spotlight", s.id)
-    ])}
-        ${section("Users", "\u{1F464}", data.users, (u) => [
-      `${esc(u.name)} <span style="color:#888;font-size:11px">${esc(u.email)}</span>`,
-      badge(u.role || "user", "gray"),
-      fmtDate(u.deletedAt),
-      restoreBtn("user", u.id)
-    ])}
-        ${!data.listings.length && !data.discussions.length && !data.news.length && !data.announcements.length && !data.spotlights.length && !data.users.length ? '<div class="admin-empty">Trash is empty \u2014 nothing has been soft-deleted yet.</div>' : ""}
+      ${sectionHero("Trash", "Soft-deleted items stay recoverable for super-admins.")}
+      <div class="ix-stat-grid">
+        ${sectionStat("Total items", trashTotal, true)}
+        ${sectionStat("Listings", data.listings?.length || 0)}
+        ${sectionStat("News", data.news?.length || 0)}
+        ${sectionStat("Users", data.users?.length || 0)}
       </div>
+      <div class="ix-note">\u{1F310} <strong>The internet is forever.</strong> Deleted content is preserved here and invisible to regular users.</div>
+      ${ixSection("Listings", "\u{1F4CB}", data.listings || [], (l) => badge(l.category || "", "gray"), "listing")}
+      ${ixSection("Discussions", "\u{1F4AC}", data.discussions || [], (d) => esc(d.authorName || ""), "discussion")}
+      ${ixSection("News", "\u{1F4F0}", data.news || [], (n) => badge(n.status || "draft", n.status === "published" ? "green" : "gray"), "news")}
+      ${ixSection("Announcements", "\u{1F4E2}", data.announcements || [], () => "", "announcement")}
+      ${ixSection("Spotlights", "\u{1F3AC}", data.spotlights || [], (s) => badge(s.type || "ad", "blue"), "spotlight")}
+      ${ixSection("Users", "\u{1F464}", data.users || [], (u) => `${esc(u.email || "")} \xB7 ${badge(u.role || "user", "gray")}`, "user")}
+      ${trashTotal === 0 ? '<div class="admin-empty">Trash is empty \u2014 nothing has been soft-deleted yet.</div>' : ""}
     `);
+    animateStatValues();
   } catch (err) {
     content(`<div class="admin-error">${esc(err.message)}</div>`);
   }
@@ -1929,7 +2415,14 @@ async function showSpotlights() {
     var showSpotImgPreview = showSpotImgPreview2;
     const data = await api("/api/admin/spotlights");
     const typeColors = { ad: "blue", event: "green", news: "gray", promo: "red" };
+    const activeCount = (data.spotlights || []).filter((s) => s.active).length;
     content(`
+      ${sectionHero("Spotlights", "Homepage hero banners. Toggle live/inactive without leaving the page.")}
+      <div class="ix-stat-grid">
+        ${sectionStat("Total", (data.spotlights || []).length, true)}
+        ${sectionStat("Live", activeCount)}
+        ${sectionStat("Inactive", (data.spotlights || []).length - activeCount)}
+      </div>
       <div class="admin-ann-form">
         <div class="admin-ann-form-title">\u{1F3AC} Create New Spotlight</div>
         <div id="spotFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:12px"></div>
@@ -2004,7 +2497,7 @@ async function showSpotlights() {
 
       <div class="admin-ann-list" id="spotList">
         ${data.spotlights.length ? data.spotlights.map((s) => `
-          <div class="admin-ann-card" style="align-items:flex-start">
+          <div class="admin-ann-card ix-clickable-card" style="align-items:flex-start" tabindex="0" role="button" data-open-spot="${esc(s.id)}">
             <div class="admin-ann-stripe admin-ann-stripe-${s.type === "event" ? "success" : s.type === "promo" ? "warning" : "info"}"></div>
             ${s.imageUrl ? `<img src="${esc(s.imageUrl)}" alt="" style="width:96px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;margin-right:2px;margin-top:2px">` : ""}
             <div class="admin-ann-content" style="flex:1;min-width:0">
@@ -2032,6 +2525,8 @@ async function showSpotlights() {
         `).join("") : '<div class="admin-empty">No spotlights yet. Create one above to show a hero banner on the homepage.</div>'}
       </div>
     `);
+    animateStatValues();
+    wireInteractiveRows("[data-open-spot]", (row) => openViewSpotlight(row.dataset.openSpot));
     document.getElementById("spotImageFile")?.addEventListener("change", async function() {
       const file = this.files?.[0];
       if (!file) return;
@@ -2265,7 +2760,14 @@ async function showAnnouncements() {
   try {
     const data = await api("/api/admin/announcements");
     const typeColors = { info: "blue", warning: "red", success: "green" };
+    const activeCount = (data.announcements || []).filter((a) => a.active).length;
     content(`
+      ${sectionHero("Announcements", "Site-wide banners for all users. Pause or activate instantly.")}
+      <div class="ix-stat-grid">
+        ${sectionStat("Total", (data.announcements || []).length, true)}
+        ${sectionStat("Live", activeCount)}
+        ${sectionStat("Inactive", (data.announcements || []).length - activeCount)}
+      </div>
       <div class="admin-ann-form">
         <div class="admin-ann-form-title">\u{1F4E2} Create New Announcement</div>
         <div id="annFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:12px"></div>
@@ -2321,6 +2823,7 @@ async function showAnnouncements() {
         `).join("") : '<div class="admin-empty">No announcements yet. Create one above.</div>'}
       </div>
     `);
+    animateStatValues();
     document.getElementById("annSubmit")?.addEventListener("click", async () => {
       const title = document.getElementById("annTitle")?.value.trim();
       const body = document.getElementById("annBody")?.value.trim();
@@ -2675,13 +3178,10 @@ document.addEventListener("click", async (e) => {
   }
   const newsFormat = e.target.closest("[data-news-format]");
   if (newsFormat) {
-    const action = newsFormat.dataset.newsFormat;
-    if (action === "bold") insertIntoNewsBody("**", "**");
-    if (action === "h2") insertIntoNewsBody("## ");
-    if (action === "quote") insertIntoNewsBody("> ");
-    if (action === "font-serif") insertIntoNewsBody("[font=serif]", "[/font]");
-    if (action === "font-sans") insertIntoNewsBody("[font=sans]", "[/font]");
-    if (action === "font-mono") insertIntoNewsBody("[font=mono]", "[/font]");
+    if (window.BiscoonNewsEditor?.runCommand?.(newsFormat.dataset.newsFormat || "")) {
+      e.preventDefault();
+      return;
+    }
     return;
   }
   const insertNewsMedia = e.target.closest("[data-insert-news-media]");
@@ -2807,6 +3307,40 @@ document.addEventListener("click", async (e) => {
   const editNews = e.target.closest("[data-edit-news]");
   if (editNews) {
     openNewsEditor(editNews.dataset.editNews);
+    return;
+  }
+  const toggleFeatured = e.target.closest("[data-toggle-news-featured]");
+  if (toggleFeatured) {
+    e.stopPropagation();
+    const id = toggleFeatured.dataset.toggleNewsFeatured;
+    const next = toggleFeatured.dataset.featured !== "1";
+    try {
+      await api(`/api/admin/news/${encodeURIComponent(id)}/featured`, {
+        method: "PUT",
+        body: JSON.stringify({ featured: next })
+      });
+      showNews();
+      notify(next ? "Story featured." : "Story unfeatured.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
+    return;
+  }
+  const toggleStatus = e.target.closest("[data-toggle-news-status]");
+  if (toggleStatus) {
+    e.stopPropagation();
+    const id = toggleStatus.dataset.toggleNewsStatus;
+    const next = toggleStatus.dataset.status === "published" ? "draft" : "published";
+    try {
+      await api(`/api/admin/news/${encodeURIComponent(id)}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: next })
+      });
+      showNews();
+      notify(next === "published" ? "Story published." : "Story moved to draft.", "success");
+    } catch (err) {
+      notify(err.message, "error");
+    }
     return;
   }
   const delNews = e.target.closest("[data-del-news]");

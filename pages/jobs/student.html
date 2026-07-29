@@ -78,7 +78,7 @@
   <h1 class="page-hero-title"><span class="emoji">🎓</span>Student Network</h1>
   <div class="page-hero-devanagari">विद्यार्थी नेटवर्क</div>
   <p class="page-hero-desc">Connect with Nepali students across US universities — find OPT referrals, study groups, roommates, and community.</p>
-  <div class="page-hero-stats"><div class="page-hero-stat"><span class="num">2,800+</span><span class="lbl">Nepali students USA</span></div><div class="page-hero-stat"><span class="num">200+</span><span class="lbl">Universities</span></div><div class="page-hero-stat"><span class="num">OPT/CPT</span><span class="lbl">Visa guidance</span></div><div class="page-hero-stat"><span class="num">Free</span><span class="lbl">To connect</span></div></div>
+  
 </div>
 <div class="breadcrumb"><a href="../../index.html">🏠 Biscoon</a><span class="sep">›</span><span>Student Network — विद्यार्थी नेटवर्क</span></div>
 <div class="filter-sort-bar pages-jobs-student-inline-3">
@@ -97,31 +97,23 @@
 </div>
 <div class="page-layout">
   <div class="page-main">
-    <a class="listing-card" data-cat="opt" href="#"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Looking for OPT referrals — CS/ML grad, Northeastern</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 3h ago</span><span>@RajanShrestha</span></div><div class="listing-tags"><span class="tag tag-red">OPT Active</span><span class="tag tag-blue">CS/ML</span></div></div><div class="listing-price">Open</div></a>
-<a class="listing-card" data-cat="groups" href="#"><div class="listing-thumb">🤝</div><div class="listing-body"><div class="listing-title">BU Nepali Student Association — join us!</div><div class="listing-meta"><span>📍 Boston University</span><span>🕐 1d ago</span></div><div class="listing-tags"><span class="tag tag-green">Free to join</span><span class="tag tag-gold">Monthly events</span></div></div><div class="listing-price">Free</div></a>
-<a class="listing-card" data-cat="tutoring" href="#"><div class="listing-thumb">📚</div><div class="listing-body"><div class="listing-title">STEM tutoring — Math, Physics, Chemistry</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-blue">Online/in-person</span></div></div><div class="listing-price">$30/hr</div></a>
-<a class="listing-card" data-cat="housing" href="#"><div class="listing-thumb">🛏️</div><div class="listing-body"><div class="listing-title">Roommate needed near MIT — split $700/mo</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 4h ago</span></div><div class="listing-tags"><span class="tag tag-green">Students only</span><span class="tag tag-navy">Near MIT</span></div></div><div class="listing-price">$700/mo</div></a>
-<a class="listing-card" data-cat="scholarships" href="#"><div class="listing-thumb">💰</div><div class="listing-body"><div class="listing-title">NSSA scholarship application open — $5,000 awards</div><div class="listing-meta"><span>📅 Deadline: June 30, 2026</span><span>📍 Nationwide</span></div><div class="listing-tags"><span class="tag tag-gold">$5,000 award</span><span class="tag tag-red">Apply now</span></div></div><div class="listing-price">Apply →</div></a>
-<a class="listing-card" data-cat="cpt" href="#"><div class="listing-thumb">🔬</div><div class="listing-body"><div class="listing-title">Research lab assistant — paid position, BU</div><div class="listing-meta"><span>📍 Boston University</span><span>🕐 1w ago</span></div><div class="listing-tags"><span class="tag tag-green">Paid</span><span class="tag tag-navy">OPT OK</span></div></div><div class="listing-price">$18/hr</div></a>
-<a class="listing-card" data-cat="groups" href="#"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Harvard Extension Nepali Students meetup</div><div class="listing-meta"><span>📅 May 25, 2026</span><span>📍 Cambridge, MA</span></div><div class="listing-tags"><span class="tag tag-gold">Harvard</span><span class="tag tag-green">Free</span></div></div><div class="listing-price">Free</div></a>
-<a class="listing-card" data-cat="cpt" href="#"><div class="listing-thumb">💼</div><div class="listing-body"><div class="listing-title">CPT-eligible internship — Marketing & Social Media</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-purple">CPT OK</span><span class="tag tag-navy">Hybrid</span></div></div><div class="listing-price">$15–18/hr</div></a>
-    <div class="pagination">
-      <button class="pg-btn disabled">← Prev</button>
-      <button class="pg-btn active">1</button>
-      <button class="pg-btn">2</button>
-      <button class="pg-btn">3</button>
-      <button class="pg-btn">→ Next</button>
+    <div class="section-divider">Live listings</div>
+    <div id="listingsFeed" class="listings-feed" aria-live="polite"></div>
+    <div id="listingsControls" class="listings-controls">
+      <button type="button" class="load-more" data-listings-more hidden>Load more listings →</button>
+      <div class="pagination" data-listings-pager hidden></div>
     </div>
   </div>
   
 <div class="page-sidebar">
   <div class="sidebar-widget">
-    <div class="widget-header">📊 Quick Stats</div>
-    <div class="widget-body">
-      <div class="widget-row"><span class="lbl">Nepali students USA</span><span class="val">2,800+</span></div>
-      <div class="widget-row"><span class="lbl">OPT seekers active</span><span class="val">340</span></div><div class="widget-row"><span class="lbl">CPT internships</span><span class="val">89</span></div><div class="widget-row"><span class="lbl">Study group requests</span><span class="val">124</span></div><div class="widget-row"><span class="lbl">Scholarship funds</span><span class="val">$45,000 awarded</span></div>
+      <div class="widget-header">📊 Listings</div>
+      <div class="widget-body">
+        <div class="widget-row"><span class="lbl">Active listings</span><span class="val">—</span></div>
+        <div class="widget-row"><span class="lbl">New today</span><span class="val">—</span></div>
+        <div class="widget-row"><span class="lbl">Cities covered</span><span class="val">—</span></div>
+      </div>
     </div>
-  </div>
   <div class="sidebar-widget">
     <div class="widget-header">📅 Events</div>
     <div class="widget-body pages-jobs-student-inline-5">

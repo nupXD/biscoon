@@ -24,6 +24,8 @@ declare global {
       mount: (options?: MountOptions) => void;
       sync: () => void;
       insertMedia: (mediaOrId: NewsMediaItem | string) => boolean;
+      runCommand: (command: string) => boolean;
+      isActive: (command: string) => boolean;
       destroy: () => void;
     };
   }
@@ -226,21 +228,52 @@ function insertMedia(mediaOrId: NewsMediaItem | string): boolean {
     }).run();
   }
   sync();
+  syncToolbar();
   return true;
+}
+
+function isActive(command: string): boolean {
+  if (!editor) return false;
+  if (command === 'bold') return editor.isActive('bold');
+  if (command === 'italic') return editor.isActive('italic');
+  if (command === 'h2') return editor.isActive('heading', { level: 2 });
+  if (command === 'quote') return editor.isActive('blockquote');
+  if (command === 'bullet') return editor.isActive('bulletList');
+  if (command === 'ordered') return editor.isActive('orderedList');
+  if (command === 'font-serif') return editor.isActive('textStyle', { fontFamily: 'serif' });
+  if (command === 'font-sans') return editor.isActive('textStyle', { fontFamily: 'system-ui, sans-serif' });
+  if (command === 'font-mono') return editor.isActive('textStyle', { fontFamily: 'monospace' });
+  return false;
 }
 
 function runCommand(command: string): boolean {
   if (!editor) return false;
   const chain = editor.chain().focus();
   if (command === 'bold') chain.toggleBold().run();
+  else if (command === 'italic') chain.toggleItalic().run();
   else if (command === 'h2') chain.toggleHeading({ level: 2 }).run();
   else if (command === 'quote') chain.toggleBlockquote().run();
+  else if (command === 'bullet') chain.toggleBulletList().run();
+  else if (command === 'ordered') chain.toggleOrderedList().run();
   else if (command === 'font-serif') chain.setFontFamily('serif').run();
   else if (command === 'font-sans') chain.setFontFamily('system-ui, sans-serif').run();
   else if (command === 'font-mono') chain.setFontFamily('monospace').run();
+  else if (command === 'clear') chain.unsetAllMarks().clearNodes().run();
+  else if (command === 'undo') chain.undo().run();
+  else if (command === 'redo') chain.redo().run();
   else return false;
   sync();
+  syncToolbar();
   return true;
+}
+
+function syncToolbar(): void {
+  document.querySelectorAll<HTMLElement>('[data-news-format]').forEach(button => {
+    const command = button.dataset.newsFormat || '';
+    const active = ['undo', 'redo', 'clear'].includes(command) ? false : isActive(command);
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
 }
 
 function mount(options: MountOptions = {}): void {
@@ -264,11 +297,18 @@ function mount(options: MountOptions = {}): void {
     editorProps: {
       attributes: {
         class: 'admin-news-rich-editor-surface',
+        'data-placeholder': 'Start writing the article… Select text and use the toolbar to format.',
       },
     },
-    onUpdate: sync,
+    onUpdate: () => {
+      sync();
+      syncToolbar();
+    },
+    onSelectionUpdate: syncToolbar,
+    onFocus: syncToolbar,
   });
   sync();
+  syncToolbar();
 }
 
 function destroy(): void {
@@ -285,4 +325,4 @@ document.addEventListener('click', event => {
   }
 }, true);
 
-window.BiscoonNewsEditor = { mount, sync, insertMedia, destroy };
+window.BiscoonNewsEditor = { mount, sync, insertMedia, runCommand, isActive, destroy };

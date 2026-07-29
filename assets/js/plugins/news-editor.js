@@ -13050,8 +13050,8 @@
   }
   var lift3 = (typeOrName, attributes = {}) => ({ state, dispatch }) => {
     const type = getNodeType(typeOrName, state.schema);
-    const isActive2 = isNodeActive(state, type, attributes);
-    if (!isActive2) {
+    const isActive22 = isNodeActive(state, type, attributes);
+    if (!isActive22) {
       return false;
     }
     return lift2(state, dispatch);
@@ -14474,8 +14474,8 @@
   var toggleMark = (typeOrName, attributes = {}, options = {}) => ({ state, commands }) => {
     const { extendEmptyMarkRange = false } = options;
     const type = getMarkType(typeOrName, state.schema);
-    const isActive2 = isMarkActive(state, type, attributes);
-    if (isActive2) {
+    const isActive22 = isMarkActive(state, type, attributes);
+    if (isActive22) {
       return commands.unsetMark(type, { extendEmptyMarkRange });
     }
     return commands.setMark(type, attributes);
@@ -14483,20 +14483,20 @@
   var toggleNode = (typeOrName, toggleTypeOrName, attributes = {}) => ({ state, commands }) => {
     const type = getNodeType(typeOrName, state.schema);
     const toggleType = getNodeType(toggleTypeOrName, state.schema);
-    const isActive2 = isNodeActive(state, type, attributes);
+    const isActive22 = isNodeActive(state, type, attributes);
     let attributesToCopy;
     if (state.selection.$anchor.sameParent(state.selection.$head)) {
       attributesToCopy = state.selection.$anchor.parent.attrs;
     }
-    if (isActive2) {
+    if (isActive22) {
       return commands.setNode(toggleType, attributesToCopy);
     }
     return commands.setNode(type, { ...attributesToCopy, ...attributes });
   };
   var toggleWrap = (typeOrName, attributes = {}) => ({ state, commands }) => {
     const type = getNodeType(typeOrName, state.schema);
-    const isActive2 = isNodeActive(state, type, attributes);
-    if (isActive2) {
+    const isActive22 = isNodeActive(state, type, attributes);
+    if (isActive22) {
       return commands.lift(type);
     }
     return commands.wrapIn(type, attributes);
@@ -23865,20 +23865,49 @@ ${prefix}
       }).run();
     }
     sync();
+    syncToolbar();
     return true;
+  }
+  function isActive2(command2) {
+    if (!editor) return false;
+    if (command2 === "bold") return editor.isActive("bold");
+    if (command2 === "italic") return editor.isActive("italic");
+    if (command2 === "h2") return editor.isActive("heading", { level: 2 });
+    if (command2 === "quote") return editor.isActive("blockquote");
+    if (command2 === "bullet") return editor.isActive("bulletList");
+    if (command2 === "ordered") return editor.isActive("orderedList");
+    if (command2 === "font-serif") return editor.isActive("textStyle", { fontFamily: "serif" });
+    if (command2 === "font-sans") return editor.isActive("textStyle", { fontFamily: "system-ui, sans-serif" });
+    if (command2 === "font-mono") return editor.isActive("textStyle", { fontFamily: "monospace" });
+    return false;
   }
   function runCommand(command2) {
     if (!editor) return false;
     const chain = editor.chain().focus();
     if (command2 === "bold") chain.toggleBold().run();
+    else if (command2 === "italic") chain.toggleItalic().run();
     else if (command2 === "h2") chain.toggleHeading({ level: 2 }).run();
     else if (command2 === "quote") chain.toggleBlockquote().run();
+    else if (command2 === "bullet") chain.toggleBulletList().run();
+    else if (command2 === "ordered") chain.toggleOrderedList().run();
     else if (command2 === "font-serif") chain.setFontFamily("serif").run();
     else if (command2 === "font-sans") chain.setFontFamily("system-ui, sans-serif").run();
     else if (command2 === "font-mono") chain.setFontFamily("monospace").run();
+    else if (command2 === "clear") chain.unsetAllMarks().clearNodes().run();
+    else if (command2 === "undo") chain.undo().run();
+    else if (command2 === "redo") chain.redo().run();
     else return false;
     sync();
+    syncToolbar();
     return true;
+  }
+  function syncToolbar() {
+    document.querySelectorAll("[data-news-format]").forEach((button) => {
+      const command2 = button.dataset.newsFormat || "";
+      const active = ["undo", "redo", "clear"].includes(command2) ? false : isActive2(command2);
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
   function mount(options = {}) {
     const element = document.querySelector(options.element || "#newsRichEditor");
@@ -23900,12 +23929,19 @@ ${prefix}
       content: editorContentFromTextarea(textarea),
       editorProps: {
         attributes: {
-          class: "admin-news-rich-editor-surface"
+          class: "admin-news-rich-editor-surface",
+          "data-placeholder": "Start writing the article\u2026 Select text and use the toolbar to format."
         }
       },
-      onUpdate: sync
+      onUpdate: () => {
+        sync();
+        syncToolbar();
+      },
+      onSelectionUpdate: syncToolbar,
+      onFocus: syncToolbar
     });
     sync();
+    syncToolbar();
   }
   function destroy() {
     editor?.destroy();
@@ -23919,5 +23955,5 @@ ${prefix}
       event.stopPropagation();
     }
   }, true);
-  window.BiscoonNewsEditor = { mount, sync, insertMedia, destroy };
+  window.BiscoonNewsEditor = { mount, sync, insertMedia, runCommand, isActive: isActive2, destroy };
 })();

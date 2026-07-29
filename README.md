@@ -17,6 +17,19 @@ The application uses a static HTML/CSS frontend with browser-side TypeScript, an
 - Responsive galleries, PhotoSwipe lightboxes, MapLibre previews, event calendars, and accessible reduced-motion behavior
 - Production health checks, graceful shutdown, Docker support, Sentry hooks, and CI checks
 
+## Recent UI and UX updates
+
+Homepage, category browse, listing publish, and admin share one clearer visual system:
+
+- **Lean first paint** — one NEWS ticker; hero is brand + search + location (no markets/crypto strip or stats dashboard)
+- **Grouped categories** — Jobs / Housing / Marketplace / Community rows fill the section width; “Show all categories” expands the rest
+- **Live category pages** — stub stats and placeholder cards removed; `#listingsFeed` loads real listings with load-more / pagination
+- **Homepage filter chips** — CSP-safe `data-filter` handlers; clicking Jobs, Paying Guest, etc. fetches matching live listings
+- **Post listing** — lean form; guests see a single “Sign in to publish” gate (same pattern as comments)
+- **Design tokens** — `--space-*`, `--radius-*`, `--shadow-*`, and missing grays in `assets/css/main.css`
+- **Admin brand fonts** — Cormorant + IBM Plex on the admin dashboard and login
+- **Motion** — softer card hover (`translateY`), lighter page-hero entrance, heatmap pulse reduced
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -147,7 +160,7 @@ Edit browser behavior in `assets/ts`, not the generated files in `assets/js`. Re
 
 ### Listings and Search
 
-Listings are stored in MongoDB and rendered dynamically across the homepage, category pages, profile pages, and listing details. Posting fields and validation adapt to the selected category. Regular listings support up to six images; photography showcases support up to twelve.
+Listings are stored in MongoDB and rendered dynamically across the homepage, category pages, profile pages, and listing details. Homepage filter chips and category pages load live API results (skeletons, load more, sort). Posting fields stay lean; guests must sign in before publish. Regular listings support up to six images; photography showcases support up to twelve.
 
 Search falls back to MongoDB when Elasticsearch is not configured or unavailable. If `ELASTICSEARCH_URL` is set and reachable, the server initializes the required indexes at startup.
 

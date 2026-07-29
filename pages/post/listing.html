@@ -80,20 +80,22 @@
   <span aria-current="page">Post a Listing</span>
 </div>
 <section class="post-page">
-  <div class="post-hero">
-    <div class="page-hero-eyebrow">Biscoon · Post Listing</div>
+  <div class="post-hero post-hero--compact">
     <div class="page-hero-title"><span class="emoji" aria-hidden="true">✍️</span>Post a Listing</div>
-    <div class="page-hero-devanagari">सूची प्रकाशित गर्नुहोस्</div>
-    <p class="page-hero-desc">Create a new listing for jobs, housing, services, businesses, or events, and connect with Nepali communities across the world.</p>
+    <p class="page-hero-desc">Share a job, room, service, or item with the Nepali community.</p>
   </div>
-  <div class="post-layout">
+  <div class="post-layout post-layout--simple">
     <div class="post-card">
-      <h2>List your opportunity in minutes</h2>
-      <p>Use the form below to create a clear listing that attracts the right Nepali buyers, renters, or customers.</p>
+      <h2>Create a listing</h2>
+      <p>Category, title, details, location, and a way to reach you. Photos help a lot.</p>
       <form id="listingForm" action="#" method="post">
-        <div id="listingGuardMessage" class="form-helper error-text">Please sign in to publish, edit, or delete your listings.</div>
-        <div class="form-section">
-          <h3 id="sectionPlacementTitle">Where should this listing appear?</h3>
+        <div id="listingAuthGate" class="listing-comment-signin" hidden>
+          <p>Sign in to publish or manage your listings. <span lang="ne">सूची प्रकाशित गर्न साइन इन गर्नुहोस्।</span></p>
+          <a class="btn-primary" id="listingGateSignin" href="../auth/login.html">Sign in to publish</a>
+        </div>
+        <div id="listingGuardMessage" class="form-helper" hidden></div>
+
+        <div class="form-section" id="listingFormFields">
           <div class="form-group" id="categoryGroup">
             <label class="form-label" for="category">Category</label>
             <select class="form-select" id="category" name="category" required>
@@ -105,219 +107,99 @@
               <option value="community">Community & Culture</option>
               <option value="other">Other</option>
             </select>
-            <div class="field-note">This controls which Biscoon page your post appears on.</div>
-            <div class="category-context" id="categoryContext"></div>
-            <div class="category-field-guide" id="categoryFieldGuide"></div>
+            <div class="category-context" id="categoryContext" hidden></div>
+            <div class="category-field-guide" id="categoryFieldGuide" hidden></div>
           </div>
-          <div class="form-row--two">
-            <div class="form-group">
-              <label class="form-label" for="subcategory" id="subcategoryLabel">Specific type</label>
-              <input class="form-input" id="subcategory" name="subcategory" type="text" list="subcategorySuggestions" placeholder="e.g. room, full-time, momo, tutoring" required />
-              <datalist id="subcategorySuggestions">
-                <option value="room"></option>
-                <option value="apartment"></option>
-                <option value="paying-guest"></option>
-                <option value="full-time"></option>
-                <option value="part-time"></option>
-                <option value="internship"></option>
-                <option value="remote"></option>
-                <option value="cleaning"></option>
-                <option value="tutoring"></option>
-                <option value="translation"></option>
-                <option value="catering"></option>
-                <option value="momo"></option>
-                <option value="delivery"></option>
-                <option value="event"></option>
-                <option value="sale"></option>
-              </datalist>
-              <div class="field-note" id="subcategoryNote">Use a short searchable label people can filter by.</div>
-              <div class="dynamic-suggestions" id="subcategoryQuickPicks" aria-label="Specific type suggestions"></div>
-            </div>
-            <div class="form-group" id="availabilityGroup">
-              <label class="form-label" for="availability" id="availabilityLabel">Availability / timing</label>
-              <input class="form-input" id="availability" name="availability" type="text" list="availabilitySuggestions" placeholder="e.g. Available now, weekends, starts June 1" />
-              <datalist id="availabilitySuggestions"></datalist>
-              <div class="dynamic-suggestions" id="availabilityQuickPicks" aria-label="Availability suggestions"></div>
-            </div>
-          </div>
-        </div>
-        <div class="form-section">
-          <h3 id="sectionOfferingTitle">What are you offering?</h3>
+
           <div class="form-group">
-            <label class="form-label" for="title" id="titleLabel">Headline</label>
-            <input class="form-input" id="title" name="title" type="text" placeholder="Write a strong listing title" required />
-            <div class="field-note" id="titleNote">Example: "Boston roommate needed — Nepali-speaking, 2BR, $950"</div>
+            <label class="form-label" for="subcategory" id="subcategoryLabel">Type</label>
+            <input class="form-input" id="subcategory" name="subcategory" type="text" list="subcategorySuggestions" placeholder="e.g. room, tech, kinbech, event" required />
+            <datalist id="subcategorySuggestions"></datalist>
+            <div class="field-note" id="subcategoryNote" hidden></div>
+            <div class="dynamic-suggestions" id="subcategoryQuickPicks" aria-label="Type suggestions"></div>
           </div>
+
           <div class="form-group">
-            <label class="form-label" for="description" id="descriptionLabel">Description</label>
-            <textarea class="form-input" id="description" name="description" placeholder="Include what is included, who this is for, requirements, pickup/meeting details, and anything the buyer/renter/applicant should know." required></textarea>
+            <label class="form-label" for="title" id="titleLabel">Title</label>
+            <input class="form-input" id="title" name="title" type="text" placeholder="Clear headline for your listing" required maxlength="120" />
+            <div class="field-note" id="titleNote" hidden></div>
           </div>
-          <div class="form-row--three" id="locationDetailsGroup">
+
+          <div class="form-group">
+            <label class="form-label" for="description" id="descriptionLabel">Details</label>
+            <textarea class="form-input" id="description" name="description" rows="5" placeholder="What is it, who is it for, and any must-know details." required></textarea>
+          </div>
+
+          <div class="form-row--two" id="locationDetailsGroup">
             <div class="form-group">
-              <label class="form-label" for="area" id="areaLabel">Area / city</label>
-              <input class="form-input" id="area" name="area" type="text" placeholder="e.g. Allston, Boston, Queens" required />
+              <label class="form-label" for="area" id="areaLabel">Location</label>
+              <input class="form-input" id="area" name="area" type="text" placeholder="e.g. Allston, MA or Remote" required />
             </div>
-            <div class="form-group">
-              <label class="form-label" for="state">State</label>
-              <select class="form-select" id="state" name="state" required>
-                <option value="">Choose state</option>
-                <option value="AL">Alabama</option>
-                <option value="AK">Alaska</option>
-                <option value="AZ">Arizona</option>
-                <option value="AR">Arkansas</option>
-                <option value="CA">California</option>
-                <option value="CO">Colorado</option>
-                <option value="CT">Connecticut</option>
-                <option value="DE">Delaware</option>
-                <option value="DC">Washington, DC</option>
-                <option value="FL">Florida</option>
-                <option value="GA">Georgia</option>
-                <option value="HI">Hawaii</option>
-                <option value="ID">Idaho</option>
-                <option value="IL">Illinois</option>
-                <option value="IN">Indiana</option>
-                <option value="IA">Iowa</option>
-                <option value="KS">Kansas</option>
-                <option value="KY">Kentucky</option>
-                <option value="LA">Louisiana</option>
-                <option value="ME">Maine</option>
-                <option value="MD">Maryland</option>
-                <option value="MA">Massachusetts</option>
-                <option value="MI">Michigan</option>
-                <option value="MN">Minnesota</option>
-                <option value="MS">Mississippi</option>
-                <option value="MO">Missouri</option>
-                <option value="MT">Montana</option>
-                <option value="NE">Nebraska</option>
-                <option value="NV">Nevada</option>
-                <option value="NH">New Hampshire</option>
-                <option value="NJ">New Jersey</option>
-                <option value="NM">New Mexico</option>
-                <option value="NY">New York</option>
-                <option value="NC">North Carolina</option>
-                <option value="ND">North Dakota</option>
-                <option value="OH">Ohio</option>
-                <option value="OK">Oklahoma</option>
-                <option value="OR">Oregon</option>
-                <option value="PA">Pennsylvania</option>
-                <option value="RI">Rhode Island</option>
-                <option value="SC">South Carolina</option>
-                <option value="SD">South Dakota</option>
-                <option value="TN">Tennessee</option>
-                <option value="TX">Texas</option>
-                <option value="UT">Utah</option>
-                <option value="VT">Vermont</option>
-                <option value="VA">Virginia</option>
-                <option value="WA">Washington</option>
-                <option value="WV">West Virginia</option>
-                <option value="WI">Wisconsin</option>
-                <option value="WY">Wyoming</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="locationType" id="locationTypeLabel">Location type</label>
-              <select class="form-select" id="locationType" name="locationType">
-                <option value="in-person">In person</option>
-                <option value="remote">Remote</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="delivery">Delivery available</option>
-                <option value="pickup">Pickup only</option>
-              </select>
+            <div class="form-group" id="priceDetailsGroup">
+              <label class="form-label" for="price" id="priceLabel">Price</label>
+              <input class="form-input" id="price" name="price" type="text" placeholder="e.g. $120, free, negotiable" />
+              <input id="priceNote" name="priceNote" type="hidden" value="" />
             </div>
           </div>
-          <input id="location" name="location" type="hidden" />
-          <div class="form-row--two" id="priceDetailsGroup">
-            <div class="form-group">
-              <label class="form-label" for="price" id="priceLabel">Price / rate</label>
-              <input class="form-input" id="price" name="price" type="text" placeholder="e.g. $120/week, $25/hr, free, negotiable" />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="priceNote" id="priceNoteLabel">Price note</label>
-              <input class="form-input" id="priceNote" name="priceNote" type="text" placeholder="e.g. utilities included, cash only, no broker fee" />
-            </div>
+
+          <div class="form-group" id="availabilityGroup">
+            <label class="form-label" for="availability" id="availabilityLabel">Availability <span class="label-optional">optional</span></label>
+            <input class="form-input" id="availability" name="availability" type="text" list="availabilitySuggestions" placeholder="e.g. Available now, weekends, by appointment" />
+            <datalist id="availabilitySuggestions"></datalist>
+            <div class="dynamic-suggestions" id="availabilityQuickPicks" aria-label="Availability suggestions"></div>
           </div>
-        </div>
-        <div class="form-section" id="contactDetailsSection">
-          <h3 id="sectionContactTitle">How should people contact you?</h3>
-          <div class="form-row--two">
+
+          <div class="form-row--two" id="contactDetailsSection">
             <div class="form-group">
               <label class="form-label" for="contactEmail">Email</label>
               <input class="form-input" id="contactEmail" name="contactEmail" type="email" placeholder="you@example.com" required />
             </div>
             <div class="form-group">
-              <label class="form-label" for="contactPhone">Phone</label>
+              <label class="form-label" for="contactPhone">Phone <span class="label-optional">optional</span></label>
               <input class="form-input" id="contactPhone" name="contactPhone" type="tel" placeholder="+1 555 123 4567" />
             </div>
           </div>
+          <input id="state" name="state" type="hidden" value="" />
+          <input id="locationType" name="locationType" type="hidden" value="in-person" />
+          <input id="location" name="location" type="hidden" />
+          <input id="contactPreference" name="contactPreference" type="hidden" value="email" />
+          <input id="link" name="link" type="hidden" value="" />
+          <input id="tags" name="tags" type="hidden" value="" />
+
           <div class="form-group">
-            <label class="form-label" for="contactPreference" id="contactPreferenceLabel">Preferred contact method</label>
-            <select class="form-select" id="contactPreference" name="contactPreference">
-              <option value="email">Email first</option>
-              <option value="phone">Phone call</option>
-              <option value="text">Text message</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="either">Email or phone</option>
-            </select>
-          </div>
-          <div class="form-group" id="linkGroup">
-            <label class="form-label" for="link" id="linkLabel">External link (optional)</label>
-            <input class="form-input" id="link" name="link" type="url" placeholder="Website or portfolio URL" />
-          </div>
-        </div>
-        <div class="form-section">
-          <h3 id="sectionSearchTitle">Make it easier to find</h3>
-          <div class="form-group">
-            <label class="form-label" for="tags" id="tagsLabel">Tags / keywords</label>
-            <input class="form-input" id="tags" name="tags" type="text" placeholder="Nepali, remote, shared room, legal, etc." />
-            <div class="field-note" id="tagsNote">Separate tags with commas to help people find your listing.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="imagesUpload" id="imagesLabel">Upload images</label>
+            <label class="form-label" for="imagesUpload" id="imagesLabel">Photos</label>
             <div class="file-upload">
               <input class="file-input" id="imagesUpload" name="imagesUpload[]" type="file" accept="image/*" multiple />
-              <label class="btn-white file-upload-button" for="imagesUpload">Choose images</label>
-              <div class="field-note" id="imagesNote">Upload photos from your device. You can select multiple images from desktop or mobile.</div>
+              <label class="btn-white file-upload-button" for="imagesUpload">Add photos</label>
+              <div class="field-note" id="imagesNote">Up to 6 photos. Clear shots help people respond faster.</div>
               <div id="imagePreviewList" class="image-preview-list"></div>
             </div>
           </div>
         </div>
+
         <div id="listingMessage" class="form-helper"></div>
-        <div class="post-submit">
+        <div class="post-submit" id="listingSubmitRow">
           <button class="btn-primary" id="listingSubmitButton" type="submit">Publish listing</button>
-          <a class="btn-ghost" id="listingSigninLink" href="../auth/login.html">Sign in to manage listings</a>
+          <a class="btn-ghost" id="listingSigninLink" href="../auth/login.html" hidden>Sign in</a>
         </div>
       </form>
+
       <div class="form-section" id="myListingsSection">
         <h3>My listings</h3>
         <div id="listingList">Loading your listings...</div>
       </div>
     </div>
-    <aside class="post-sidebar">
+
+    <aside class="post-sidebar post-sidebar--simple">
       <div class="sidebar-widget">
-        <h4 id="sidebarBestTitle">Best listing practices</h4>
+        <h4 id="sidebarBestTitle">Quick tip</h4>
         <ul id="sidebarBestList">
-          <li>Use a clear, specific title and include location.</li>
-          <li>Mention price expectations and important details.</li>
-          <li>Pick the right category so your post reaches the right community.</li>
-          <li>Add contact info and optional website/portfolio links.</li>
+          <li>Use a specific title and real location.</li>
+          <li>Add price when it helps (or write free / negotiable).</li>
+          <li>Upload a couple of clear photos.</li>
         </ul>
-      </div>
-      <div class="sidebar-widget">
-        <h4 id="sidebarNextTitle">What happens next</h4>
-        <ul id="sidebarNextList">
-          <li>Your listing appears instantly in search results.</li>
-          <li>Interested people can contact you directly.</li>
-          <li>Manage responses from your Biscoon account.</li>
-        </ul>
-      </div>
-      <div class="sidebar-widget">
-        <h4 id="sidebarTypesTitle">Popular listing types</h4>
-        <ul id="sidebarTypesList">
-          <li>Roommate / shared housing</li>
-          <li>Job openings and freelance work</li>
-          <li>Local services like cleaning, tutoring, and repair</li>
-          <li>Small shops, restaurants, and event announcements</li>
-        </ul>
+        <ul id="sidebarNextList" hidden></ul>
+        <ul id="sidebarTypesList" hidden></ul>
       </div>
     </aside>
   </div>

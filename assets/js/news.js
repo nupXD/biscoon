@@ -4,6 +4,9 @@ if (newsApiBase.startsWith('file://')) newsApiBase = 'http://localhost:4000';
 const newsState = {
   category: new URLSearchParams(window.location.search).get('category') || '',
   search: new URLSearchParams(window.location.search).get('search') || '',
+  page: 1,
+  pages: 1,
+  items: [],
 };
 
 function newsEscape(value) {
@@ -214,23 +217,57 @@ async function openNewsArticle(slug, pushState = true) {
   reader.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-async function loadNews() {
+async function loadNews(options = {}) {
+  const append = Boolean(options.append);
+  const page = Math.max(1, options.page || 1);
   const target = document.getElementById('newsFront');
-  if (target) target.innerHTML = '<div class="news-loading">Loading latest stories...</div>';
-  const params = new URLSearchParams({ page: '1', limit: '16' });
+  if (target && !append) target.innerHTML = '<div class="news-loading">Loading latest stories...</div>';
+
+  const params = new URLSearchParams({ page: String(page), limit: '12' });
   if (newsState.category) params.set('category', newsState.category);
   if (newsState.search) params.set('search', newsState.search);
   const data = await newsFetch(`/api/news?${params}`);
-  renderNewsFront(data.news || []);
+  const articles = data.news || [];
+  newsState.page = Number(data.page || page);
+  newsState.pages = Number(data.pages || 1);
+  newsState.items = append ? newsState.items.concat(articles) : articles;
+  renderNewsFront(newsState.items);
+  renderNewsLoadMore();
 
-  const story = new URLSearchParams(window.location.search).get('story');
-  if (story) openNewsArticle(story, false).catch(error => {
-    const reader = document.getElementById('newsReader');
-    if (reader) {
-      reader.hidden = false;
-      reader.innerHTML = `<div class="news-empty">${newsEscape(error.message)}</div>`;
+  if (!append) {
+    const story = new URLSearchParams(window.location.search).get('story');
+    if (story) openNewsArticle(story, false).catch(error => {
+      const reader = document.getElementById('newsReader');
+      if (reader) {
+        reader.hidden = false;
+        reader.innerHTML = `<div class="news-empty">${newsEscape(error.message)}</div>`;
+      }
+    });
+  }
+}
+
+function renderNewsLoadMore() {
+  const target = document.getElementById('newsFront');
+  if (!target) return;
+  target.querySelector('[data-news-more]')?.remove();
+  if (newsState.page >= newsState.pages) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'load-more';
+  btn.setAttribute('data-news-more', '1');
+  btn.textContent = `Load more stories → (${newsState.items.length} loaded)`;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+    try {
+      await loadNews({ page: newsState.page + 1, append: true });
+    } catch (error) {
+      console.error(error);
+      btn.disabled = false;
+      btn.textContent = 'Load more stories →';
     }
   });
+  target.appendChild(btn);
 }
 
 function bindNewsPage() {
@@ -246,6 +283,8 @@ function bindNewsPage() {
       url.searchParams.delete('story');
       window.history.replaceState({}, '', url.toString());
       document.getElementById('newsReader')?.setAttribute('hidden', '');
+      newsState.page = 1;
+      newsState.items = [];
       loadNews().catch(console.error);
     });
   });
@@ -260,6 +299,8 @@ function bindNewsPage() {
     else url.searchParams.delete('search');
     url.searchParams.delete('story');
     window.history.replaceState({}, '', url.toString());
+    newsState.page = 1;
+    newsState.items = [];
     loadNews().catch(console.error);
   });
 

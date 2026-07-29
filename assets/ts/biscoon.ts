@@ -401,6 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
   loadEnhancementPlugins();
   ensureNewsNavLink();
   initScrollProgress();
+  document.getElementById('hamburger')?.addEventListener('click', toggleMenu);
 
   document.addEventListener('click', function (e: MouseEvent) {
     const d = document.getElementById('mobileDrawer');
@@ -480,6 +481,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Filter chips ──
   bindDynamicFilterChips();
+  bindSortSelect();
 
   // ── Auth state and user dropdown ──
   bindBiscoonSessionActivity();
@@ -1109,11 +1111,11 @@ function getSelectedBrowseScope(): { category: string; subcategory: string } {
   }
 
   const scope = getListingScopeForCategory(inferPageCategory());
-  const activeChip = document.querySelector('.filter-chips .chip.active[data-filter]') as HTMLElement | null;
-  const chipFilter = activeChip ? activeChip.dataset.filter : '';
+  const chipFilter = getActiveChipFilter();
+  // Keep page subcategory; chips refine via search in resolveBrowseQuery, not by replacing scope
   return {
     category: scope.category,
-    subcategory: chipFilter && chipFilter !== 'all' ? chipFilter : scope.subcategory,
+    subcategory: scope.subcategory || chipFilter || '',
   };
 }
 
@@ -1131,8 +1133,33 @@ function isBrowseListingAction(element: HTMLElement | null): boolean {
 function bindBrowseListingActions(): void {
   document.addEventListener('click', function(e: MouseEvent) {
     const target = e.target as HTMLElement;
+
+    const pageBtn = target.closest<HTMLElement>('[data-listings-page]');
+    if (pageBtn) {
+      e.preventDefault();
+      const page = Number(pageBtn.dataset.listingsPage || 0);
+      if (!page || page < 1) return;
+      hydrateDynamicListings(inferPageCategory(), { page, append: false }).then(() => {
+        document.getElementById('listingsFeed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    const moreBtn = target.closest<HTMLElement>('[data-listings-more]');
+    if (moreBtn) {
+      e.preventDefault();
+      if (!browseSession || browseSession.page >= browseSession.pages) return;
+      moreBtn.setAttribute('disabled', 'true');
+      moreBtn.textContent = 'Loading…';
+      hydrateDynamicListings(inferPageCategory(), { page: browseSession.page + 1, append: true });
+      return;
+    }
+
     const action = target.closest('button, a') as HTMLElement | null;
     if (!isBrowseListingAction(action)) return;
+    // Real load-more is handled above via [data-listings-more]
+    if (action?.classList.contains('load-more') && action.hasAttribute('data-listings-more')) return;
+
     e.preventDefault();
     const categoriesSection = document.getElementById('categories');
     if (categoriesSection) {
@@ -1521,17 +1548,261 @@ function getDynamicListingsContainer(): Element | null {
   return null;
 }
 
-async function fetchListings(category = '', search = '', limit = 0, subcategory = ''): Promise<Listing[]> {
+const LISTINGS_PAGE_SIZE = 12;
+
+type ListingsPage = {
+  listings: Listing[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+};
+
+type BrowseSession = {
+  category: string;
+  subcategory: string;
+  search: string;
+  page: number;
+  pages: number;
+  total: number;
+  sort: string;
+  items: Listing[];
+};
+
+let browseSession: BrowseSession | null = null;
+
+async function fetchListingsPage(options: {
+  category?: string;
+  subcategory?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<ListingsPage> {
+  const {
+    category = '',
+    subcategory = '',
+    search = '',
+    page = 1,
+    limit = LISTINGS_PAGE_SIZE,
+  } = options;
   const url = new URL(`${getApiBase()}/api/listings`);
   if (category && category !== 'all') url.searchParams.set('category', category);
   if (subcategory && subcategory !== 'all') url.searchParams.set('subcategory', subcategory);
   if (search) url.searchParams.set('search', search);
-  if (limit) url.searchParams.set('limit', String(limit));
+  url.searchParams.set('page', String(Math.max(1, page)));
+  url.searchParams.set('limit', String(limit || LISTINGS_PAGE_SIZE));
 
   const response = await fetch(url.toString());
   if (!response.ok) throw new Error('Unable to load listings');
   const data = await response.json();
-  return data.listings || [];
+  return {
+    listings: data.listings || [],
+    total: Number(data.total || 0),
+    page: Number(data.page || page),
+    pages: Number(data.pages || 1),
+    limit: Number(data.limit || limit || LISTINGS_PAGE_SIZE),
+  };
+}
+
+async function fetchListings(category = '', search = '', limit = 0, subcategory = ''): Promise<Listing[]> {
+  const data = await fetchListingsPage({
+    category,
+    subcategory,
+    search,
+    page: 1,
+    limit: limit || 48,
+  });
+  return data.listings;
+}
+
+function listingSkeletons(count = 5): string {
+  return Array.from({ length: count }, () => `
+    <div class="skeleton-card" aria-hidden="true">
+      <div class="skeleton skeleton-thumb"></div>
+      <div class="skeleton-body">
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line-short"></div>
+        <div class="skeleton skeleton-line-xs"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function ensureListingsShell(target: Element): { feed: HTMLElement; controls: HTMLElement } {
+  let feed = target.querySelector('#listingsFeed') as HTMLElement | null;
+  let controls = target.querySelector('#listingsControls') as HTMLElement | null;
+  if (feed && controls) return { feed, controls };
+
+  feed = document.createElement('div');
+  feed.id = 'listingsFeed';
+  feed.className = 'listings-feed';
+  controls = document.createElement('div');
+  controls.id = 'listingsControls';
+  controls.className = 'listings-controls';
+  controls.innerHTML = `
+    <button type="button" class="load-more" data-listings-more hidden>Load more listings →</button>
+    <div class="pagination" data-listings-pager hidden></div>
+  `;
+  target.innerHTML = '';
+  target.appendChild(feed);
+  target.appendChild(controls);
+  return { feed, controls };
+}
+
+function relevanceScore(listing: Listing, query: string): number {
+  const q = query.toLowerCase();
+  if (!q) return 0;
+  const title = String(listing.title || '').toLowerCase();
+  const desc = String(listing.description || '').toLowerCase();
+  let score = 0;
+  if (title.includes(q)) score += 3;
+  if (desc.includes(q)) score += 1;
+  return score;
+}
+
+function sortListingsClient(listings: Listing[], sort: string, search = ''): Listing[] {
+  const items = [...listings];
+  if (sort === 'relevant') {
+    items.sort((a, b) => relevanceScore(b, search) - relevanceScore(a, search)
+      || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return items;
+  }
+  if (sort === 'closest') {
+    items.sort((a, b) => String(a.location || '').localeCompare(String(b.location || ''))
+      || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return items;
+  }
+  items.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  return items;
+}
+
+function getActiveSortValue(): string {
+  const select = document.querySelector('.sort-select') as HTMLSelectElement | null;
+  return select?.value || 'newest';
+}
+
+function bindSortSelect(): void {
+  document.querySelectorAll<HTMLSelectElement>('.sort-select').forEach(select => {
+    if (select.dataset.sortBound === 'true') return;
+    select.dataset.sortBound = 'true';
+    Array.from(select.options).forEach((opt, index) => {
+      const label = (opt.textContent || '').toLowerCase();
+      if (label.includes('newest')) opt.value = 'newest';
+      else if (label.includes('relevant')) opt.value = 'relevant';
+      else if (label.includes('closest')) opt.value = 'closest';
+      else if (!opt.value) opt.value = ['newest', 'relevant', 'closest'][index] || 'newest';
+    });
+    select.addEventListener('change', () => {
+      if (!browseSession) return;
+      browseSession.sort = select.value;
+      const feed = document.getElementById('listingsFeed');
+      if (!feed) return;
+      renderListingsIntoFeed(browseSession.items, feed, false);
+    });
+  });
+}
+
+function updateListingsControls(controls: HTMLElement, session: BrowseSession): void {
+  const more = controls.querySelector('[data-listings-more]') as HTMLButtonElement | null;
+  const pager = controls.querySelector('[data-listings-pager]') as HTMLElement | null;
+  if (more) {
+    const hasMore = session.page < session.pages;
+    more.hidden = !hasMore;
+    more.disabled = false;
+    more.textContent = hasMore
+      ? `Load more listings → (${session.items.length} of ${session.total})`
+      : 'All listings loaded';
+  }
+  if (pager) {
+    if (session.pages <= 1) {
+      pager.hidden = true;
+      pager.innerHTML = '';
+      return;
+    }
+    pager.hidden = false;
+    const start = Math.max(1, session.page - 2);
+    const end = Math.min(session.pages, start + 4);
+    const buttons: string[] = [
+      `<button type="button" class="pg-btn" data-listings-page="${session.page - 1}" ${session.page <= 1 ? 'disabled' : ''}>← Prev</button>`,
+    ];
+    for (let i = start; i <= end; i += 1) {
+      buttons.push(`<button type="button" class="pg-btn${i === session.page ? ' active' : ''}" data-listings-page="${i}">${i}</button>`);
+    }
+    buttons.push(`<button type="button" class="pg-btn" data-listings-page="${session.page + 1}" ${session.page >= session.pages ? 'disabled' : ''}>Next →</button>`);
+    pager.innerHTML = buttons.join('');
+  }
+}
+
+function resolveBrowseQuery(category = inferPageCategory()): { category: string; subcategory: string; search: string } {
+  const params = new URLSearchParams(window.location.search);
+  const requestedScope = getListingScopeForCategory(params.get('category') || '');
+  const pageScope = getListingScopeForCategory(category);
+  const activeHomeFilter = document.querySelector('.filter-btn.active') as HTMLElement | null;
+  const homeScope = activeHomeFilter
+    ? getListingScopeForCategory(getFilterFromButton(activeHomeFilter))
+    : { category: '', subcategory: '' };
+  const chip = getActiveChipFilter();
+  const requestedSearch = params.get('search') || '';
+
+  const selectedCategory = requestedScope.category || homeScope.category || pageScope.category;
+  const baseSubcategory = params.get('subcategory')
+    || pageScope.subcategory
+    || homeScope.subcategory
+    || requestedScope.subcategory
+    || '';
+
+  let selectedSubcategory = baseSubcategory;
+  let search = requestedSearch;
+
+  if (chip) {
+    if (baseSubcategory && chip !== baseSubcategory) {
+      search = [requestedSearch, chip].filter(Boolean).join(' ').trim();
+    } else if (!baseSubcategory) {
+      selectedSubcategory = chip;
+    }
+  }
+
+  return { category: selectedCategory, subcategory: selectedSubcategory, search };
+}
+
+function renderListingsIntoFeed(listings: Listing[], feed: HTMLElement, append: boolean): void {
+  const sorted = sortListingsClient(listings, browseSession?.sort || getActiveSortValue(), browseSession?.search || '');
+
+  if (append) {
+    feed.insertAdjacentHTML('beforeend', sorted.map(listingToCard).join(''));
+    return;
+  }
+
+  updateFilterChipsFromListings(sorted);
+
+  if (!sorted.length) {
+    (feed.parentElement as HTMLElement | null)?.setAttribute('data-dynamic-state', 'empty');
+    feed.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">${escapeHtml(getCategoryEmoji(inferPageCategory() || 'other'))}</div>
+        <h3>No live listings yet</h3>
+        <p>Be the first to add a real post for this section.</p>
+        <a class="btn-primary" href="${getPostListingPath(inferPageCategory())}">Post a Listing</a>
+      </div>
+    `;
+    return;
+  }
+
+  const grouped = sorted.reduce((groups: Record<string, Listing[]>, listing) => {
+    const cat = listing.category || 'other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(listing);
+    return groups;
+  }, {});
+
+  (feed.parentElement as HTMLElement | null)?.setAttribute('data-dynamic-state', 'live');
+  feed.innerHTML = Object.entries(grouped).map(([cat, items]) => {
+    const meta = getCategoryMeta(cat);
+    return `
+      <div class="section-divider" data-group="${escapeHtml(cat)}">${meta.emoji} ${escapeHtml(meta.label)} <span class="count">${items.length} live</span></div>
+      ${items.map(listingToCard).join('')}
+    `;
+  }).join('');
 }
 
 async function fetchDiscussions(search = '', limit = 25): Promise<Discussion[]> {
@@ -1671,17 +1942,24 @@ function renderListingComments(listing: Listing): string {
       </article>
     `).join('');
   };
+  const loginHref = `${getRelativeAuthPath('login.html')}?redirect=${encodeURIComponent(getListingPageHref(listing.id || ''))}`;
+  const composeBlock = token ? `
+      <form class="listing-comment-form" data-listing-comment-form="${escapeHtml(listing.id || '')}">
+        <label class="form-label" for="listingComment-${escapeHtml(listing.id || '')}">Add a comment</label>
+        <textarea class="form-input" id="listingComment-${escapeHtml(listing.id || '')}" name="body" placeholder="Share a question or tip…" required></textarea>
+        <div class="listing-comment-actions">
+          <button class="btn-primary" type="submit">Post comment</button>
+        </div>
+      </form>` : `
+      <div class="listing-comment-signin">
+        <p>Join the conversation after you sign in.</p>
+        <a class="btn-primary" href="${loginHref}">Sign in to comment</a>
+      </div>`;
+
   return `
     <section class="listing-comments" data-listing-comments="${escapeHtml(listing.id || '')}">
       <div class="listing-comments-head">${comments.length} comment${comments.length === 1 ? '' : 's'}</div>
-      <form class="listing-comment-form" data-listing-comment-form="${escapeHtml(listing.id || '')}">
-        <label class="form-label" for="listingComment-${escapeHtml(listing.id || '')}">Add a comment</label>
-        <textarea class="form-input" id="listingComment-${escapeHtml(listing.id || '')}" name="body" ${token ? '' : 'disabled'} required></textarea>
-        <div class="listing-comment-actions">
-          <button class="btn-primary" type="submit" ${token ? '' : 'disabled'}>Post comment</button>
-          ${token ? '' : `<a class="discussion-login-link" href="${getRelativeAuthPath('login.html')}?redirect=${encodeURIComponent(getListingPageHref(listing.id || ''))}">Sign in to comment</a>`}
-        </div>
-      </form>
+      ${composeBlock}
       <div class="listing-comment-list">
         ${topLevelComments.length ? topLevelComments.map(comment => {
           const canReplyInThread = token && currentUserId && (isOwner || currentUserId === comment.userId);
@@ -2013,37 +2291,19 @@ function bindListingDetailModal(): void {
 
 function renderListings(listings: Listing[], target: Element | null = getDynamicListingsContainer()): void {
   if (!target) return;
-
-  updateFilterChipsFromListings(listings);
-
-  if (!listings.length) {
-    (target as HTMLElement).dataset.dynamicState = 'empty';
-    target.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">${escapeHtml(getCategoryEmoji(inferPageCategory() || 'other'))}</div>
-        <h3>No live listings yet</h3>
-        <p>Be the first to add a real post for this section.</p>
-        <a class="btn-primary" href="${getPostListingPath(inferPageCategory())}">Post a Listing</a>
-      </div>
-    `;
-    return;
-  }
-
-  const grouped = listings.reduce((groups: Record<string, Listing[]>, listing) => {
-    const category = listing.category || 'other';
-    if (!groups[category]) groups[category] = [];
-    groups[category].push(listing);
-    return groups;
-  }, {});
-
-  (target as HTMLElement).dataset.dynamicState = 'live';
-  target.innerHTML = Object.entries(grouped).map(([category, items]) => {
-    const meta = getCategoryMeta(category);
-    return `
-      <div class="section-divider" data-group="${escapeHtml(category)}">${meta.emoji} ${escapeHtml(meta.label)} <span class="count">${items.length} live</span></div>
-      ${items.map(listingToCard).join('')}
-    `;
-  }).join('');
+  const { feed, controls } = ensureListingsShell(target);
+  browseSession = {
+    category: '',
+    subcategory: '',
+    search: '',
+    page: 1,
+    pages: 1,
+    total: listings.length,
+    sort: getActiveSortValue(),
+    items: listings,
+  };
+  renderListingsIntoFeed(listings, feed, false);
+  updateListingsControls(controls, browseSession);
 }
 
 function formatDynamicChipLabel(value: string): string {
@@ -2192,57 +2452,113 @@ function getFilterFromButton(button: HTMLElement | null): string {
 }
 
 async function setFilter(button: HTMLElement | null, category: string): Promise<void> {
-  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  if (button) button.classList.add('active');
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-pressed', 'false');
+  });
+  if (button) {
+    button.classList.add('active');
+    button.setAttribute('aria-pressed', 'true');
+  }
 
   try {
-    const scope = getListingScopeForCategory(category);
-    const listings = await fetchListings(scope.category, '', 0, scope.subcategory);
-    renderListings(listings);
+    await hydrateDynamicListings(category === 'all' ? '' : category, { page: 1, append: false });
+    document.getElementById('listingsContainer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     console.error(error);
     filterListings(category);
   }
 }
 
-async function hydrateDynamicListings(category = inferPageCategory()): Promise<void> {
+function bindHomeFilterButtons(): void {
+  document.querySelectorAll<HTMLElement>('.filter-bar .filter-btn[data-filter]').forEach(btn => {
+    if (btn.dataset.filterBound === 'true') return;
+    btn.dataset.filterBound = 'true';
+    btn.addEventListener('click', () => {
+      void setFilter(btn, btn.dataset.filter || 'all');
+    });
+  });
+}
+
+(window as Window & { setFilter?: typeof setFilter }).setFilter = setFilter;
+
+async function hydrateDynamicListings(
+  category = inferPageCategory(),
+  options: { page?: number; append?: boolean } = {},
+): Promise<void> {
   const target = getDynamicListingsContainer();
   if (!target) return;
+  const page = Math.max(1, options.page || 1);
+  const append = Boolean(options.append);
 
   try {
-    (target as HTMLElement).dataset.dynamicState = 'loading';
-    target.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">${escapeHtml(getCategoryEmoji(category || 'other'))}</div>
-        <h3>Loading live listings...</h3>
-      </div>
-    `;
-    const params = new URLSearchParams(window.location.search);
-    const requestedScope = getListingScopeForCategory(params.get('category') || '');
-    const requestedCategory = requestedScope.category;
-    const requestedSubcategory = params.get('subcategory') || getActiveChipFilter() || requestedScope.subcategory;
-    const requestedSearch = params.get('search') || '';
-    const activeHomeFilter = document.querySelector('.filter-btn.active') as HTMLElement | null;
-    const homeScope = activeHomeFilter ? getListingScopeForCategory(getFilterFromButton(activeHomeFilter)) : { category: '', subcategory: '' };
-    const pageScope = getListingScopeForCategory(category);
-    const selectedCategory = requestedCategory || homeScope.category || pageScope.category;
-    const selectedSubcategory = requestedSubcategory || homeScope.subcategory || pageScope.subcategory;
+    const { feed, controls } = ensureListingsShell(target);
+    (target as HTMLElement).dataset.dynamicState = append ? 'live' : 'loading';
+    if (!append) feed.innerHTML = listingSkeletons();
 
+    const query = resolveBrowseQuery(category);
+    const params = new URLSearchParams(window.location.search);
+    const requestedCategory = getListingScopeForCategory(params.get('category') || '').category;
+    const activeHomeFilter = document.querySelector('.filter-btn.active') as HTMLElement | null;
     if (requestedCategory && activeHomeFilter) {
       document.querySelectorAll('.filter-btn').forEach(btn => {
         const btnEl = btn as HTMLElement;
-        btnEl.classList.toggle('active', getListingScopeForCategory(getFilterFromButton(btnEl)).category === requestedCategory);
+        btnEl.classList.toggle(
+          'active',
+          getListingScopeForCategory(getFilterFromButton(btnEl)).category === requestedCategory,
+        );
       });
     }
 
-    const listings = await fetchListings(selectedCategory, requestedSearch, 100, selectedSubcategory);
-    renderListings(listings, target);
+    const data = await fetchListingsPage({
+      category: query.category,
+      subcategory: query.subcategory,
+      search: query.search,
+      page,
+      limit: LISTINGS_PAGE_SIZE,
+    });
+    const sort = getActiveSortValue();
 
-    if (window.location.hash === '#listings') {
+    if (append && browseSession) {
+      browseSession = {
+        ...browseSession,
+        ...query,
+        page: data.page,
+        pages: data.pages,
+        total: data.total,
+        sort,
+        items: [...browseSession.items, ...data.listings],
+      };
+      renderListingsIntoFeed(browseSession.items, feed, false);
+    } else {
+      browseSession = {
+        ...query,
+        page: data.page,
+        pages: data.pages,
+        total: data.total,
+        sort,
+        items: data.listings,
+      };
+      renderListingsIntoFeed(data.listings, feed, false);
+    }
+
+    updateListingsControls(controls, browseSession);
+
+    if (!append && window.location.hash === '#listings') {
       target.closest('#listings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   } catch (error) {
     console.error(error);
+    const feed = document.getElementById('listingsFeed');
+    if (feed && !append) {
+      feed.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">⚠️</div>
+          <h3>Could not load listings</h3>
+          <p>Check your connection and try again.</p>
+        </div>
+      `;
+    }
   }
 }
 
@@ -2377,6 +2693,7 @@ async function hydrateListingDetail(): Promise<void> {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  bindHomeFilterButtons();
   hydrateDynamicListings();
   hydrateListingDetail();
   hydrateDynamicStats();

@@ -151,14 +151,16 @@ function renderDiscussionDetail(topic) {
       <div class="discussion-topic-body">${discussionEscapeHtml(topic.body)}</div>
       ${(topic.tags || []).length ? `<div class="discussion-tags">${topic.tags.map(tag => `<span class="discussion-tag">${discussionEscapeHtml(tag)}</span>`).join('')}</div>` : ''}
     </div>
-    <form class="comment-compose" id="commentForm">
+    ${hasToken ? `<form class="comment-compose" id="commentForm">
       <label class="form-label" for="commentBody">Add a comment</label>
-      <textarea class="form-input" id="commentBody" name="body" ${hasToken ? '' : 'disabled'} required></textarea>
+      <textarea class="form-input" id="commentBody" name="body" placeholder="Share a question or tip…" required></textarea>
       <div class="comment-actions">
-        <button class="btn-primary" type="submit" ${hasToken ? '' : 'disabled'}>Post comment</button>
-        ${hasToken ? '' : '<a class="discussion-login-link" href="../auth/login.html?redirect=/pages/community/discussions.html">Sign in to comment</a>'}
+        <button class="btn-primary" type="submit">Post comment</button>
       </div>
-    </form>
+    </form>` : `<div class="listing-comment-signin comment-compose">
+      <p>Join the conversation after you sign in.</p>
+      <a class="btn-primary" href="../auth/login.html?redirect=/pages/community/discussions.html">Sign in to comment</a>
+    </div>`}
     <div class="comments-head">${Number(topic.comments?.length || 0)} comments</div>
     <div class="comment-list">${commentsMarkup || '<div class="discussion-empty">No comments yet. Be the first to reply.</div>'}</div>
   `;

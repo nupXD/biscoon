@@ -123,3 +123,33 @@
 .pages-post-listing-inline-2 { color:#fbbf24 }
 .pages-post-listing-inline-3 { display: none; }
 .pages-post-listing-inline-4 { flex:1;text-align:center; }
+
+.dynamic-suggestion.is-active {
+  background: var(--red-ultra);
+  border-color: var(--red);
+  color: var(--red);
+  box-shadow: inset 0 0 0 1px rgba(192, 57, 43, 0.12);
+}
+.listing-progress[data-strength="mid"] .listing-progress-top strong { color: #d97706; }
+.listing-progress[data-strength="high"] .listing-progress-top strong { color: #16a34a; }
+.file-upload.dragging { border-color: var(--red); background: var(--red-ultra); }
+
+
+/* Simplified post form */
+.post-hero--compact { padding: 28px 40px 24px; }
+.post-hero--compact .page-hero-desc { margin-top: 8px; max-width: 520px; }
+.post-layout--simple { grid-template-columns: minmax(0, 1fr) 260px; }
+.post-sidebar--simple .sidebar-widget { position: sticky; top: 88px; }
+.label-optional { font-weight: 500; color: var(--gray-500); font-size: 11px; text-transform: lowercase; }
+.category-context[hidden],
+.category-field-guide[hidden] { display: none !important; }
+.post-card .form-section { margin-bottom: 8px; }
+.post-card .form-group { margin-bottom: 16px; }
+.post-card textarea.form-input { min-height: 110px; }
+@media (max-width: 960px) {
+  .post-layout--simple { grid-template-columns: 1fr; padding: 24px 20px 0; }
+  .post-sidebar--simple { display: none; }
+}
+
+#listingAuthGate { margin-bottom: 20px; }
+#listingFormFields[hidden], #listingSubmitRow[hidden] { display: none !important; }

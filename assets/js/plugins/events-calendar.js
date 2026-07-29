@@ -11753,7 +11753,7 @@
   async function liveEvents() {
     try {
       const base = window.location.origin.startsWith("file://") ? "http://localhost:4000" : window.location.origin;
-      const response = await fetch(`${base}/api/listings?category=events&limit=80`);
+      const response = await fetch(`${base}/api/listings?category=community&subcategory=events&limit=80`);
       if (!response.ok) return [];
       const data = await response.json();
       return (data.listings || []).map((item) => {

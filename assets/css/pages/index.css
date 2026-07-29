@@ -48,12 +48,22 @@
 /* Category Grid */
 .cat-section { padding:44px 40px; background:var(--off-white); border-top:1px solid var(--border) }
 .cat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:12px; margin-top:22px; isolation:isolate }
+.cat-group { margin-top:22px }
+.cat-group .cat-grid { margin-top:10px; grid-template-columns:repeat(7,minmax(0,1fr)); max-width:none; width:100% }
+.cat-group-heading { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.1em; font-family:'IBM Plex Mono',monospace }
+.cat-more { margin-top:28px; border-top:1px solid var(--border); padding-top:16px }
+.cat-more summary { cursor:pointer; font-size:14px; font-weight:600; color:var(--red); list-style:none; display:inline-flex; align-items:center; gap:6px; padding:6px 0; user-select:none }
+.cat-more summary::-webkit-details-marker { display:none }
+.cat-more summary::after { content:'▾'; font-size:12px; transition:transform .2s }
+.cat-more[open] summary::after { transform:rotate(180deg) }
+.cat-more .cat-grid { margin-top:16px }
 .cat-card { border:1.5px solid var(--border); border-radius:10px; min-height:104px; padding:16px 10px; text-align:center; cursor:pointer; transition:background .15s,border-color .2s,transform .2s,box-shadow .2s; position:relative; background:white; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; color:inherit; transform-origin:center; will-change:transform }
-.cat-card:hover,.cat-card:focus-visible { background:var(--red-ultra); border-color:var(--red); transform:translateY(-7px) scale(1.14); box-shadow:0 18px 42px rgba(13,27,62,.18),0 8px 24px rgba(192,57,43,.14); z-index:20 }
+.cat-card:hover,.cat-card:focus-visible { background:var(--red-ultra); border-color:var(--red); transform:translateY(-2px); box-shadow:0 8px 18px rgba(13,27,62,.08); z-index:20 }
 .cat-card:hover .cn,.cat-card:hover .ce,.cat-card:focus-visible .cn,.cat-card:focus-visible .ce { color:var(--red) }
-.cat-card.featured { border-color:var(--red); border-width:2px; background:var(--red-ultra) }
+.cat-card.featured { border-color:var(--border); background:white; box-shadow:inset 3px 0 0 var(--red) }
+.cat-card.featured:hover,.cat-card.featured:focus-visible { background:var(--red-ultra); border-color:var(--red); box-shadow:inset 3px 0 0 var(--red),0 8px 18px rgba(13,27,62,.08) }
 .cat-emoji { font-size:27px; display:block; margin-bottom:6px; line-height:1.15; transition:transform .2s }
-.cat-card:hover .cat-emoji,.cat-card:focus-visible .cat-emoji { transform:scale(1.18) }
+.cat-card:hover .cat-emoji,.cat-card:focus-visible .cat-emoji { transform:translateY(-1px) }
 .cn { font-family:'Noto Sans Devanagari',sans-serif; font-size:12px; font-weight:600; color:var(--text); display:block; line-height:1.3; transition:color .15s }
 .ce { font-size:11px; color:var(--text-muted); display:block; margin-top:3px; transition:color .15s }
 .badge-new { position:absolute; top:5px; right:5px; background:var(--gold); color:var(--navy); font-size:7.5px; font-weight:800; padding:2px 5px; border-radius:4px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace }
@@ -119,9 +129,7 @@
 .heatmap-section .section-subtitle { color:#8b949e; margin-bottom:24px }
 .heatmap-box { background:#161b22; border-radius:14px; border:1px solid #30363d; padding:28px }
 .heatmap-dots { position:relative; width:100%; height:280px; background:linear-gradient(180deg,#1c2333 0%,#161b22 100%); border-radius:8px; border:1px solid #21262d; overflow:hidden }
-.heatmap-dot { position:absolute; border-radius:50%; background:var(--red); opacity:.75; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; cursor:pointer; transition:transform .2s,opacity .2s; transform:translate(-50%,-50%); animation:pulse 3s ease-in-out infinite }
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,.4)} 50%{box-shadow:0 0 0 6px rgba(192,57,43,0)} }
-.heatmap-dot:hover { transform:translate(-50%,-50%) scale(1.35); opacity:1; z-index:10; animation:none }
+.heatmap-dot { position:absolute; border-radius:50%; background:var(--red); opacity:.75; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; cursor:pointer; transition:transform .2s,opacity .2s; transform:translate(-50%,-50%); animation: none; opacity:1; z-index:10; animation:none }
 .heatmap-tooltip { display:none; position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:rgba(0,0,0,.9); color:white; font-size:10px; padding:5px 10px; border-radius:5px; white-space:nowrap; pointer-events:none; z-index:100 }
 .heatmap-dot:hover .heatmap-tooltip { display:block }
 .heatmap-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:18px }
@@ -154,9 +162,9 @@
 .home-cta p { font-size:15px; color:rgba(255,255,255,.8); margin-bottom:28px; max-width:460px; margin-left:auto; margin-right:auto }
 .home-cta-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap }
 /* Responsive overrides */
-@media(max-width:1100px) { .cat-grid{grid-template-columns:repeat(5,1fr)} .fb-grid{grid-template-columns:repeat(2,1fr)} .heatmap-stats{grid-template-columns:repeat(2,1fr)} .journal-cards{grid-template-columns:1fr} }
+@media(max-width:1100px) { .cat-grid{grid-template-columns:repeat(5,1fr)} .cat-group .cat-grid{grid-template-columns:repeat(5,minmax(0,1fr))} .fb-grid{grid-template-columns:repeat(2,1fr)} .heatmap-stats{grid-template-columns:repeat(2,1fr)} .journal-cards{grid-template-columns:1fr} }
 @media(max-width:900px) { .listings-wrap{grid-template-columns:1fr} .sidebar{display:none} .hero::after{display:none} }
-@media(max-width:640px) { .cat-grid{grid-template-columns:repeat(3,1fr)} .fb-grid{grid-template-columns:1fr} .hero,.cat-section,.listings-wrap,.heatmap-section,.journal-section,.cal-section,.home-cta,.alert-banner{padding-left:20px;padding-right:20px} .home-cta-btns{flex-direction:column;align-items:center} }
+@media(max-width:640px) { .cat-grid{grid-template-columns:repeat(3,1fr)} .cat-group .cat-grid{grid-template-columns:repeat(3,minmax(0,1fr))} .fb-grid{grid-template-columns:1fr} .hero,.cat-section,.listings-wrap,.heatmap-section,.journal-section,.cal-section,.home-cta,.alert-banner{padding-left:20px;padding-right:20px} .home-cta-btns{flex-direction:column;align-items:center} }
 
 /* Extracted inline styles from index.html */
 .index-inline-1 { color:#93c5fd }
@@ -209,14 +217,14 @@
   .cat-card:hover, .cat-card:focus-visible {
     background: var(--red-ultra);
     border-color: var(--red);
-    transform: translateY(-5px) scale(1.06);
-    box-shadow: 0 12px 32px rgba(13,27,62,.14), 0 6px 16px rgba(192,57,43,.10);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(13,27,62,.08);
     z-index: 20;
   }
   .cat-card:hover .cn, .cat-card:hover .ce,
   .cat-card:focus-visible .cn, .cat-card:focus-visible .ce { color: var(--red) }
   .cat-emoji { transition: transform 220ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) }
-  .cat-card:hover .cat-emoji, .cat-card:focus-visible .cat-emoji { transform: scale(1.12) }
+  .cat-card:hover .cat-emoji, .cat-card:focus-visible .cat-emoji { transform: translateY(-1px) }
 }
 .cat-card:active { transform: scale(0.97) !important; transition-duration: 100ms !important }
 
@@ -276,18 +284,7 @@
 /* ── Heatmap dot — guard hover on touch ── */
 .heatmap-dot { transition: transform 200ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)), opacity 200ms ease-out }
 @media (hover: hover) and (pointer: fine) {
-  .heatmap-dot:hover { transform: translate(-50%,-50%) scale(1.3) !important; opacity: 1; z-index: 10; animation: none }
-}
-
-/* ── Stat cell ── */
-.stat-cell { transition: background 150ms ease-out, transform 150ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) }
-.stat-cell:not(.pg-stat):active { transform: scale(0.97) }
-.stat-cell.pg-stat { transition: background 150ms ease-out }
-
-/* ── Fix filter-btn on homepage (overrides main.css for index page) ── */
-.listings-wrap .filter-btn {
-  transition: background 150ms ease-out, border-color 150ms ease-out,
-              color 150ms ease-out, transform 120ms var(--ease-out, cubic-bezier(0.23,1,0.32,1));
+  .heatmap-dot:hover { transform: translate(-50%,-50%) scale(1.02) !important; opacity: 1; z-index: 10; animation: none;
 }
 .listings-wrap .filter-btn:active { transform: scale(0.95) }
 

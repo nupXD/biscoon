@@ -55,6 +55,10 @@ export const EMAIL_VERIFICATION_REQUIRED = getBoolean('EMAIL_VERIFICATION_REQUIR
 export const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '25mb';
 export const TRUST_PROXY = process.env.TRUST_PROXY || (isProduction ? '1' : '');
 export const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
-export const STATIC_ROOT = path.join(__dirname, '../..');
+// Compiled files live in dist/src/config; ts-node uses src/config.
+export const STATIC_ROOT = path.resolve(
+  __dirname,
+  __dirname.includes(`${path.sep}dist${path.sep}`) ? '../../..' : '../..'
+);
 export const SENTRY_DSN = clean(process.env.SENTRY_DSN) || '';
 export const SENTRY_TRACES_SAMPLE_RATE = Number.parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '0.05');

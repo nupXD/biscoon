@@ -306,60 +306,83 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
   const canViewListings = permissions.has('listings');
   const canViewDiscussions = permissions.has('discussions');
   const canViewNews = permissions.has('news');
+  const rangeRaw = cleanString(req.query.range).toLowerCase();
+  const range = ['today', '7d', '30d', 'all'].includes(rangeRaw) ? rangeRaw : 'all';
   const now = new Date();
   const dayAgo   = new Date(now.getTime() - 86400000);
   const weekAgo  = new Date(now.getTime() - 7 * 86400000);
   const monthAgo = new Date(now.getTime() - 30 * 86400000);
+  const rangeSince =
+    range === 'today' ? dayAgo :
+    range === '7d' ? weekAgo :
+    range === '30d' ? monthAgo :
+    null;
+  const createdInRange = rangeSince ? { createdAt: { $gte: rangeSince } } : {};
+  const publishedInRange = rangeSince ? { publishedAt: { $gte: rangeSince } } : {};
+  const categoryMatch = rangeSince
+    ? [{ $match: { createdAt: { $gte: rangeSince }, deleted: { $ne: true } } }]
+    : [{ $match: { deleted: { $ne: true } } }];
 
   const [
-    totalUsers, usersToday, usersThisWeek, usersThisMonth,
+    totalUsers, usersInRange, usersToday, usersThisWeek, usersThisMonth,
     totalAdminUsers,
-    totalListings, listingsToday, listingsThisWeek,
-    totalNews, newsThisWeek,
-    totalDiscussions, discussionsThisWeek,
+    totalListings, listingsInRange, listingsToday, listingsThisWeek,
+    totalNews, newsInRange, newsThisWeek,
+    totalDiscussions, discussionsInRange, discussionsThisWeek,
     totalConversations,
     byCategory,
     recentUsers,
     recentListings,
   ] = await Promise.all([
     User.countDocuments(regularUserQuery()),
+    User.countDocuments(regularUserQuery(createdInRange)),
     User.countDocuments(regularUserQuery({ createdAt: { $gte: dayAgo } })),
     User.countDocuments(regularUserQuery({ createdAt: { $gte: weekAgo } })),
     User.countDocuments(regularUserQuery({ createdAt: { $gte: monthAgo } })),
     User.countDocuments(adminUserQuery()),
-    Listing.countDocuments(),
-    Listing.countDocuments({ createdAt: { $gte: dayAgo } }),
-    Listing.countDocuments({ createdAt: { $gte: weekAgo } }),
+    Listing.countDocuments({ deleted: { $ne: true } }),
+    Listing.countDocuments({ deleted: { $ne: true }, ...createdInRange }),
+    Listing.countDocuments({ deleted: { $ne: true }, createdAt: { $gte: dayAgo } }),
+    Listing.countDocuments({ deleted: { $ne: true }, createdAt: { $gte: weekAgo } }),
     News.countDocuments({ status: 'published' }),
+    News.countDocuments({ status: 'published', ...publishedInRange }),
     News.countDocuments({ status: 'published', publishedAt: { $gte: weekAgo } }),
     Discussion.countDocuments(),
+    Discussion.countDocuments(createdInRange),
     Discussion.countDocuments({ createdAt: { $gte: weekAgo } }),
     Conversation.countDocuments(),
     Listing.aggregate([
+      ...categoryMatch,
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 15 },
     ]),
-    User.find(regularUserQuery({ deleted: { $ne: true } }), { id: 1, name: 1, email: 1, role: 1, createdAt: 1 })
+    User.find(regularUserQuery({ deleted: { $ne: true }, ...createdInRange }), { id: 1, name: 1, email: 1, role: 1, createdAt: 1 })
       .sort({ createdAt: -1 }).limit(8),
-    Listing.find({ deleted: { $ne: true } }, { id: 1, title: 1, category: 1, userId: 1, location: 1, createdAt: 1 })
+    Listing.find({ deleted: { $ne: true }, ...createdInRange }, { id: 1, title: 1, category: 1, userId: 1, location: 1, createdAt: 1 })
       .sort({ createdAt: -1 }).limit(8),
   ]);
 
+  const usersTotal = range === 'all' ? totalUsers : usersInRange;
+  const listingsTotal = range === 'all' ? totalListings : listingsInRange;
+  const newsTotal = range === 'all' ? totalNews : newsInRange;
+  const discussionsTotal = range === 'all' ? totalDiscussions : discussionsInRange;
+
   res.json({
+    range,
     users: canViewUsers
-      ? { total: totalUsers, today: usersToday, thisWeek: usersThisWeek, thisMonth: usersThisMonth }
-      : { total: 0, today: 0, thisWeek: 0, thisMonth: 0 },
+      ? { total: usersTotal, all: totalUsers, inRange: usersInRange, today: usersToday, thisWeek: usersThisWeek, thisMonth: usersThisMonth }
+      : { total: 0, all: 0, inRange: 0, today: 0, thisWeek: 0, thisMonth: 0 },
     adminUsers: { total: totalAdminUsers },
     listings: canViewListings
-      ? { total: totalListings, today: listingsToday, thisWeek: listingsThisWeek }
-      : { total: 0, today: 0, thisWeek: 0 },
+      ? { total: listingsTotal, all: totalListings, inRange: listingsInRange, today: listingsToday, thisWeek: listingsThisWeek }
+      : { total: 0, all: 0, inRange: 0, today: 0, thisWeek: 0 },
     news: canViewNews
-      ? { total: totalNews, thisWeek: newsThisWeek }
-      : { total: 0, thisWeek: 0 },
+      ? { total: newsTotal, all: totalNews, inRange: newsInRange, thisWeek: newsThisWeek }
+      : { total: 0, all: 0, inRange: 0, thisWeek: 0 },
     discussions: canViewDiscussions
-      ? { total: totalDiscussions, thisWeek: discussionsThisWeek }
-      : { total: 0, thisWeek: 0 },
+      ? { total: discussionsTotal, all: totalDiscussions, inRange: discussionsInRange, thisWeek: discussionsThisWeek }
+      : { total: 0, all: 0, inRange: 0, thisWeek: 0 },
     conversations: { total: totalConversations },
     byCategory: canViewListings ? byCategory.map((c: any) => ({ category: c._id || 'other', count: c.count })) : [],
     recentUsers: canViewUsers ? recentUsers.map((u: any) => ({
@@ -651,27 +674,101 @@ router.get('/news', requirePermission('news'), async (req: Request, res: Respons
   const search = cleanString(req.query.search);
   const status = cleanString(req.query.status);
   const category = cleanString(req.query.category);
+  const featured = cleanString(req.query.featured).toLowerCase();
+  const rangeRaw = cleanString(req.query.range).toLowerCase();
+  const range = ['today', '7d', '30d', 'all'].includes(rangeRaw) ? rangeRaw : 'all';
+  const now = new Date();
+  const rangeSince =
+    range === 'today' ? new Date(now.getTime() - 86400000) :
+    range === '7d' ? new Date(now.getTime() - 7 * 86400000) :
+    range === '30d' ? new Date(now.getTime() - 30 * 86400000) :
+    null;
 
   let query: any = { deleted: { $ne: true } };
   if (status && status !== 'all') query.status = status === 'published' ? 'published' : 'draft';
   if (category && category !== 'all') query.category = category;
+  if (featured === 'yes' || featured === 'true' || featured === '1') query.featured = true;
+  if (featured === 'no' || featured === 'false' || featured === '0') query.featured = { $ne: true };
+  if (rangeSince) {
+    query.$or = [
+      { publishedAt: { $gte: rangeSince } },
+      { publishedAt: null, updatedAt: { $gte: rangeSince } },
+      { publishedAt: null, updatedAt: { $exists: false }, createdAt: { $gte: rangeSince } },
+    ];
+  }
   if (search) query = { ...query, $text: { $search: search } };
 
-  const [articles, total] = await Promise.all([
+  const baseSummaryQuery: any = { deleted: { $ne: true } };
+  if (rangeSince) {
+    baseSummaryQuery.$or = [
+      { publishedAt: { $gte: rangeSince } },
+      { publishedAt: null, updatedAt: { $gte: rangeSince } },
+      { publishedAt: null, updatedAt: { $exists: false }, createdAt: { $gte: rangeSince } },
+    ];
+  }
+
+  const [articles, total, summaryAll, summaryPublished, summaryDraft, summaryFeatured] = await Promise.all([
     News.find(query)
       .sort({ updatedAt: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit),
     News.countDocuments(query),
+    News.countDocuments(baseSummaryQuery),
+    News.countDocuments({ ...baseSummaryQuery, status: 'published' }),
+    News.countDocuments({ ...baseSummaryQuery, status: 'draft' }),
+    News.countDocuments({ ...baseSummaryQuery, featured: true }),
   ]);
 
-  res.json(pagedResponse('news', articles.map((article: any) => normalizeNewsArticle(article, { includeBody: false })), total, page, limit));
+  res.json({
+    ...pagedResponse('news', articles.map((article: any) => normalizeNewsArticle(article, { includeBody: false })), total, page, limit),
+    range,
+    summary: {
+      all: summaryAll,
+      published: summaryPublished,
+      draft: summaryDraft,
+      featured: summaryFeatured,
+    },
+  });
 });
 
 router.get('/news/:id', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
   const article = await News.findOne({ $or: [{ id: req.params.id }, { slug: req.params.id }] });
   if (!article) { res.status(404).json({ error: 'News article not found.' }); return; }
   res.json({ article: normalizeNewsArticle(article, { includeBody: true }) });
+});
+
+router.put('/news/:id/featured', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
+  const article = await News.findOne({ id: req.params.id, deleted: { $ne: true } });
+  if (!article) { res.status(404).json({ error: 'News article not found.' }); return; }
+  const featured = req.body?.featured === undefined ? !article.featured : Boolean(req.body.featured);
+  article.featured = featured;
+  article.updatedAt = new Date();
+  await article.save();
+  await recordAdminAudit(req, {
+    action: featured ? 'news.featured' : 'news.unfeatured',
+    targetType: 'news',
+    targetId: article.id,
+    targetTitle: article.title,
+  });
+  res.json({ article: normalizeNewsArticle(article, { includeBody: false }) });
+});
+
+router.put('/news/:id/status', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
+  const article = await News.findOne({ id: req.params.id, deleted: { $ne: true } });
+  if (!article) { res.status(404).json({ error: 'News article not found.' }); return; }
+  const status = cleanString(req.body?.status) === 'published' ? 'published' : 'draft';
+  article.status = status;
+  if (status === 'published' && !article.publishedAt) article.publishedAt = new Date();
+  if (status === 'draft') article.publishedAt = null;
+  article.updatedAt = new Date();
+  await article.save();
+  await recordAdminAudit(req, {
+    action: status === 'published' ? 'news.published' : 'news.unpublished',
+    targetType: 'news',
+    targetId: article.id,
+    targetTitle: article.title,
+  });
+  res.json({ article: normalizeNewsArticle(article, { includeBody: false }) });
 });
 
 router.post('/news', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
@@ -977,9 +1074,9 @@ router.get('/feed', async (req: Request, res: Response): Promise<void> => {
   ]);
 
   const feed = [
-    ...(users as any[]).map(u => ({ type: 'user', icon: '👤', title: u.name, sub: u.email, date: u.createdAt })),
-    ...(listings as any[]).map(l => ({ type: 'listing', icon: '📋', title: l.title, sub: l.category, date: l.createdAt })),
-    ...(discussions as any[]).map(d => ({ type: 'discussion', icon: '💬', title: d.title, sub: `by ${d.authorName}`, date: d.createdAt })),
+    ...(users as any[]).map(u => ({ type: 'user', id: u.id, icon: '👤', title: u.name, sub: u.email, date: u.createdAt })),
+    ...(listings as any[]).map(l => ({ type: 'listing', id: l.id, icon: '📋', title: l.title, sub: l.category, date: l.createdAt })),
+    ...(discussions as any[]).map(d => ({ type: 'discussion', id: d.id, icon: '💬', title: d.title, sub: `by ${d.authorName}`, date: d.createdAt })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20);
 
   res.json({ feed });
