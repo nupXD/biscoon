@@ -122,6 +122,12 @@ Production startup fails when `MONGODB_URI`, `JWT_SECRET`, `MSG_ENCRYPTION_KEY`,
 
 > **Warning:** `npm run seed` clears users and listings. Run it only against a disposable development database.
 
+## Contributing
+
+- Create a feature branch from `main` before making changes.
+- Keep local environment files and generated data out of commits.
+- Run `npm run check` before opening a pull request so CI has the best chance of passing.
+
 ## Project Structure
 
 ```text
