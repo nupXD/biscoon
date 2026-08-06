@@ -26,7 +26,9 @@ import marketRoutes from './routes/market';
 import moderationRoutes from './routes/moderation';
 import newsRoutes from './routes/news';
 import spotlightRoutes from './routes/spotlight';
+import weatherRoutes from './routes/weather';
 import { captureException } from './config/monitoring';
+import { LEGACY_PAGE_REDIRECTS } from './config/legacyPageRedirects';
 
 const app = express();
 
@@ -45,7 +47,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
-      connectSrc: ["'self'", 'https://ipapi.co'],
+      connectSrc: ["'self'", 'https://ipapi.co', 'https://api.open-meteo.com'],
       fontSrc: ["'self'", 'data:'],
       formAction: ["'self'"],
       frameAncestors: ["'self'"],
@@ -87,6 +89,13 @@ app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.get(['/', '/index.html'], (_req: Request, res: Response) => {
   res.sendFile(path.join(STATIC_ROOT, 'index.html'));
 });
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const target = LEGACY_PAGE_REDIRECTS[req.path];
+  if (!target) return next();
+  return res.redirect(301, target);
+});
+
 app.use('/assets', express.static(path.join(STATIC_ROOT, 'assets'), staticOptions));
 app.use('/pages', express.static(path.join(STATIC_ROOT, 'pages'), staticOptions));
 app.use(`/${UPLOAD_DIR}`, express.static(path.join(STATIC_ROOT, UPLOAD_DIR), {
@@ -126,6 +135,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/spotlight', spotlightRoutes);
+app.use('/api/weather', weatherRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Endpoint not found.' });

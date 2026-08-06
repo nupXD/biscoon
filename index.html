@@ -1,84 +1,70 @@
 <!DOCTYPE html>
-<html lang="ne">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Biscoon — The Global Nepali Ecosystem</title>
+<title>Biscoon.com — Global Nepali's Digital Platform</title>
 <meta name="description" content="Connecting 4.5 million Nepalis worldwide through community, commerce, and culture."/>
 <link rel="stylesheet" href="assets/css/main.css"/>
+<link rel="stylesheet" href="assets/css/dash-nav.css"/>
 <link rel="stylesheet" href="./assets/css/pages/index.css"/>
 <link rel="stylesheet" href="assets/vendor/swiper/swiper-bundle.min.css"/>
 </head>
 <body class="is-home">
 
-<!-- NEWS ticker only (markets / crypto / NPR removed per design review) -->
-<div class="ticker-wrap ticker-news">
-  <div class="ticker-label">📰 NEWS</div>
-  <div class="ticker-track anim-30">
-    <span class="ticker-item">🎉 Biscoon अब १२ नया अमेरिकी शहरमा — आफ्नो समुदाय खोज्नुहोस्</span>
-    <span class="ticker-item">🏡 नि:शुल्क Paying Guest लिस्टिङ — आज नै आफ्नो कोठा सूचीबद्ध गर्नुस्</span>
-    <span class="ticker-item">📢 TPS धारकहरूलाई नि:शुल्क कानुनी सहायता — Immigration खण्ड हेर्नुस्</span>
-    <span class="ticker-item">💼 Boston, NYC र SF मा OPT-Friendly जागिरका नया अवसरहरू</span>
-    <span class="ticker-item">🎊 GBNC Annual Spring Gala 2082 — Events मा दर्ता गर्नुस्</span>
-    <span class="ticker-item">🎉 Biscoon अब १२ नया अमेरिकी शहरमा — आफ्नो समुदाय खोज्नुहोस्</span>
-    <span class="ticker-item">🏡 नि:शुल्क Paying Guest लिस्टिङ — आज नै आफ्नो कोठा सूचीबद्ध गर्नुस्</span>
-    <span class="ticker-item">📢 TPS धारकहरूलाई नि:शुल्क कानुनी सहायता — Immigration खण्ड हेर्नुस्</span>
-    <span class="ticker-item">💼 Boston, NYC र SF मा OPT-Friendly जागिरका नया अवसरहरू</span>
-    <span class="ticker-item">🎊 GBNC Annual Spring Gala 2082 — Events मा दर्ता गर्नुस्</span>
-  </div>
-</div>
-
-<!-- NAV -->
-<nav>
-  <a href="index.html" class="nav-logo">
-    <svg width="32" height="32" viewBox="0 0 32 32"><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#C0392B" fill-opacity=".1" stroke="#C0392B" stroke-width="1.5"/><text x="16" y="21.5" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#C0392B">B</text></svg>
-    <span class="nav-wordmark">Biscoon</span>
+<!-- NAV (mockup header chrome; auth hooks preserved) -->
+<nav class="site-header">
+  <a href="index.html" class="nav-logo logo-wrap" aria-label="Biscoon.com home">
+    <span class="nav-wordmark logo-text" aria-hidden="true">Bis<span>coon</span>.com</span>
   </a>
-  <div class="nav-links">
-    <a href="pages/marketplace/kinbech.html">किनबेच</a>
-    <a href="pages/jobs/jobs.html">रोजगार</a>
-    <a href="pages/housing/housing.html">घर / कोठा</a>
-    <a href="pages/marketplace/services.html">सेवाहरू</a>
-    <a href="pages/community/organizations.html">संगठन</a>
-    <a href="pages/community/literature.html">साहित्य</a>
-    <a href="pages/community/discussions.html">छलफल</a>
-    <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  <div class="logo-np np">विश्व नेपालीको डिजिटल थलो</div>
+  <div class="nav-links home-mini-links" aria-label="Primary">
+    <a href="pages/jobs/jobs.html">Jobs</a>
+    <a href="pages/housing/housing.html">Housing</a>
+    <a href="pages/marketplace/services.html">Services</a>
+    <a href="pages/marketplace/kinbech.html">Bazar</a>
+    <a href="pages/community/events.html">Events</a>
+    <a href="pages/housing/paying-guest.html" class="pg-link">🏡 PG</a>
   </div>
-  <form class="nav-search" role="search">
-    <input class="nav-search-input" type="search" placeholder="Search Biscoon…" aria-label="Search listings and discussions" />
+  <form class="nav-search hdr-search" role="search" action="pages/jobs/jobs.html" method="get">
+    <span class="si" aria-hidden="true">🔍</span>
+    <input class="nav-search-input" name="q" type="search" placeholder="Search jobs, rooms, events, people..." aria-label="Search listings and discussions"/>
     <button class="nav-search-btn" type="submit" aria-label="Search">🔍</button>
   </form>
-  <div class="nav-ctas" id="navCtas">
-    <a class="btn-ghost" href="pages/auth/login.html">साइन इन</a>
-    <a class="btn-primary" href="pages/auth/signup.html">साइन अप</a>
-  </div>
-  <div class="user-dropdown index-inline-5" id="userDropdown">
-    <button class="user-btn" id="userBtn" aria-haspopup="true" aria-expanded="false">
-      <span class="user-avatar">👤</span>
-      <span class="user-name" id="userName">Profile</span>
-      <span class="dropdown-arrow">▼</span>
-    </button>
-    <div class="dropdown-menu" id="dropdownMenu" role="menu">
-      <a href="pages/auth/profile.html" role="menuitem">📋 My Profile</a>
-      <a href="pages/auth/activity.html" role="menuitem">🧾 My Activity</a>
-      <a href="pages/post/listing.html" role="menuitem">➕ Add Listing</a>
-      <a href="#" id="logoutBtn" role="menuitem">🚪 Logout</a>
+  <div class="hdr-right">
+    <div class="hdr-date" id="hdrDate">📅</div>
+    <div class="nav-ctas" id="navCtas">
+      <a class="btn-ghost hbtn ghost" href="pages/auth/login.html">Sign In</a>
+      <a class="btn-primary hbtn cta" href="pages/post/listing.html">+ Post Free Ad</a>
+    </div>
+    <div class="user-dropdown" id="userDropdown" style="display:none">
+      <button class="user-btn" id="userBtn" aria-haspopup="true" aria-expanded="false">
+        <span class="user-avatar">👤</span>
+        <span class="user-name" id="userName">Profile</span>
+        <span class="dropdown-arrow">▼</span>
+      </button>
+      <div class="dropdown-menu" id="dropdownMenu" role="menu">
+        <a href="pages/auth/profile.html" role="menuitem">📋 My Profile</a>
+        <a href="pages/auth/activity.html" role="menuitem">🧾 My Activity</a>
+        <a href="pages/post/listing.html" role="menuitem">➕ Add Listing</a>
+        <a href="#" id="logoutBtn" role="menuitem">🚪 Logout</a>
+      </div>
     </div>
   </div>
   <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer" role="navigation" aria-label="Mobile navigation">
-    <a href="pages/marketplace/kinbech.html">किनबेच</a>
-    <a href="pages/jobs/jobs.html">रोजगार</a>
-    <a href="pages/housing/housing.html">घर / कोठा</a>
-    <a href="pages/marketplace/services.html">सेवाहरू</a>
-    <a href="pages/community/organizations.html">संगठन</a>
-    <a href="pages/community/literature.html">साहित्य</a>
-    <a href="pages/community/discussions.html">Discussions</a>
-    <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+  <a href="pages/marketplace/kinbech.html">किनबेच</a>
+  <a href="pages/jobs/jobs.html">रोजगार</a>
+  <a href="pages/housing/housing.html">घर / कोठा</a>
+  <a href="pages/marketplace/services.html">सेवाहरू</a>
+  <a href="pages/community/organizations.html">संगठन</a>
+  <a href="pages/community/events.html">Events</a>
+  <a href="pages/community/discussions.html">Discussions</a>
+  <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   <div class="mobile-drawer-btns" id="mobileBtns">
-    <a class="btn-ghost index-inline-6" href="pages/auth/login.html">साइन इन</a>
-    <a class="btn-primary index-inline-6" href="pages/auth/signup.html">साइन अप</a>
+    <a class="btn-ghost" href="pages/auth/login.html">Sign In</a>
+    <a class="btn-primary" href="pages/auth/signup.html">Sign Up</a>
   </div>
   <div class="mobile-user-menu" id="mobileUserMenu">
     <div class="mobile-user-info">
@@ -92,302 +78,376 @@
   </div>
 </div>
 
-<!-- HERO -->
-<section class="hero" id="heroSection">
-  <div class="hero-content">
-    <div class="hero-eyebrow">⛰ INTEGRATING NEPALI CLIMATE ACROSS GLOBAL NEPALIS</div>
-    <span class="biscoon-name">Biscoon</span>
-    <span class="biscoon-sub">The Global Nepali Ecosystem</span>
-    <div class="hero-devanagari">नेपाली जलवायु — विश्वभर एकीकृत</div>
-    <p class="hero-desc">Connect with 4.5 million Nepalis worldwide — find housing, jobs, services, and community wherever you are.</p>
-    <div class="search-bar index-inline-7">
-      <select class="search-select" id="searchCategory">
-        <option value="">सबै श्रेणी</option>
-        <option value="jobs">💼 रोजगार</option>
-        <option value="housing">🏠 घर / कोठा</option>
-        <option value="pg">🏡 Paying Guest</option>
-        <option value="services">🔧 सेवाहरू</option>
-        <option value="student">🎓 विद्यार्थी</option>
-        <option value="immigration">🛂 Immigration</option>
-        <option value="discussions">💬 Discussions</option>
-      </select>
-      <input type="text" class="search-input" placeholder="Search jobs, housing, services, discussions…" id="searchInput"/>
-      <button class="search-btn" aria-label="Search listings">खोज्नुस्</button>
-    </div>
-    <div class="location-bar">📍 <strong id="cityName">Boston, Massachusetts</strong> &nbsp;·&nbsp; <a href="#" id="changeLocation">Change location</a><span id="locationLoading" class="index-inline-8"> · Detecting…</span></div>
-  </div>
-  <!-- SPOTLIGHT panel (right side, populated by JS) -->
-  <div id="heroSpotlightWrap" class="hero-spotlight-panel"></div>
-</section>
-
-<section class="search-results-panel index-inline-9" id="searchResultsPanel">
-  <div class="search-results-header">
+<!-- INFO BAR — Weather + Exchange Rates -->
+<div class="info-bar">
+  <div class="ib-item">
+    <span class="live-dot"></span>
     <div>
-      <div class="section-title">Search results</div>
-      <div class="section-subtitle" id="searchResultsMeta">Enter a term and choose a category to surface matching posts.</div>
-    </div>
-    <button class="btn-clear" id="clearSearchBtn">Clear search</button>
-  </div>
-  <div id="searchResultsContainer" class="search-results-grid">
-    <div class="search-results-empty">Search listings by keyword, category, or location to see matching posts.</div>
-  </div>
-</section>
-
-<!-- CATEGORY GRID -->
-<section class="cat-section" id="categories">
-  <div class="section-title">Browse Categories</div>
-  <div class="section-subtitle">Start with the essentials — open the full list anytime</div>
-
-  <div class="cat-group">
-    <div class="cat-group-heading">Jobs</div>
-    <div class="cat-grid">
-      <a class="cat-card" href="pages/jobs/jobs.html"><span class="cat-emoji">💼</span><span class="cn">रोजगार</span><span class="ce">Jobs</span></a>
-      <a class="cat-card" href="pages/jobs/student.html"><span class="cat-emoji">🎓</span><span class="cn">विद्यार्थी</span><span class="ce">Student Network</span></a>
-      <a class="cat-card" href="pages/jobs/immigration.html"><span class="cat-emoji">🛂</span><span class="cn">आप्रवासन</span><span class="ce">Immigration</span></a>
-      <a class="cat-card" href="pages/jobs/tech.html"><span class="cat-emoji">💻</span><span class="cn">प्रविधि</span><span class="ce">Tech Services</span></a>
-      <a class="cat-card" href="pages/jobs/healthcare.html"><span class="cat-emoji">🏥</span><span class="cn">स्वास्थ्य</span><span class="ce">Healthcare</span></a>
-      <a class="cat-card" href="pages/jobs/education.html"><span class="cat-emoji">📚</span><span class="cn">शिक्षा</span><span class="ce">Education</span></a>
-      <a class="cat-card" href="pages/jobs/legal.html"><span class="cat-emoji">⚖️</span><span class="cn">कानुन</span><span class="ce">Legal</span></a>
+      <div class="ib-label">Your Location</div>
+      <div class="ib-val">📍 <button type="button" id="changeLocation" class="loc-btn"><span id="cityName">Boston, MA</span></button></div>
     </div>
   </div>
-  <div class="cat-group">
-    <div class="cat-group-heading">Housing</div>
-    <div class="cat-grid">
-      <a class="cat-card" href="pages/housing/housing.html"><span class="cat-emoji">🏠</span><span class="cn">आवास</span><span class="ce">Housing</span></a>
-      <a class="cat-card featured" href="pages/housing/paying-guest.html"><span class="cat-emoji">🏡</span><span class="cn">निःशुल्क पाहुना</span><span class="ce">Paying Guest</span></a>
-      <a class="cat-card" href="pages/housing/real-estate.html"><span class="cat-emoji">🏗️</span><span class="cn">घर जग्गा</span><span class="ce">Real Estate</span></a>
-      <a class="cat-card" href="pages/housing/moving.html"><span class="cat-emoji">📦</span><span class="cn">सामान सार्ने</span><span class="ce">Moving</span></a>
-      <a class="cat-card" href="pages/marketplace/childcare.html"><span class="cat-emoji">👶</span><span class="cn">बाल सेवा</span><span class="ce">Child Care</span></a>
-      <a class="cat-card" href="pages/marketplace/cleaning.html"><span class="cat-emoji">🧹</span><span class="cn">सफाई</span><span class="ce">Cleaning</span></a>
-      <a class="cat-card" href="pages/marketplace/auto.html"><span class="cat-emoji">🚗</span><span class="cn">सवारी</span><span class="ce">Auto</span></a>
+  <div class="ib-item">
+    <div>
+      <div class="ib-label">Weather Now</div>
+      <div class="ib-val"><span id="weatherIcon">⛅</span> <span id="weatherTemp">—</span> · <span id="weatherCondition">Loading…</span></div>
     </div>
   </div>
-  <div class="cat-group">
-    <div class="cat-group-heading">Marketplace</div>
-    <div class="cat-grid">
-      <a class="cat-card" href="pages/marketplace/kinbech.html"><span class="cat-emoji">🛒</span><span class="cn">किनबेच</span><span class="ce">Kinbech</span></a>
-      <a class="cat-card" href="pages/marketplace/services.html"><span class="cat-emoji">🔧</span><span class="cn">सेवाहरू</span><span class="ce">Services</span></a>
-      <a class="cat-card" href="pages/marketplace/shops.html"><span class="cat-emoji">🏪</span><span class="cn">पसलहरू</span><span class="ce">Shops</span></a>
-      <a class="cat-card" href="pages/marketplace/restaurants.html"><span class="cat-emoji">🍛</span><span class="cn">रेस्टुरेन्ट</span><span class="ce">Restaurants</span></a>
-      <a class="cat-card" href="pages/marketplace/photography.html"><span class="badge-new">New</span><span class="cat-emoji">📸</span><span class="cn">फोटोग्राफी</span><span class="ce">Photography</span></a>
-      <a class="cat-card" href="pages/marketplace/beauty.html"><span class="cat-emoji">💇</span><span class="cn">सौन्दर्य</span><span class="ce">Beauty</span></a>
-      <a class="cat-card" href="pages/marketplace/produce.html"><span class="cat-emoji">🥬</span><span class="cn">तरकारी</span><span class="ce">Produce</span></a>
+  <div class="ib-item">
+    <div>
+      <div class="ib-label">Kathmandu</div>
+      <div class="ib-val"><span id="ktmWeatherIcon">🌦</span> <span id="ktmWeatherTemp">—</span> · <span id="ktmWeatherCondition">Loading…</span></div>
     </div>
   </div>
-  <div class="cat-group">
-    <div class="cat-group-heading">Community</div>
-    <div class="cat-grid">
-      <a class="cat-card" href="pages/community/events.html"><span class="cat-emoji">🎉</span><span class="cn">कार्यक्रम</span><span class="ce">Events</span></a>
-      <a class="cat-card" href="pages/community/discussions.html"><span class="badge-new">New</span><span class="cat-emoji">💬</span><span class="cn">छलफल</span><span class="ce">Discussions</span></a>
-      <a class="cat-card" href="pages/community/organizations.html"><span class="cat-emoji">🏛️</span><span class="cn">संगठन</span><span class="ce">Organizations</span></a>
-      <a class="cat-card" href="pages/community/literature.html"><span class="badge-new">New</span><span class="cat-emoji">📖</span><span class="cn">साहित्य</span><span class="ce">Literature</span></a>
-      <a class="cat-card" href="pages/community/music.html"><span class="cat-emoji">🎵</span><span class="cn">संगीत</span><span class="ce">Music</span></a>
-      <a class="cat-card" href="pages/community/sports.html"><span class="cat-emoji">⚽</span><span class="cn">खेलकुद</span><span class="ce">Sports</span></a>
-      <a class="cat-card" href="pages/community/matchmaker.html"><span class="cat-emoji">💑</span><span class="cn">लमी</span><span class="ce">Matchmaker</span></a>
+  <div class="ib-divider"></div>
+  <div class="ib-item" data-fx="USD">
+    <div>
+      <div class="ib-label">USD → NPR</div>
+      <div class="ib-fx"><span class="ib-val" data-fx-rate>—</span><span class="ib-change" data-fx-chg hidden></span></div>
     </div>
   </div>
-
-  <details class="cat-more">
-    <summary>Show all categories</summary>
-    <div class="cat-grid">
-      <a class="cat-card" href="pages/jobs/ai-services.html"><span class="badge-new">New</span><span class="cat-emoji">🤖</span><span class="cn">AI सेवा</span><span class="ce">AI Services</span></a>
-      <a class="cat-card" href="pages/marketplace/business-for-sale.html"><span class="badge-new">New</span><span class="cat-emoji">🏢</span><span class="cn">व्यापार बिक्री</span><span class="ce">Business for Sale</span></a>
-      <a class="cat-card" href="pages/marketplace/translation.html"><span class="cat-emoji">🌐</span><span class="cn">अनुवाद</span><span class="ce">Translation</span></a>
-      <a class="cat-card" href="pages/jobs/cpa.html"><span class="cat-emoji">📊</span><span class="cn">CPA / लेखा</span><span class="ce">CPA</span></a>
-      <a class="cat-card" href="pages/jobs/finance.html"><span class="cat-emoji">💹</span><span class="cn">वित्त</span><span class="ce">Finance</span></a>
-      <a class="cat-card" href="pages/community/matrimony.html"><span class="cat-emoji">💍</span><span class="cn">विवाह</span><span class="ce">Matrimony</span></a>
-      <a class="cat-card" href="pages/community/travel.html"><span class="cat-emoji">✈️</span><span class="cn">यात्रा</span><span class="ce">Travel</span></a>
-      <a class="cat-card" href="pages/community/art.html"><span class="cat-emoji">🎨</span><span class="cn">कला</span><span class="ce">Art</span></a>
-      <a class="cat-card" href="pages/community/yoga.html"><span class="cat-emoji">🧘</span><span class="cn">योग</span><span class="ce">Yoga</span></a>
-      <a class="cat-card" href="pages/jobs/insurance.html"><span class="cat-emoji">🛡️</span><span class="cn">बीमा</span><span class="ce">Insurance</span></a>
-      <a class="cat-card" href="pages/jobs/tutoring.html"><span class="cat-emoji">📝</span><span class="cn">ट्युसन</span><span class="ce">Tutoring</span></a>
-      <a class="cat-card" href="pages/community/pen-pals.html"><span class="badge-new">New</span><span class="cat-emoji">✉️</span><span class="cn">पत्रमित्रता</span><span class="ce">Pen Pals</span></a>
-      <a class="cat-card" href="pages/community/jyotish.html"><span class="cat-emoji">🔮</span><span class="cn">हस्तरेखा</span><span class="ce">Jyotish</span></a>
+  <div class="ib-item" data-fx="GBP">
+    <div>
+      <div class="ib-label">GBP → NPR</div>
+      <div class="ib-fx"><span class="ib-val" data-fx-rate>—</span><span class="ib-change" data-fx-chg hidden></span></div>
     </div>
-  </details>
-</section>
-
-<!-- ALERT BANNERS -->
-<div class="alert-banner alert-arrival">
-  <span class="alert-icon">🏠</span>
-  <div><strong>Just arrived? Need a room TODAY?</strong> — Browse urgent Paying Guest listings. Nepali hosts ready to help.</div>
-  <a href="pages/housing/paying-guest.html" class="alert-link">View Rooms →</a>
-</div>
-<div class="alert-banner alert-tps">
-  <span class="alert-icon">⚠️</span>
-  <div><strong>TPS Crisis:</strong> 14,800+ Nepali TPS holders affected — Free legal consultations available now.</div>
-  <a href="pages/jobs/immigration.html" class="alert-link-gold">Get Help →</a>
+  </div>
+  <div class="ib-item" data-fx="AUD">
+    <div>
+      <div class="ib-label">AUD → NPR</div>
+      <div class="ib-fx"><span class="ib-val" data-fx-rate>—</span><span class="ib-change" data-fx-chg hidden></span></div>
+    </div>
+  </div>
+  <div class="ib-item" data-fx="CAD">
+    <div>
+      <div class="ib-label">CAD → NPR</div>
+      <div class="ib-fx"><span class="ib-val" data-fx-rate>—</span><span class="ib-change" data-fx-chg hidden></span></div>
+    </div>
+  </div>
+  <div class="ib-item" data-fx="EUR">
+    <div>
+      <div class="ib-label">EUR → NPR</div>
+      <div class="ib-fx"><span class="ib-val" data-fx-rate>—</span><span class="ib-change" data-fx-chg hidden></span></div>
+    </div>
+  </div>
+  <div class="ib-item" data-fx="QAR">
+    <div>
+      <div class="ib-label">QAR → NPR</div>
+      <div class="ib-fx"><span class="ib-val" data-fx-rate>—</span><span class="ib-change" data-fx-chg hidden></span></div>
+    </div>
+  </div>
+  <div class="ib-item" style="border-right:none;">
+    <div id="fxUpdatedAt" style="font-size:10px;color:rgba(255,255,255,.35);">Live · FX rates</div>
+  </div>
 </div>
 
-<!-- LISTINGS + SIDEBAR -->
-<section class="listings-wrap" id="listings">
-  <div>
-    <div class="filter-bar" role="group" aria-label="Filter listings">
-      <button type="button" class="filter-btn active" data-filter="all" aria-pressed="true">सबै</button>
-      <button type="button" class="filter-btn" data-filter="jobs" aria-pressed="false">💼 Jobs</button>
-      <button type="button" class="filter-btn" data-filter="student" aria-pressed="false">🎓 Students</button>
-      <button type="button" class="filter-btn" data-filter="realestate" aria-pressed="false">🏗️ Real Estate</button>
-      <button type="button" class="filter-btn" data-filter="housing" aria-pressed="false">🏠 Housing</button>
-      <button type="button" class="filter-btn" data-filter="services" aria-pressed="false">🔧 Services</button>
-      <button type="button" class="filter-btn" data-filter="immigration" aria-pressed="false">🛂 Immigration</button>
-      <button type="button" class="filter-btn" data-filter="restaurants" aria-pressed="false">🍛 Restaurants</button>
-      <button type="button" class="filter-btn pg-filter" data-filter="pg" aria-pressed="false">🏡 Paying Guest</button>
-    </div>
-    <div id="listingsContainer">
-      <div class="section-divider" data-group="jobs">💼 Job Listings <span class="count">5 new</span></div>
-      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">💼</div><div class="listing-body"><div class="listing-title">Senior Software Engineer — Full Stack (React/Node)</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 2h ago</span><span>TechCorp Inc.</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-blue">H1B Sponsor</span><span class="tag tag-navy">Remote OK</span></div></div><div class="listing-price">$130–160k</div></a>
-      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">🏥</div><div class="listing-body"><div class="listing-title">Registered Nurse — ICU, Mass General Hospital</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 5h ago</span><span>MGH</span></div><div class="listing-tags"><span class="tag tag-green">Visa Sponsor</span><span class="tag tag-gold">Sign-on Bonus</span><span class="tag tag-red">Urgent</span></div></div><div class="listing-price">$90–105k</div></a>
-      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">📊</div><div class="listing-body"><div class="listing-title">Data Scientist — ML/AI Focus (Python, TensorFlow)</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 8h ago</span></div><div class="listing-tags"><span class="tag tag-green">OPT Friendly</span><span class="tag tag-purple">CPT OK</span></div></div><div class="listing-price">$110–135k</div></a>
-      <a class="listing-card" data-cat="jobs" href="pages/jobs/jobs.html"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Nepali Language Teacher — Part-time weekends</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-gray">Part-time</span></div></div><div class="listing-price">$25–35/hr</div></a>
-
-      <div class="section-divider" data-group="student">🎓 Student Network <span class="count">3 new</span></div>
-      <a class="listing-card" data-cat="student" href="pages/jobs/student.html"><div class="listing-thumb">🎓</div><div class="listing-body"><div class="listing-title">Looking for OPT job referrals — CS/ML grad from Northeastern</div><div class="listing-meta"><span>📍 Boston, MA</span><span>🕐 3h ago</span></div><div class="listing-tags"><span class="tag tag-red">OPT Active</span><span class="tag tag-blue">CS/ML</span></div></div><div class="listing-price">Open</div></a>
-      <a class="listing-card" data-cat="student" href="pages/jobs/student.html"><div class="listing-thumb">📚</div><div class="listing-body"><div class="listing-title">STEM tutoring — Math, Physics, Chemistry (K-12 & college)</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-blue">Online &amp; in-person</span></div></div><div class="listing-price">$30/hr</div></a>
-
-      <div class="section-divider" data-group="realestate">🏗️ Real Estate <span class="count">2 new</span></div>
-      <a class="listing-card" data-cat="realestate" href="pages/housing/real-estate.html"><div class="listing-thumb">🏗️</div><div class="listing-body"><div class="listing-title">3BR Condo — Fully renovated, Nepali neighborhood, Lowell</div><div class="listing-meta"><span>📍 Lowell, MA</span><span>🕐 3d ago</span><span>Kiran Realty</span></div><div class="listing-tags"><span class="tag tag-green">Verified</span><span class="tag tag-navy">Nepali Agent</span></div></div><div class="listing-price">$485,000</div></a>
-
-      <div class="section-divider" data-group="housing">🏠 Housing / Rooms <span class="count">4 new</span></div>
-      <a class="listing-card" data-cat="housing" href="pages/housing/housing.html"><div class="listing-thumb">🏠</div><div class="listing-body"><div class="listing-title">Room for rent — Allston, shared 3BR, all utilities included</div><div class="listing-meta"><span>📍 Allston, MA</span><span>🕐 6h ago</span><span>Available June 1</span></div><div class="listing-tags"><span class="tag tag-green">Nepali roommates</span><span class="tag tag-red">Urgent</span></div></div><div class="listing-price">$1,100/mo</div></a>
-      <a class="listing-card" data-cat="housing" href="pages/housing/housing.html"><div class="listing-thumb">🛏️</div><div class="listing-body"><div class="listing-title">Private room — female preferred, near Malden T stop</div><div class="listing-meta"><span>📍 Malden, MA</span><span>🕐 12h ago</span></div><div class="listing-tags"><span class="tag tag-purple">Female only</span><span class="tag tag-green">T access</span></div></div><div class="listing-price">$950/mo</div></a>
-
-      <div class="section-divider" data-group="pg">🏡 Paying Guest <span class="count">6 new</span></div>
-      <a class="listing-card" data-cat="pg" href="pages/housing/paying-guest.html"><div class="listing-thumb">🏡</div><div class="listing-body"><div class="listing-title">Free PG stay — Cambridge MA, Nepali family, meals included</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 Just posted</span></div><div class="listing-tags"><span class="tag tag-green">FREE to stay</span><span class="tag tag-gold">Meals included</span></div></div><div class="listing-price">FREE</div></a>
-      <a class="listing-card" data-cat="pg" href="pages/housing/paying-guest.html"><div class="listing-thumb">🏡</div><div class="listing-body"><div class="listing-title">PG near Harvard Square — 2 weeks free for new arrivals</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>🕐 4h ago</span></div><div class="listing-tags"><span class="tag tag-green">2 weeks free</span></div></div><div class="listing-price">2 wks free</div></a>
-
-      <div class="section-divider" data-group="services">🔧 Services <span class="count">3 new</span></div>
-      <a class="listing-card" data-cat="services" href="pages/marketplace/services.html"><div class="listing-thumb">🚗</div><div class="listing-body"><div class="listing-title">Airport rides &amp; local transport — Nepali driver, BOS/PVD</div><div class="listing-meta"><span>📍 Boston metro</span><span>🕐 1d ago</span></div><div class="listing-tags"><span class="tag tag-green">Verified</span><span class="tag tag-navy">24/7</span></div></div><div class="listing-price">From $35</div></a>
-      <a class="listing-card" data-cat="services" href="pages/marketplace/services.html"><div class="listing-thumb">🍛</div><div class="listing-body"><div class="listing-title">Home-cooked Nepali meals — tiffin service, weekly subscription</div><div class="listing-meta"><span>📍 Malden, MA</span><span>🕐 2d ago</span></div><div class="listing-tags"><span class="tag tag-gold">Home-cooked</span></div></div><div class="listing-price">$60/week</div></a>
-
-      <div class="section-divider" data-group="immigration">🛂 Immigration <span class="count">2 new</span></div>
-      <a class="listing-card" data-cat="immigration" href="pages/jobs/immigration.html"><div class="listing-thumb">🛂</div><div class="listing-body"><div class="listing-title">Free TPS consultation — Nepali-speaking immigration attorney</div><div class="listing-meta"><span>📍 Boston, MA (remote OK)</span><span>🕐 Same day</span></div><div class="listing-tags"><span class="tag tag-red">TPS Specialist</span><span class="tag tag-green">Free consult</span></div></div><div class="listing-price">Free</div></a>
-
-      <div class="section-divider" data-group="restaurants">🍛 Restaurants <span class="count">2 new</span></div>
-      <a class="listing-card" data-cat="restaurants" href="pages/marketplace/restaurants.html"><div class="listing-thumb">🍛</div><div class="listing-body"><div class="listing-title">Himalayan Kitchen — Authentic Nepali &amp; Tibetan cuisine</div><div class="listing-meta"><span>📍 Cambridge, MA</span><span>Open 11am–10pm</span><span>⭐ 4.8</span></div><div class="listing-tags"><span class="tag tag-gold">Nepali-owned</span><span class="tag tag-green">Dine-in &amp; Takeout</span></div></div><div class="listing-price">$$</div></a>
-    </div>
-    <button class="load-more">View all categories →</button>
+<!-- Hidden hooks for existing weather JS -->
+<div class="hidden-hooks" id="weatherWidget" aria-hidden="true">
+  <div id="weatherHeader"></div>
+  <div id="weatherBody">
+    <div id="weatherCity"></div>
+    <div id="weatherHumidity"></div>
+    <div id="weatherWind"></div>
+    <div id="weatherHighLow"></div>
   </div>
-
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sidebar-widget" id="weatherWidget">
-      <div class="widget-header" id="weatherHeader">🌤 Local Weather</div>
-      <div class="widget-body" id="weatherBody">
-        <div class="weather-main">
-          <span class="weather-icon" id="weatherIcon">🌡️</span>
-          <div>
-            <div class="weather-temp" id="weatherTemp" style="font-size:20px;opacity:.5">Loading…</div>
-            <div class="weather-condition" id="weatherCondition"></div>
-            <div class="weather-city" id="weatherCity"></div>
-          </div>
-        </div>
-        <div class="widget-row"><span class="lbl">Humidity</span><span class="val" id="weatherHumidity">—</span></div>
-        <div class="widget-row"><span class="lbl">Wind</span><span class="val" id="weatherWind">—</span></div>
-        <div class="widget-row"><span class="lbl">High / Low</span><span class="val" id="weatherHighLow">— / —</span></div>
-      </div>
-    </div>
-    <div class="sidebar-widget">
-      <div class="widget-header">👥 Nearby Groups</div>
-      <div class="widget-body index-inline-14">
-        <div class="sb-fb-group"><div class="sb-avatar index-inline-15">GBNC</div><div class="index-inline-16"><div class="sb-fb-name">Greater Boston Nepali Community</div><div class="sb-fb-members">42,800 members</div></div><div class="sb-fb-join">Join →</div></div>
-        <div class="sb-fb-group"><div class="sb-avatar index-inline-17">NYN</div><div class="index-inline-16"><div class="sb-fb-name">NY Nepali Kaam Post</div><div class="sb-fb-members">38,200 members</div></div><div class="sb-fb-join">Join →</div></div>
-        <div class="sb-fb-group"><div class="sb-avatar index-inline-18">NAS</div><div class="index-inline-16"><div class="sb-fb-name">Nepali Students USA</div><div class="sb-fb-members">31,000 members</div></div><div class="sb-fb-join">Join →</div></div>
-      </div>
-    </div>
-    <div class="sidebar-widget">
-      <div class="widget-header">📅 Upcoming Events</div>
-      <div class="widget-body index-inline-14">
-        <div class="event-item"><div class="event-date">MAY 18, 2026</div><div class="event-name">GBNC Spring Gala</div><div class="event-loc">📍 Marriott Copley, Boston</div></div>
-        <div class="event-item"><div class="event-date">JUN 7, 2026</div><div class="event-name">Haat Bazaar — Nepali Market Day</div><div class="event-loc">📍 Lowell, MA</div></div>
-        <div class="event-item"><div class="event-date">JUN 21, 2026</div><div class="event-name">Yoga &amp; Wellness Community</div><div class="event-loc">📍 Cambridge Common</div></div>
-      </div>
-    </div>
-    <div class="sidebar-widget">
-      <div class="widget-header">📊 Boston Nepali Stats</div>
-      <div class="widget-body">
-        <div class="widget-row"><span class="lbl">Est. Nepalis in Boston metro</span><span class="val">28,000+</span></div>
-        <div class="widget-row"><span class="lbl">Active listings</span><span class="val">1,247</span></div>
-        <div class="widget-row"><span class="lbl">Nepali businesses</span><span class="val">83</span></div>
-        <div class="widget-row"><span class="lbl">PG rooms available</span><span class="val">12 today</span></div>
-      </div>
-    </div>
-    <div class="post-cta-widget">
-      <h4>List for Free!</h4>
-      <p>Reach 50,000+ Nepalis in your area. No fees ever.</p>
-      <a class="btn-white" href="pages/post/listing.html">+ Post a Free Listing</a>
-    </div>
-  </div>
-</section>
-
-<!-- HEATMAP -->
-<section class="heatmap-section">
-  <div class="section-title">Nepali Diaspora in the USA</div>
-  <div class="section-subtitle">Estimated population by metro — hover for details</div>
-  <div class="heatmap-box">
-    <div class="heatmap-dots" id="heatmapDots"></div>
-    <div class="heatmap-stats">
-      <div class="hmap-stat"><div class="hmap-num">4.5M+</div><div class="hmap-lbl">Nepalis worldwide</div></div>
-      <div class="hmap-stat"><div class="hmap-num">210K+</div><div class="hmap-lbl">In USA</div></div>
-      <div class="hmap-stat"><div class="hmap-num">42</div><div class="hmap-lbl">States</div></div>
-      <div class="hmap-stat"><div class="hmap-num">90+</div><div class="hmap-lbl">Countries globally</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- JOURNAL -->
-<section class="journal-section">
-  <div class="index-inline-19">
-    <div><div class="section-title">Biscoon Business Journal</div><div class="section-subtitle">News and insights for the global Nepali community</div></div>
-    <a href="pages/news/index.html" class="index-inline-20">All articles →</a>
-  </div>
-  <div class="journal-cards">
-    <div class="journal-card"><div class="journal-cat">Finance &amp; Investment</div><div class="journal-headline">How Nepali-Americans are building wealth through US real estate</div><div class="journal-excerpt">A growing cohort of diaspora Nepalis are leveraging tech salaries to build portfolios — reinvesting in Kathmandu's booming market.</div><div class="journal-footer"><span>Boston · May 8, 2026</span><a href="#" class="journal-read">Read →</a></div></div>
-    <div class="journal-card"><div class="journal-cat">Immigration</div><div class="journal-headline">TPS extension 2026: What 14,800 Nepali families need to know</div><div class="journal-excerpt">The Ninth Circuit's decision has major implications. Our immigration correspondent breaks down what changes and what remains the same.</div><div class="journal-footer"><span>Washington DC · May 9, 2026</span><a href="pages/jobs/immigration.html" class="journal-read">Read →</a></div></div>
-    <div class="journal-card"><div class="journal-cat">Community</div><div class="journal-headline">Nepali-owned restaurants in Greater Boston: culture, cuisine, and community</div><div class="journal-excerpt">From Cambridge to Lowell, Nepali restaurants are becoming cultural anchors — serving not just food but connection and belonging.</div><div class="journal-footer"><span>Boston · May 10, 2026</span><a href="pages/marketplace/restaurants.html" class="journal-read">Read →</a></div></div>
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="home-cta">
-  <div class="sub">नेपाली जलवायु — विश्वभर एकीकृत</div>
-  <h2>List free, reach 50,000+ Nepalis</h2>
-  <p>Post your job, room, service, or business today — completely free. No fees, no commission.</p>
-  <div class="home-cta-btns">
-    <a class="btn-white" href="pages/post/listing.html">+ Post a Free Listing</a>
-    <button class="btn-outline-white">Browse All Categories</button>
-  </div>
-</section>
-
-<!-- CALENDAR -->
-<section class="cal-section">
-  <div class="section-title">Hamro Patro — Nepali Calendar</div>
-  <div class="section-subtitle">Bikram Sambat 2083 — Nepali dates, festivals, and auspicious occasions</div>
-  <div class="cal-wrap">
-    <iframe src="https://www.hamropatro.com/widgets/calwidget-full.php" height="430" scrolling="no" frameborder="0" title="Hamro Patro Nepali Calendar"></iframe>
-  </div>
-  <div class="cal-credit">Powered by <a href="https://www.hamropatro.com" target="_blank" rel="noopener">HamroPatro.com</a></div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-grid">
-    <div class="footer-brand">
-      <div class="footer-logo">Biscoon</div>
-      <div class="footer-tagline">नेपाली जलवायु — विश्वभर एकीकृत</div>
-      <p>The Global Nepali Ecosystem — connecting 4.5 million Nepalis across 90+ countries.</p>
-    </div>
-    <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="pages/marketplace/kinbech.html">किनबेच</a></li><li><a href="pages/jobs/jobs.html">रोजगार</a></li><li><a href="pages/housing/housing.html">घर / कोठा</a></li><li><a href="pages/marketplace/services.html">सेवाहरू</a></li><li><a href="pages/housing/paying-guest.html">Paying Guest</a></li></ul></div>
-    <div class="footer-col"><h5>Community</h5><ul><li><a href="pages/community/organizations.html">संगठन</a></li><li><a href="pages/community/literature.html">साहित्य</a></li><li><a href="pages/community/discussions.html">Discussions</a></li><li><a href="pages/community/matchmaker.html">लमी</a></li><li><a href="pages/community/pen-pals.html">पत्रमित्रता</a></li><li><a href="pages/community/events.html">Events</a></li></ul></div>
-    <div class="footer-col"><h5>Biscoon</h5><ul><li><a href="#">About</a></li><li><a href="#">Advertise</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Contact</a></li></ul></div>
-  </div>
-</footer>
-<div class="footer-countries">
-  <span class="lbl">Serving Nepalis in:</span>
-  <a href="#">🇺🇸 USA</a><a href="#">🇬🇧 UK</a><a href="#">🇦🇺 Australia</a><a href="#">🇨🇦 Canada</a><a href="#">🇯🇵 Japan</a><a href="#">🇰🇷 Korea</a><a href="#">🇦🇪 UAE</a><a href="#">🇶🇦 Qatar</a><a href="#">🇸🇦 Saudi Arabia</a><a href="#">🇩🇪 Germany</a><a href="#">🇳🇿 NZ</a><a href="#">🇮🇳 India</a><a href="#">🇳🇵 Nepal</a><a href="#" class="more">+ 80 more →</a>
+  <span id="locationLoading"></span>
 </div>
-<div class="footer-bottom">
-  <p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p>
-  <p class="index-inline-21">नेपाली जलवायु — विश्वभर एकीकृत</p>
+
+<!-- FULL-WIDTH NEWS TICKER -->
+<div class="ticker home-news-ticker" aria-label="Latest headlines">
+  <div class="ticker-inner" id="homeNewsTicker">
+    <span class="t-item">Loading latest headlines… &nbsp;<span class="t-sep">◆</span></span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- LEFT — NEWS -->
+<aside class="left-panel panel" id="homeNewsPanel">
+  <div id="homeFeaturedStory">
+    <div class="feat-story home-news-loading">
+      <div class="feat-img">B</div>
+      <div class="feat-cat">Top Story</div>
+      <div class="feat-title">Loading latest news…</div>
+      <div class="feat-meta"><span>Biscoon Newsroom</span></div>
+    </div>
+  </div>
+
+  <div id="homeDiasporaNews">
+    <div class="sec-hdr">🌍 Diaspora News <span class="badge" id="homeDiasporaBadge">…</span></div>
+    <div class="home-news-list" id="homeDiasporaList"></div>
+    <a class="see-all" href="pages/news/index.html">See all diaspora news →</a>
+  </div>
+
+  <div id="homeNepalNews">
+    <div class="sec-hdr">🏔 Nepal News <span class="badge" id="homeNepalBadge">…</span></div>
+    <div class="home-news-list" id="homeNepalList"></div>
+    <a class="see-all" href="pages/news/index.html?category=nepal">See all Nepal news →</a>
+  </div>
+
+  <div class="sec-hdr">🗣 Community Voices <span class="badge purple">Opinion</span></div>
+  <a class="c-item" href="pages/community/discussions.html"><div class="c-av">✍️</div><div><div class="c-name">Why Nepali diaspora must invest back home now</div><div class="c-sub">Anil Shrestha · Boston, MA · 2 hrs ago</div></div><span class="c-tag op">Opinion</span></a>
+  <a class="c-item" href="pages/community/discussions.html"><div class="c-av">💬</div><div><div class="c-name">Growing up Nepali in America — between two worlds</div><div class="c-sub">Srijana Tamang · New York, NY · 5 hrs ago</div></div><span class="c-tag op">Story</span></a>
+  <a class="c-item" href="pages/community/discussions.html"><div class="c-av">📖</div><div><div class="c-name">How I passed my US citizenship exam in Nepali</div><div class="c-sub">Ramesh Paudel · Dallas, TX · Yesterday</div></div><span class="c-tag op">Guide</span></a>
+  <a class="see-all" href="pages/community/discussions.html">Read all community voices →</a>
+
+  <div class="sec-hdr">💼 Jobs Flash <span class="badge teal">38 new</span></div>
+  <a class="c-item" href="pages/jobs/jobs.html?subcategory=healthcare"><div class="c-av">🏥</div><div><div class="c-name">Registered Nurse — Mass General Hospital</div><div class="c-sub">Boston, MA · $85k–$105k</div></div><span class="c-tag job">Healthcare</span></a>
+  <a class="c-item" href="pages/jobs/jobs.html?subcategory=tech"><div class="c-av">💻</div><div><div class="c-name">Software Engineer (Python) — Remote</div><div class="c-sub">Remote · $120k–$145k</div></div><span class="c-tag job">Tech</span></a>
+  <a class="c-item" href="pages/jobs/jobs.html"><div class="c-av">🍽</div><div><div class="c-name">Restaurant Manager — Himalayan Kitchen NYC</div><div class="c-sub">New York, NY · Full-time</div></div><span class="c-tag job">Hospitality</span></a>
+  <a class="c-item" href="pages/jobs/jobs.html"><div class="c-av">🚚</div><div><div class="c-name">CDL Truck Driver — Nepali-speaking welcome</div><div class="c-sub">Dallas, TX · $72k/yr</div></div><span class="c-tag job">Transport</span></a>
+  <a class="see-all" href="pages/jobs/jobs.html">Browse all jobs →</a>
+
+  <div class="sec-hdr">🏪 Business Spotlight <span class="badge" style="background:var(--amber-light);color:#78350F;">Advertise</span></div>
+  <a class="biz-item" href="pages/marketplace/restaurants.html"><div class="biz-logo">🍛</div><div><div class="biz-name">Himalayan Spice Kitchen</div><div class="biz-sub">Nepali Restaurant · Cambridge, MA</div></div><span class="biz-bdg">⭐ Featured</span></a>
+  <a class="biz-item" href="pages/marketplace/services.html"><div class="biz-logo">💸</div><div><div class="biz-name">Everest Remit</div><div class="biz-sub">Remittance · Nationwide Online</div></div><span class="biz-bdg">⭐ Featured</span></a>
+  <a class="biz-item" href="pages/jobs/jobs.html?subcategory=legal"><div class="biz-logo">⚖</div><div><div class="biz-name">Rana &amp; Associates Law</div><div class="biz-sub">Immigration Attorney · New York, NY</div></div><span class="biz-bdg">📣 Sponsor</span></a>
+  <a class="biz-item" href="pages/marketplace/kinbech.html"><div class="biz-logo">🧿</div><div><div class="biz-name">Pashmina House USA</div><div class="biz-sub">Handicraft &amp; Gifts · San Jose, CA</div></div><span class="biz-bdg">📣 Sponsor</span></a>
+  <a class="see-all" href="pages/post/listing.html">List your business free →</a>
+
+  <div class="sec-hdr">🎬 Videos &amp; Podcasts</div>
+  <div class="c-item"><div class="c-av" style="background:#FEE2E2;">▶️</div><div><div class="c-name">Life in America as a Nepali nurse — Real talk</div><div class="c-sub">Biscoon TV · 18K views · 2 days ago</div></div><span class="c-tag vid">Video</span></div>
+  <div class="c-item"><div class="c-av" style="background:#EDE9FE;">🎙</div><div><div class="c-name">GuffSuff Podcast Ep.42 — Building a startup from Nepal</div><div class="c-sub">4.2K plays · 3 days ago</div></div><span class="c-tag op">Podcast</span></div>
+  <div class="c-item"><div class="c-av" style="background:#FEE2E2;">▶️</div><div><div class="c-name">Dashain in America — How families celebrate far from home</div><div class="c-sub">Biscoon TV · 31K views</div></div><span class="c-tag vid">Video</span></div>
+  <a class="see-all" href="pages/community/discussions.html">Watch all →</a>
+</aside>
+
+<!-- RIGHT — PLATFORM -->
+<main class="right-panel panel">
+  <div class="topnav">
+    <span style="font-size:14px;font-weight:800;color:var(--red);letter-spacing:-.5px;margin-right:4px;">🇳🇵 Biscoon</span>
+    <div style="width:1px;height:18px;background:var(--border);margin:0 2px;"></div>
+
+    <a class="pill" href="pages/housing/paying-guest.html" style="background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8;" data-feed-cat="housing" data-feed-sub="paying-guest" data-feed-title="🏠 Paying Guest" data-feed-more="pages/housing/paying-guest.html">🏠 Paying Guest</a>
+    <a class="pill" href="pages/community/events.html?subcategory=matchmaker" style="background:#FDF4FF;border-color:#D8B4FE;color:#7B2FBE;" data-feed-cat="community" data-feed-sub="matchmaker" data-feed-title="💍 Lami" data-feed-more="pages/community/events.html?subcategory=matchmaker">💍 Lami</a>
+    <a class="pill" href="pages/community/events.html?subcategory=travel" style="background:#F0FDF4;border-color:#86EFAC;color:#166534;" data-feed-cat="community" data-feed-sub="travel" data-feed-title="🗺 TiTiGuin" data-feed-more="pages/community/events.html?subcategory=travel">🗺 TiTiGuin</a>
+
+    <div class="dropdown">
+      <span class="pill red">🛠 Services <span class="arr">▼</span></span>
+      <div class="dd-menu">
+        <a href="pages/marketplace/services.html">🔧 All Services</a>
+        <a href="pages/marketplace/services.html?subcategory=childcare">👶 Babysitter</a>
+        <a href="pages/jobs/jobs.html?subcategory=insurance">🛡 Insurance</a>
+        <a href="pages/marketplace/services.html">💸 Remittance</a>
+        <a href="pages/jobs/jobs.html?subcategory=finance">📈 Financial Advisor</a>
+        <a href="pages/jobs/jobs.html?subcategory=legal">⚖ Law / Legal</a>
+        <a href="pages/marketplace/services.html?subcategory=translation">🌐 Translation</a>
+        <div class="dm-sep"></div>
+        <a href="pages/post/listing.html" class="dm-add">+ Post a Service</a>
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <span class="pill amber">🛒 Bazar <span class="arr">▼</span></span>
+      <div class="dd-menu">
+        <a href="pages/marketplace/kinbech.html">🧿 Kinbech</a>
+        <a href="pages/marketplace/services.html?subcategory=auto">🚗 Cars &amp; Vehicles</a>
+        <a href="pages/marketplace/kinbech.html?subcategory=shops">🏪 Shops</a>
+        <a href="pages/marketplace/kinbech.html?subcategory=produce">🥬 Produce</a>
+        <a href="pages/housing/real-estate.html">🏠 Real Estate</a>
+        <a href="pages/marketplace/kinbech.html?subcategory=business-for-sale">🏢 Business for Sale</a>
+        <div class="dm-sep"></div>
+        <a href="pages/post/listing.html" class="dm-add">+ List an Item</a>
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <span class="pill" style="background:#FFFBEB;border-color:#FCD34D;color:#78350F;">🔯 Astrology <span class="arr">▼</span></span>
+      <div class="dd-menu" style="min-width:210px;">
+        <a href="pages/community/events.html?subcategory=jyotish">📿 Rashifal &amp; Jyotish</a>
+        <a href="pages/community/events.html?subcategory=jyotish">🌙 Tithi &amp; Nakshatra</a>
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <span class="pill purple">📰 Patrika <span class="arr">▼</span></span>
+      <div class="dd-menu" style="min-width:220px;">
+        <a href="https://ekantipur.com" target="_blank" rel="noopener">🗞 Kantipur / Ekantipur</a>
+        <a href="https://kathmandupost.com" target="_blank" rel="noopener">🗞 The Kathmandu Post</a>
+        <a href="https://myrepublica.nagariknetwork.com" target="_blank" rel="noopener">🗞 My Republica</a>
+        <a href="https://thehimalayantimes.com" target="_blank" rel="noopener">🗞 The Himalayan Times</a>
+        <a href="https://setopati.com" target="_blank" rel="noopener">🗞 Setopati</a>
+        <a href="https://onlinekhabar.com" target="_blank" rel="noopener">🗞 Online Khabar</a>
+      </div>
+    </div>
+
+    <a class="pill teal" href="pages/community/discussions.html">💬 GuffSuff</a>
+  </div>
+
+  <div class="quick-grid">
+    <a class="qcard pg" href="pages/housing/paying-guest.html" data-feed-cat="housing" data-feed-sub="paying-guest" data-feed-title="🏠 Paying Guest" data-feed-more="pages/housing/paying-guest.html"><div class="qico">🏠</div><div class="qlbl">Paying Guest</div><div class="qsub">Find rooms &amp; flatmates</div></a>
+    <a class="qcard lami" href="pages/community/events.html?subcategory=matchmaker" data-feed-cat="community" data-feed-sub="matchmaker" data-feed-title="💍 Lami · लामी" data-feed-more="pages/community/events.html?subcategory=matchmaker"><div class="qico">💍</div><div class="qlbl">Lami · लामी</div><div class="qsub">Family-led matrimonials</div></a>
+    <a class="qcard safari" href="pages/community/events.html?subcategory=travel" data-feed-cat="community" data-feed-sub="travel" data-feed-title="🗺 TiTiGuin · Safar" data-feed-more="pages/community/events.html?subcategory=travel"><div class="qico">🗺</div><div class="qlbl">TiTiGuin · Safar</div><div class="qsub">Travel, treks &amp; adventures</div></a>
+  </div>
+
+  <div class="ev-banner">
+    <div class="ev-eye">✦ Upcoming · 2026</div>
+    <div class="ev-head">🎵 Nepali Events &amp; Artist Tours — US &amp; Global</div>
+    <div class="ev-list">
+      <div class="ev-row"><div class="ev-date">Aug 15</div><div><div class="ev-name">Neetesh Jung Kunwar — US East Coast Tour</div><div class="ev-loc">📍 New York City, NY</div></div></div>
+      <div class="ev-row"><div class="ev-date">Sep 6</div><div><div class="ev-name">Sabin Rai &amp; The Pharaoh — Live in Boston</div><div class="ev-loc">📍 Boston, MA</div></div></div>
+      <div class="ev-row"><div class="ev-date">Sep 20</div><div><div class="ev-name">Dashain Mela 2083 — Cultural Night</div><div class="ev-loc">📍 Dallas, TX</div></div></div>
+      <div class="ev-row"><div class="ev-date">Oct 4</div><div><div class="ev-name">Pramod Kharel — Dashain Special Concert</div><div class="ev-loc">📍 Washington DC</div></div></div>
+      <div class="ev-row"><div class="ev-date">Oct 18</div><div><div class="ev-name">1974 AD Reunion Tour — West Coast</div><div class="ev-loc">📍 Los Angeles, CA</div></div></div>
+      <div class="ev-row"><div class="ev-date">Nov 1</div><div><div class="ev-name">Tihar Deusi Bhailo Night</div><div class="ev-loc">📍 Houston, TX</div></div></div>
+    </div>
+    <a class="ev-more" href="pages/community/events.html">View all events &amp; submit yours →</a>
+  </div>
+
+  <div class="card home-inline-feed" id="homeInlineFeed" hidden>
+    <div class="card-hdr" id="homeInlineFeedHdr" style="background:linear-gradient(90deg,var(--navy),var(--navy-mid));">
+      <span class="ch-title" id="homeInlineFeedTitle">Listings</span>
+      <button type="button" class="ch-sub" id="homeInlineFeedClose" style="cursor:pointer;background:none;border:none;color:inherit;font:inherit">Close ✕</button>
+    </div>
+    <div class="home-inline-feed-body" id="homeInlineFeedBody"></div>
+    <a class="see-all" id="homeInlineFeedMore" href="pages/marketplace/services.html">See all →</a>
+  </div>
+
+  <div class="two-col">
+    <div class="card" data-feed-cat="marketplace" data-feed-sub="services" data-feed-title="🛠 Services" data-feed-more="pages/marketplace/services.html">
+      <div class="card-hdr home-feed-trigger" style="background:linear-gradient(90deg,var(--red-dark),var(--red));" role="button" tabindex="0">
+        <span>🛠</span><span class="ch-title">Services</span>
+        <a class="ch-sub" href="pages/post/listing.html" style="color:inherit;text-decoration:none" onclick="event.stopPropagation()">+ Post a service</a>
+      </div>
+      <div class="chips">
+        <a class="chip" href="pages/marketplace/services.html" data-feed-cat="marketplace" data-feed-sub="services" data-feed-search="handyman" data-feed-title="🔧 Handyman">🔧 Handyman</a>
+        <a class="chip" href="pages/marketplace/services.html?subcategory=childcare" data-feed-cat="marketplace" data-feed-sub="childcare" data-feed-title="👶 Babysitter">👶 Babysitter</a>
+        <a class="chip" href="pages/jobs/jobs.html?subcategory=insurance" data-feed-cat="jobs" data-feed-sub="insurance" data-feed-title="🛡 Insurance">🛡 Insurance</a>
+        <a class="chip" href="pages/marketplace/services.html" data-feed-cat="marketplace" data-feed-sub="services" data-feed-search="remittance" data-feed-title="💸 Remittance">💸 Remittance</a>
+        <a class="chip" href="pages/jobs/jobs.html?subcategory=finance" data-feed-cat="jobs" data-feed-sub="finance" data-feed-title="📈 Financial Advisor">📈 Financial Advisor</a>
+        <a class="chip" href="pages/jobs/jobs.html?subcategory=legal" data-feed-cat="jobs" data-feed-sub="legal" data-feed-title="⚖ Legal / Law">⚖ Legal / Law</a>
+        <a class="chip" href="pages/marketplace/services.html?subcategory=translation" data-feed-cat="marketplace" data-feed-sub="translation" data-feed-title="🌐 Translation">🌐 Translation</a>
+      </div>
+    </div>
+    <div class="card" data-feed-cat="marketplace" data-feed-sub="kinbech" data-feed-title="🛒 Bazar — Marketplace" data-feed-more="pages/marketplace/kinbech.html">
+      <div class="card-hdr home-feed-trigger" style="background:linear-gradient(90deg,#D97706,var(--amber));" role="button" tabindex="0">
+        <span>🛒</span><span class="ch-title">Bazar — Marketplace</span>
+        <a class="ch-sub" href="pages/post/listing.html" style="color:inherit;text-decoration:none" onclick="event.stopPropagation()">+ List item</a>
+      </div>
+      <div class="bazar-grid">
+        <a class="bz-item" href="pages/marketplace/kinbech.html" data-feed-cat="marketplace" data-feed-sub="kinbech" data-feed-search="handicraft" data-feed-title="🧿 Handicraft"><span class="bz-ico">🧿</span><div><div class="bz-lbl">Handicraft</div><div class="bz-cnt">Ads &amp; listings</div></div></a>
+        <a class="bz-item" href="pages/marketplace/services.html?subcategory=auto" data-feed-cat="marketplace" data-feed-sub="auto" data-feed-title="🚗 Cars"><span class="bz-ico">🚗</span><div><div class="bz-lbl">Cars</div><div class="bz-cnt">Ads &amp; listings</div></div></a>
+        <a class="bz-item" href="pages/marketplace/kinbech.html" data-feed-cat="marketplace" data-feed-sub="kinbech" data-feed-search="books" data-feed-title="📚 Books"><span class="bz-ico">📚</span><div><div class="bz-lbl">Books</div><div class="bz-cnt">Ads &amp; listings</div></div></a>
+        <a class="bz-item" href="pages/marketplace/kinbech.html?subcategory=shops" data-feed-cat="marketplace" data-feed-sub="shops" data-feed-title="👗 Clothing"><span class="bz-ico">👗</span><div><div class="bz-lbl">Clothing</div><div class="bz-cnt">Ads &amp; listings</div></div></a>
+        <a class="bz-item" href="pages/marketplace/kinbech.html" data-feed-cat="marketplace" data-feed-sub="kinbech" data-feed-search="electronics" data-feed-title="📱 Electronics"><span class="bz-ico">📱</span><div><div class="bz-lbl">Electronics</div><div class="bz-cnt">Ads &amp; listings</div></div></a>
+        <a class="bz-item" href="pages/marketplace/kinbech.html" data-feed-cat="marketplace" data-feed-sub="kinbech" data-feed-title="📦 Other"><span class="bz-ico">📦</span><div><div class="bz-lbl">Other</div><div class="bz-cnt">Ads &amp; listings</div></div></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr" style="background:linear-gradient(90deg,#78350F,#D97706);">
+      <span>🔯</span><span class="ch-title">Astrology — Rashifal &amp; Panchanga · BS 2083</span>
+    </div>
+    <div style="padding:7px 12px 2px;font-size:10px;color:var(--muted);">Tap your rashi for today's horoscope</div>
+    <div class="rashi-grid">
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♈</div><div class="rname">Aries</div><div class="rnep">मेष</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♉</div><div class="rname">Taurus</div><div class="rnep">वृष</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♊</div><div class="rname">Gemini</div><div class="rnep">मिथुन</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♋</div><div class="rname">Cancer</div><div class="rnep">कर्कट</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♌</div><div class="rname">Leo</div><div class="rnep">सिंह</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♍</div><div class="rname">Virgo</div><div class="rnep">कन्या</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♎</div><div class="rname">Libra</div><div class="rnep">तुला</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♏</div><div class="rname">Scorpio</div><div class="rnep">वृश्चिक</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♐</div><div class="rname">Sagittarius</div><div class="rnep">धनु</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♑</div><div class="rname">Capricorn</div><div class="rnep">मकर</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♒</div><div class="rname">Aquarius</div><div class="rnep">कुम्भ</div></a>
+      <a class="rashi" href="pages/community/events.html?subcategory=jyotish"><div class="rsym">♓</div><div class="rname">Pisces</div><div class="rnep">मीन</div></a>
+    </div>
+    <div class="chips" style="border-top:1px solid var(--border);">
+      <a class="chip" href="pages/community/events.html?subcategory=jyotish">📿 Panchanga Today</a>
+      <a class="chip" href="pages/community/events.html?subcategory=jyotish">🌙 Tithi &amp; Nakshatra</a>
+      <a class="chip" href="pages/community/events.html?subcategory=jyotish">🗓 Nepali Calendar 2083</a>
+      <a class="chip" href="pages/community/events.html?subcategory=matchmaker">🔮 Kundali Match</a>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr" style="background:linear-gradient(90deg,#1E3A8A,#3B82F6);">
+        <span>📰</span><span class="ch-title">Nepali Patrika Online</span><span class="ch-sub">Opens ↗</span>
+      </div>
+      <div class="pat-list">
+        <a class="pat-row" href="https://ekantipur.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#C41A1A;"></div><span class="pat-name">Kantipur</span><span class="pat-type">Nepali</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://kathmandupost.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#1E3A8A;"></div><span class="pat-name">Kathmandu Post</span><span class="pat-type">English</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://myrepublica.nagariknetwork.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#D97706;"></div><span class="pat-name">My Republica</span><span class="pat-type">English</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://thehimalayantimes.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#0891B2;"></div><span class="pat-name">Himalayan Times</span><span class="pat-type">English</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://setopati.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#16A34A;"></div><span class="pat-name">Setopati</span><span class="pat-type">Nepali</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://onlinekhabar.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#7C3AED;"></div><span class="pat-name">Online Khabar</span><span class="pat-type">Nepali</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://ratopati.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#DC2626;"></div><span class="pat-name">Ratopati</span><span class="pat-type">Nepali</span><span class="pat-ext">↗</span></a>
+        <a class="pat-row" href="https://gorkhapatra.org.np" target="_blank" rel="noopener"><div class="pat-dot" style="background:#92400E;"></div><span class="pat-name">Gorkhapatra</span><span class="pat-type">Official</span><span class="pat-ext">↗</span></a>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr" style="background:linear-gradient(90deg,#1877F2,#0A4FBA);">
+        <span>👥</span><span class="ch-title">Top Nepali FB Groups</span><span class="ch-sub">📍 Near you</span>
+      </div>
+      <div style="padding:6px 12px 3px;font-size:10px;color:var(--muted);">Showing: <strong>Greater Boston, MA</strong></div>
+      <div class="fb-list">
+        <div class="fb-row"><span style="font-size:16px;">👥</span><span class="fb-name">Greater Boston Nepali Community</span><span class="geo-pill">📍 Nearby</span></div>
+        <div class="fb-row"><span style="font-size:16px;">👥</span><span class="fb-name">Nepali Students in Boston</span><span class="fb-st">MA</span></div>
+        <div class="fb-row"><span style="font-size:16px;">👥</span><span class="fb-name">New England Nepali Community</span><span class="fb-st">CT/MA</span></div>
+        <div class="fb-row"><span style="font-size:16px;">👥</span><span class="fb-name">New York Nepali Kam Post</span><span class="fb-st">NY</span></div>
+        <div class="fb-row"><span style="font-size:16px;">👥</span><span class="fb-name">NRN USA — Nepali Diaspora</span><span class="fb-st">National</span></div>
+        <div class="fb-row"><span style="font-size:16px;">👥</span><span class="fb-name">DC Metro Nepali Community</span><span class="fb-st">DC/VA</span></div>
+      </div>
+      <a class="see-all" href="pages/community/organizations.html">View all states &amp; groups →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr" style="background:linear-gradient(90deg,var(--teal),#0D9488);">
+      <span>🎓</span><span class="ch-title">Nepali Student Organizations — US Universities</span>
+      <a class="ch-sub" href="pages/jobs/student.html" style="color:inherit;text-decoration:none">40+ orgs</a>
+    </div>
+    <div style="padding:6px 12px 3px;font-size:10px;color:var(--muted);">Showing orgs near your area first</div>
+    <div class="org-list">
+      <a class="org-row" href="pages/jobs/student.html"><span class="org-abbr">MiTeri</span><div><div class="org-name">MiTeri — Nepali Students' Association</div><div class="org-uni">MIT · Cambridge, MA</div></div><span class="org-state">MA</span></a>
+      <a class="org-row" href="pages/jobs/student.html"><span class="org-abbr">HUNSA</span><div><div class="org-name">Harvard Undergraduate Nepali Students Assoc.</div><div class="org-uni">Harvard University · Cambridge, MA</div></div><span class="org-state">MA</span></a>
+      <a class="org-row" href="pages/jobs/student.html"><span class="org-abbr">NSS</span><div><div class="org-name">Nepali Students Society</div><div class="org-uni">Yale University · New Haven, CT</div></div><span class="org-state">CT</span></a>
+      <a class="org-row" href="pages/jobs/student.html"><span class="org-abbr">CNSA</span><div><div class="org-name">Columbia Nepali Students Association</div><div class="org-uni">Columbia University · New York, NY</div></div><span class="org-state">NY</span></a>
+      <a class="org-row" href="pages/jobs/student.html"><span class="org-abbr">SNSA</span><div><div class="org-name">Stanford Nepali Student Association</div><div class="org-uni">Stanford University · Palo Alto, CA</div></div><span class="org-state">CA</span></a>
+      <a class="org-row" href="pages/jobs/student.html"><span class="org-abbr">VT NSA</span><div><div class="org-name">Nepalese Student Association at Virginia Tech</div><div class="org-uni">Virginia Tech · Blacksburg, VA</div></div><span class="org-state">VA</span></a>
+    </div>
+    <a class="see-all" style="color:var(--teal);" href="pages/jobs/student.html">View all organizations →</a>
+  </div>
+
+  <div class="guff">
+    <div class="g-hdr">
+      <div class="g-odot"></div>
+      <div>
+        <div class="g-title">💬 GuffSuff — Nepali Chatroom</div>
+        <div class="g-sub">Meet strangers, make friends — join the diaspora conversation.</div>
+      </div>
+      <div class="g-cnt">🟢 42 online</div>
+    </div>
+    <div class="g-rooms">
+      <a class="g-room on" href="pages/community/discussions.html">🌍 Main Kotha</a>
+      <a class="g-room" href="pages/community/discussions.html">🏔 Pahad Tira</a>
+      <a class="g-room" href="pages/community/events.html?subcategory=music">🎵 Music &amp; Film</a>
+      <a class="g-room" href="pages/community/discussions.html">📰 Rajniti</a>
+      <a class="g-room" href="pages/jobs/jobs.html">💼 Job Guff</a>
+      <a class="g-room" href="pages/community/events.html?subcategory=matchmaker">❤ Lami Guff</a>
+    </div>
+    <div class="g-row">
+      <input class="g-input" type="text" placeholder="Pick a username to join GuffSuff chatroom..." readonly onclick="location.href='pages/community/discussions.html'"/>
+      <a class="g-btn" href="pages/community/discussions.html" style="display:inline-flex;align-items:center;text-decoration:none;">Join Chat →</a>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<div class="dash-footer">
+  <span class="dash-footer-logo">🇳🇵 Biscoon.com</span>
+  <a href="#">About</a>
+  <a href="#">Advertise</a>
+  <a href="pages/community/events.html?subcategory=matchmaker">Lami</a>
+  <a href="pages/community/events.html?subcategory=travel">TiTiGuin</a>
+  <a href="pages/community/discussions.html">GuffSuff</a>
+  <a href="pages/housing/paying-guest.html">Paying Guest</a>
+  <a href="pages/jobs/jobs.html">Jobs</a>
+  <span style="margin-left:auto;opacity:.4;">© 2026 Biscoon.com — Global Nepali's Digital Platform</span>
 </div>
 
 <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>

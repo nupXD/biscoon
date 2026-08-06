@@ -28,7 +28,7 @@
 .pages-housing-paying-guest-inline-6 { color:var(--text-muted);font-size:13px }
 .pages-housing-paying-guest-inline-7 { padding:10px 14px;display:flex;flex-direction:column;gap:0 }
 .pages-housing-paying-guest-inline-8 { padding:8px 0;border-bottom:1px solid var(--border) }
-.pages-housing-paying-guest-inline-9 { font-size:9.5px;font-weight:700;color:var(--red);font-family:IBM Plex Mono,monospace }
+.pages-housing-paying-guest-inline-9 { font-size:9.5px;font-weight:700;color:var(--red);font-family:var(--font-mono) }
 .pages-housing-paying-guest-inline-10 { font-size:12px;font-weight:500;margin-top:2px }
 .pages-housing-paying-guest-inline-11 { font-size:11px;color:var(--text-muted) }
 .pages-housing-paying-guest-inline-12 { padding:8px 0 }

@@ -30,7 +30,7 @@
 .pages-jobs-immigration-inline-8 { color:var(--text-muted);font-size:13px }
 .pages-jobs-immigration-inline-9 { padding:10px 14px;display:flex;flex-direction:column;gap:0 }
 .pages-jobs-immigration-inline-10 { padding:8px 0;border-bottom:1px solid var(--border) }
-.pages-jobs-immigration-inline-11 { font-size:9.5px;font-weight:700;color:var(--red);font-family:IBM Plex Mono,monospace }
+.pages-jobs-immigration-inline-11 { font-size:9.5px;font-weight:700;color:var(--red);font-family:var(--font-mono) }
 .pages-jobs-immigration-inline-12 { font-size:12px;font-weight:500;margin-top:2px }
 .pages-jobs-immigration-inline-13 { font-size:11px;color:var(--text-muted) }
 .pages-jobs-immigration-inline-14 { padding:8px 0 }

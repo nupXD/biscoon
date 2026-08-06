@@ -5,7 +5,7 @@
 .pages-jobs-jobs-inline-4 { border:1.5px solid var(--border);border-radius:8px;flex:1;max-width:400px;padding:8px 14px;font-size:13px;outline:none;font-family:inherit }
 .pages-jobs-jobs-inline-5 { padding:10px 14px }
 .pages-jobs-jobs-inline-6 { padding:8px 0;border-bottom:1px solid var(--border) }
-.pages-jobs-jobs-inline-7 { font-size:9.5px;font-weight:700;color:var(--red);font-family:'IBM Plex Mono',monospace }
+.pages-jobs-jobs-inline-7 { font-size:9.5px;font-weight:700;color:var(--red);font-family:var(--font-mono) }
 .pages-jobs-jobs-inline-8 { font-size:12px;font-weight:500;margin-top:2px }
 .pages-jobs-jobs-inline-9 { font-size:10.5px;color:var(--text-muted) }
 .pages-jobs-jobs-inline-10 { padding:8px 0 }

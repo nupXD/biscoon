@@ -30,6 +30,18 @@ Homepage, category browse, listing publish, and admin share one clearer visual s
 - **Admin brand fonts** — Cormorant + IBM Plex on the admin dashboard and login
 - **Motion** — softer card hover (`translateY`), lighter page-hero entrance, heatmap pulse reduced
 
+## Latest project refresh
+
+The current UI pass moves Biscoon closer to a compact community dashboard:
+
+- **Dashboard homepage** — the landing page now uses a dense two-column home layout with quick links, live news modules, category cards, local community blocks, and inline listing previews.
+- **Shared navy navigation** — `assets/css/dash-nav.css` centralizes the newer sticky header used by the homepage and refreshed inner pages.
+- **Live info bar** — the homepage shows Kathmandu weather and Nepali rupee FX rates. Browser code calls local API endpoints instead of third-party weather APIs directly.
+- **Weather proxy API** — `GET /api/weather?lat=<lat>&lon=<lon>&city=<name>` fetches Open-Meteo data server-side and returns normalized weather widget fields.
+- **Legacy category redirects** — thin subcategory HTML pages were folded into parent browse hubs with `?subcategory=` URLs. Deleted pages are preserved as 301 redirects through `src/config/legacyPageRedirects.ts`.
+- **Browse hub subcategories** — parent category pages can select and sync subcategory chips from the URL, keeping older deep links usable while reducing duplicated static pages.
+- **Client type safety cleanup** — browser TypeScript and generated JavaScript were rebuilt so shared helpers do not collide across global scripts.
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -162,6 +174,8 @@ Production startup fails when `MONGODB_URI`, `JWT_SECRET`, `MSG_ENCRYPTION_KEY`,
 
 Edit browser behavior in `assets/ts`, not the generated files in `assets/js`. Rebuild generated assets with `npm run build:client`.
 
+Recent frontend layout work also uses `assets/css/dash-nav.css` as the shared header stylesheet for the dashboard homepage and refreshed inner pages.
+
 ## Application Areas
 
 ### Listings and Search
@@ -196,6 +210,7 @@ All JSON endpoints are mounted under `/api`.
 | `/api/activity` | User activity history |
 | `/api/news` | Public and managed newsroom content |
 | `/api/market` | Market ticker data |
+| `/api/weather` | Server-side Open-Meteo proxy for weather widgets |
 | `/api/announcements` | Active site announcements |
 | `/api/moderation` | User reporting workflows |
 | `/api/admin` | Protected administration operations |
@@ -205,6 +220,10 @@ Operational endpoints:
 
 - `GET /api/health` reports service, environment, uptime, and database state.
 - `GET /api/ready` returns `200` only when MongoDB is connected; otherwise it returns `503`.
+
+Static compatibility redirects:
+
+- Removed thin pages such as `/pages/jobs/tech.html`, `/pages/community/music.html`, and `/pages/marketplace/auto.html` now redirect to their parent browse page with the matching `subcategory` query string.
 
 ## Validation
 

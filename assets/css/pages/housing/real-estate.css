@@ -28,7 +28,7 @@
 .pages-housing-real-estate-inline-6 { color:var(--text-muted);font-size:13px }
 .pages-housing-real-estate-inline-7 { padding:10px 14px;display:flex;flex-direction:column;gap:0 }
 .pages-housing-real-estate-inline-8 { padding:8px 0;border-bottom:1px solid var(--border) }
-.pages-housing-real-estate-inline-9 { font-size:9.5px;font-weight:700;color:var(--red);font-family:IBM Plex Mono,monospace }
+.pages-housing-real-estate-inline-9 { font-size:9.5px;font-weight:700;color:var(--red);font-family:var(--font-mono) }
 .pages-housing-real-estate-inline-10 { font-size:12px;font-weight:500;margin-top:2px }
 .pages-housing-real-estate-inline-11 { font-size:11px;color:var(--text-muted) }
 .pages-housing-real-estate-inline-12 { padding:8px 0 }

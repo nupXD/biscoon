@@ -212,7 +212,7 @@ const VIEW_TITLES = {
   dashboard: 'Dashboard', users: 'Users', listings: 'Listings',
   events: 'Events',
   news: 'News', discussions: 'Discussions', comments: 'Comments', reports: 'Reports',
-  spotlight: 'Hero Spotlight', announcements: 'Announcements', audit: 'Audit Logs', trash: 'Trash',
+  spotlight: 'Homepage Spotlight', announcements: 'Announcements', audit: 'Audit Logs', trash: 'Trash',
 };
 
 const VIEW_HINTS = {
@@ -224,7 +224,7 @@ const VIEW_HINTS = {
   discussions: 'Create and moderate community discussion threads.',
   comments: 'Review listing and discussion comments from one moderation queue.',
   reports: 'Track reported content and move each report through review.',
-  spotlight: 'Manage Netflix-style hero banners shown on the homepage — ads, events, promos.',
+  spotlight: 'Banners that rotate in the homepage hero. Live ones appear to visitors; paused ones stay hidden.',
   announcements: 'Publish site-wide messages and control visibility.',
   trash: 'Soft-deleted content — the internet is forever. Only super-admins can restore or permanently delete.',
   audit: 'Review super-admin activity, content changes, and moderation actions.',
@@ -2231,7 +2231,7 @@ async function openViewNews(id: string): Promise<void> {
     <div class="admin-view-desc" style="margin-top:12px">${esc(article.summary)}</div>
     <div class="admin-news-body">${formatNewsBody(article.body, article.media || [])}</div>
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#C0392B;color:#fff;border-color:#C0392B" data-edit-news="${esc(article.id)}">✏️ Edit News</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-news="${esc(article.id)}">✏️ Edit News</button>
       <button class="admin-btn admin-btn-danger" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">🗑 Delete</button>
     </div>
   `, null);
@@ -2577,214 +2577,564 @@ async function showTrash(): Promise<void> {
 }
 
 /* ── Hero Spotlights ── */
+type SpotlightFieldMap = Record<string, string>;
+
+type SpotlightFormValues = {
+  title: string;
+  subtitle: string;
+  body: string;
+  imageUrl: string;
+  badgeText: string;
+  badgeColor: string;
+  ctaText: string;
+  ctaUrl: string;
+  type: string;
+  order: number;
+  startDate: string | null;
+  endDate: string | null;
+};
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isSpotlightImageValue(value: string): boolean {
+  if (!value) return false;
+  if (value.startsWith('data:image/')) return true;
+  if (value.startsWith('/uploads/') || value.startsWith('uploads/')) return true;
+  return isHttpUrl(value);
+}
+
+function clearSpotlightFieldErrors(root: ParentNode = document): void {
+  root.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+  root.querySelectorAll('[data-spot-field-error]').forEach(el => {
+    el.textContent = '';
+    (el as HTMLElement).hidden = true;
+  });
+}
+
+function setSpotlightFieldError(fieldId: string, message: string): void {
+  const input = document.getElementById(fieldId);
+  input?.classList.add('is-invalid');
+  const err = document.querySelector(`[data-spot-field-error="${fieldId}"]`) as HTMLElement | null;
+  if (err) {
+    err.textContent = message;
+    err.hidden = false;
+  }
+}
+
+function validateSpotlightFields(values: SpotlightFormValues, ids: SpotlightFieldMap): string | null {
+  clearSpotlightFieldErrors();
+  const errors: Array<{ id: string; message: string }> = [];
+
+  if (!values.title) {
+    errors.push({ id: ids.title, message: 'Add a headline for the homepage banner.' });
+  } else if (values.title.length < 3) {
+    errors.push({ id: ids.title, message: 'Headline should be at least 3 characters.' });
+  }
+
+  if (!values.imageUrl) {
+    errors.push({ id: ids.image, message: 'Upload an image or paste an https:// URL.' });
+  } else if (!isSpotlightImageValue(values.imageUrl)) {
+    errors.push({ id: ids.image, message: 'Use a valid image URL (https://…) or upload a file.' });
+  }
+
+  if (values.ctaText && !values.ctaUrl) {
+    errors.push({ id: ids.ctaUrl, message: 'Add a link so the banner can open the ad, or clear the button label.' });
+  }
+  if (values.ctaUrl && !isHttpUrl(values.ctaUrl)) {
+    errors.push({ id: ids.ctaUrl, message: 'Link must start with http:// or https://' });
+  }
+
+  if (!Number.isFinite(values.order) || values.order < 0 || !Number.isInteger(values.order)) {
+    errors.push({ id: ids.order, message: 'Order must be a whole number 0 or higher.' });
+  }
+
+  const startMs = values.startDate ? Date.parse(values.startDate) : NaN;
+  const endMs = values.endDate ? Date.parse(values.endDate) : NaN;
+  if (values.startDate && Number.isNaN(startMs)) {
+    errors.push({ id: ids.start, message: 'Pick a valid start date and time.' });
+  }
+  if (values.endDate && Number.isNaN(endMs)) {
+    errors.push({ id: ids.end, message: 'Pick a valid end date and time.' });
+  }
+  if (values.startDate && values.endDate && !Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
+    errors.push({ id: ids.end, message: 'End must be after the start time.' });
+  }
+
+  if (values.badgeText && values.badgeText.length > 40) {
+    errors.push({ id: ids.badgeText, message: 'Badge text max is 40 characters.' });
+  }
+
+  for (const err of errors) setSpotlightFieldError(err.id, err.message);
+  return errors[0]?.message || null;
+}
+
+function readSpotlightCreateValues(): SpotlightFormValues {
+  const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
+  const fileData = urlInput?.getAttribute('data-file-data') || '';
+  return {
+    title: (document.getElementById('spotTitle') as HTMLInputElement)?.value.trim() || '',
+    subtitle: (document.getElementById('spotSubtitle') as HTMLInputElement)?.value.trim() || '',
+    body: (document.getElementById('spotBody') as HTMLTextAreaElement)?.value.trim() || '',
+    imageUrl: fileData || urlInput?.value.trim() || '',
+    badgeText: (document.getElementById('spotBadgeText') as HTMLInputElement)?.value.trim() || '',
+    badgeColor: (document.getElementById('spotBadgeColor') as HTMLInputElement)?.value.trim() || '',
+    ctaText: (document.getElementById('spotCtaText') as HTMLInputElement)?.value.trim() || '',
+    ctaUrl: (document.getElementById('spotCtaUrl') as HTMLInputElement)?.value.trim() || '',
+    type: (document.getElementById('spotType') as HTMLInputElement)?.value || 'ad',
+    order: Number((document.getElementById('spotOrder') as HTMLInputElement)?.value),
+    startDate: (document.getElementById('spotStart') as HTMLInputElement)?.value || null,
+    endDate: (document.getElementById('spotEnd') as HTMLInputElement)?.value || null,
+  };
+}
+
+function readSpotlightEditValues(fallbackImage = ''): SpotlightFormValues {
+  const urlInput = document.getElementById('editSpotImageUrl') as HTMLInputElement | null;
+  const fileData = urlInput?.getAttribute('data-file-data') || '';
+  return {
+    title: (document.getElementById('editSpotTitle') as HTMLInputElement)?.value.trim() || '',
+    subtitle: (document.getElementById('editSpotSubtitle') as HTMLInputElement)?.value.trim() || '',
+    body: (document.getElementById('editSpotBody') as HTMLTextAreaElement)?.value.trim() || '',
+    imageUrl: fileData || urlInput?.value.trim() || fallbackImage || '',
+    badgeText: (document.getElementById('editSpotBadgeText') as HTMLInputElement)?.value.trim() || '',
+    badgeColor: (document.getElementById('editSpotBadgeColor') as HTMLInputElement)?.value.trim() || '',
+    ctaText: (document.getElementById('editSpotCtaText') as HTMLInputElement)?.value.trim() || '',
+    ctaUrl: (document.getElementById('editSpotCtaUrl') as HTMLInputElement)?.value.trim() || '',
+    type: (document.getElementById('editSpotType') as HTMLInputElement)?.value || 'ad',
+    order: Number((document.getElementById('editSpotOrder') as HTMLInputElement)?.value),
+    startDate: (document.getElementById('editSpotStart') as HTMLInputElement)?.value || null,
+    endDate: (document.getElementById('editSpotEnd') as HTMLInputElement)?.value || null,
+  };
+}
+
+function spotlightPreviewHtml(s: Partial<AdminSpotlight> = {}): string {
+  const typeLabels: Record<string, string> = { ad: 'Ad', event: 'Event', news: 'News', promo: 'Promo' };
+  const hasLink = Boolean((s.ctaUrl || '').trim());
+  const badge = s.badgeText
+    ? `<span class="admin-spot-preview-badge" style="background:${esc(s.badgeColor || '#E63946')}">${esc(s.badgeText)}</span>`
+    : `<span class="admin-spot-preview-badge admin-spot-preview-badge--type">${esc(typeLabels[s.type || 'ad'] || 'Ad')}</span>`;
+  const bg = s.imageUrl
+    ? `background-image:url("${esc(s.imageUrl).replace(/"/g, '%22')}")`
+    : 'background:linear-gradient(135deg,#1a2332,#3d4f66)';
+  const ctaLabel = (s.ctaText || '').trim() || (hasLink ? 'Learn more' : '');
+  return `
+    <div class="admin-spot-preview${hasLink ? ' admin-spot-preview--linked' : ''}" style="${bg}">
+      <div class="admin-spot-preview-overlay"></div>
+      <div class="admin-spot-preview-content">
+        ${badge}
+        <h3 class="admin-spot-preview-title">${esc(s.title || 'Your headline here')}</h3>
+        <p class="admin-spot-preview-sub">${esc(s.subtitle || 'Optional supporting line')}</p>
+        ${s.body ? `<p class="admin-spot-preview-body">${esc(s.body)}</p>` : ''}
+        ${ctaLabel
+          ? `<span class="admin-spot-preview-cta">${esc(ctaLabel)}</span>`
+          : '<span class="admin-spot-preview-cta admin-spot-preview-cta--ghost">Add a link to make this clickable</span>'}
+        ${hasLink ? '<span class="admin-spot-preview-clickhint">Clicking the banner opens the ad link</span>' : ''}
+      </div>
+    </div>`;
+}
+
+function bindSpotlightComposer(): void {
+  const form = document.getElementById('spotComposer');
+  if (!form) return;
+
+  const syncPreview = (): void => {
+    const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
+    const fileData = urlInput?.getAttribute('data-file-data') || '';
+    const imageUrl = fileData || urlInput?.value.trim() || '';
+    const previewHost = document.getElementById('spotLivePreview');
+    if (!previewHost) return;
+    previewHost.innerHTML = spotlightPreviewHtml({
+      title: (document.getElementById('spotTitle') as HTMLInputElement)?.value.trim(),
+      subtitle: (document.getElementById('spotSubtitle') as HTMLInputElement)?.value.trim(),
+      body: (document.getElementById('spotBody') as HTMLTextAreaElement)?.value.trim(),
+      badgeText: (document.getElementById('spotBadgeText') as HTMLInputElement)?.value.trim(),
+      badgeColor: (document.getElementById('spotBadgeColor') as HTMLInputElement)?.value.trim() || '#E63946',
+      ctaText: (document.getElementById('spotCtaText') as HTMLInputElement)?.value.trim(),
+      ctaUrl: (document.getElementById('spotCtaUrl') as HTMLInputElement)?.value.trim(),
+      imageUrl,
+      type: (document.getElementById('spotType') as HTMLInputElement)?.value || 'ad',
+    });
+  };
+
+  const clearFieldOnEdit = (el: Element): void => {
+    el.addEventListener('input', () => {
+      el.classList.remove('is-invalid');
+      const err = document.querySelector(`[data-spot-field-error="${el.id}"]`) as HTMLElement | null;
+      if (err) { err.hidden = true; err.textContent = ''; }
+    });
+  };
+
+  form.querySelectorAll('#spotTitle,#spotSubtitle,#spotBody,#spotBadgeText,#spotBadgeColor,#spotCtaText,#spotCtaUrl,#spotOrder,#spotStart,#spotEnd,#spotImageUrl').forEach(el => {
+    el.addEventListener('input', syncPreview);
+    el.addEventListener('change', syncPreview);
+    clearFieldOnEdit(el);
+  });
+
+  form.querySelectorAll<HTMLButtonElement>('.admin-spot-type[data-type]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      form.querySelectorAll('.admin-spot-type').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const hidden = document.getElementById('spotType') as HTMLInputElement | null;
+      if (hidden) hidden.value = btn.dataset.type || 'ad';
+      syncPreview();
+    });
+  });
+
+  document.getElementById('spotToggleComposer')?.addEventListener('click', () => {
+    const panel = document.getElementById('spotComposerPanel');
+    const btn = document.getElementById('spotToggleComposer');
+    if (!panel || !btn) return;
+    const open = panel.hasAttribute('hidden');
+    if (open) {
+      panel.removeAttribute('hidden');
+      btn.textContent = 'Hide form';
+      (document.getElementById('spotTitle') as HTMLInputElement | null)?.focus();
+    } else {
+      panel.setAttribute('hidden', '');
+      btn.textContent = '+ New spotlight';
+    }
+  });
+
+  document.getElementById('spotCancelComposer')?.addEventListener('click', () => {
+    const panel = document.getElementById('spotComposerPanel');
+    const btn = document.getElementById('spotToggleComposer');
+    if (panel) panel.setAttribute('hidden', '');
+    if (btn) btn.textContent = '+ New spotlight';
+  });
+
+  function showSpotImgPreview(src: string): void {
+    const wrap = document.getElementById('spotImgPreviewWrap') as HTMLDivElement | null;
+    const img = document.getElementById('spotImgPreview') as HTMLImageElement | null;
+    if (!wrap || !img) return;
+    if (src) { img.src = src; wrap.hidden = false; }
+    else { wrap.hidden = true; img.src = ''; }
+    syncPreview();
+  }
+
+  document.getElementById('spotImageFile')?.addEventListener('change', async function (this: HTMLInputElement) {
+    const file = this.files?.[0];
+    if (!file) return;
+    const lbl = document.getElementById('spotFileLbl');
+    if (lbl) lbl.textContent = `📁 ${file.name}`;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
+      if (urlInput) {
+        urlInput.value = '';
+        urlInput.setAttribute('data-file-data', dataUrl);
+      }
+      showSpotImgPreview(dataUrl);
+    } catch (_) { /* ignore */ }
+  });
+
+  document.getElementById('spotImageUrl')?.addEventListener('blur', function (this: HTMLInputElement) {
+    if (this.value.trim()) {
+      this.removeAttribute('data-file-data');
+      showSpotImgPreview(this.value.trim());
+    }
+  });
+
+  document.getElementById('spotSubmit')?.addEventListener('click', async () => {
+    const values = readSpotlightCreateValues();
+    const errEl = document.getElementById('spotFormError');
+    const btn = document.getElementById('spotSubmit') as HTMLButtonElement | null;
+    if (!errEl || !btn) return;
+
+    errEl.hidden = true;
+    const firstError = validateSpotlightFields(values, {
+      title: 'spotTitle',
+      image: 'spotImageUrl',
+      ctaText: 'spotCtaText',
+      ctaUrl: 'spotCtaUrl',
+      order: 'spotOrder',
+      start: 'spotStart',
+      end: 'spotEnd',
+      badgeText: 'spotBadgeText',
+    });
+    if (firstError) {
+      errEl.textContent = firstError;
+      errEl.hidden = false;
+      document.querySelector('.is-invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Publishing…';
+    try {
+      await api('/api/admin/spotlights', {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
+      notify('Spotlight published. Add another anytime with + New spotlight.', 'success');
+      showSpotlights();
+    } catch (err: any) {
+      errEl.textContent = err.message;
+      errEl.hidden = false;
+      btn.disabled = false;
+      btn.textContent = 'Publish to homepage';
+    }
+  });
+
+  syncPreview();
+}
+
+function bindSpotlightList(spots: AdminSpotlight[]): void {
+  const list = document.getElementById('spotList');
+  const empty = document.getElementById('spotEmpty');
+  const search = document.getElementById('spotSearch') as HTMLInputElement | null;
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.admin-spot-filter[data-status]'));
+
+  const apply = (): void => {
+    const q = (search?.value || '').trim().toLowerCase();
+    const status = chips.find(c => c.classList.contains('is-active'))?.dataset.status || 'all';
+    let shown = 0;
+    list?.querySelectorAll<HTMLElement>('[data-spot-card]').forEach(card => {
+      const hay = (card.dataset.spotSearch || '').toLowerCase();
+      const active = card.dataset.spotActive === 'true';
+      const matchQ = !q || hay.includes(q);
+      const matchS = status === 'all' || (status === 'live' && active) || (status === 'paused' && !active);
+      const ok = matchQ && matchS;
+      card.hidden = !ok;
+      if (ok) shown += 1;
+    });
+    if (empty) empty.hidden = shown > 0 || spots.length === 0;
+  };
+
+  search?.addEventListener('input', apply);
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+      apply();
+    });
+  });
+
+  wireInteractiveRows('[data-open-spot]', row => openViewSpotlight(row.dataset.openSpot!));
+}
+
 async function showSpotlights(): Promise<void> {
   try {
     const data = await api('/api/admin/spotlights');
+    const spots: AdminSpotlight[] = data.spotlights || [];
     const typeColors: Record<string, string> = { ad: 'blue', event: 'green', news: 'gray', promo: 'red' };
+    const typeLabels: Record<string, string> = { ad: 'Ad', event: 'Event', news: 'News', promo: 'Promo' };
+    const activeCount = spots.filter(s => s.active).length;
+    const openComposer = spots.length === 0;
 
-    const activeCount = (data.spotlights || []).filter((s: any) => s.active).length;
     content(`
-      ${sectionHero('Spotlights', 'Homepage hero banners. Toggle live/inactive without leaving the page.')}
-      <div class="ix-stat-grid">
-        ${sectionStat('Total', (data.spotlights || []).length, true)}
-        ${sectionStat('Live', activeCount)}
-        ${sectionStat('Inactive', (data.spotlights || []).length - activeCount)}
-      </div>
-      <div class="admin-ann-form">
-        <div class="admin-ann-form-title">🎬 Create New Spotlight</div>
-        <div id="spotFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:12px"></div>
-        <div class="admin-ann-grid">
-          <div class="admin-ann-field admin-ann-full">
-            <label class="admin-ann-label">Title <span style="color:#C0392B">*</span></label>
-            <input class="admin-ann-input" id="spotTitle" placeholder="e.g. Dashain Mela 2025 — Register Now">
-          </div>
-          <div class="admin-ann-field admin-ann-full">
-            <label class="admin-ann-label">Subtitle</label>
-            <input class="admin-ann-input" id="spotSubtitle" placeholder="Short supporting line under the title">
-          </div>
-          <div class="admin-ann-field admin-ann-full">
-            <label class="admin-ann-label">Description</label>
-            <textarea class="admin-ann-textarea" id="spotBody" placeholder="Optional body text shown below the subtitle…" rows="2"></textarea>
-          </div>
-          <div class="admin-ann-field admin-ann-full">
-            <label class="admin-ann-label">Banner image <span style="color:#C0392B">*</span> <span style="font-weight:400;color:#888">(upload from PC or paste a URL · 1920×1080 ideal, max 5MB)</span></label>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:white;transition:border-color .15s;white-space:nowrap" id="spotFileLbl">
-                📁 Browse…
-                <input type="file" id="spotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
-              </label>
-              <input class="admin-ann-input" id="spotImageUrl" type="url" placeholder="…or paste https:// URL" style="flex:1;min-width:160px">
-            </div>
-            <div id="spotImgPreviewWrap" style="margin-top:8px;display:none">
-              <img id="spotImgPreview" src="" alt="Preview" style="max-width:100%;max-height:160px;border-radius:6px;border:1.5px solid var(--border);object-fit:cover">
-            </div>
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">Badge text</label>
-            <input class="admin-ann-input" id="spotBadgeText" placeholder="e.g. EVENT · FREE ENTRY">
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">Badge color</label>
-            <input class="admin-ann-input" id="spotBadgeColor" type="color" value="#C0392B" style="height:38px;padding:2px 6px">
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">CTA button text</label>
-            <input class="admin-ann-input" id="spotCtaText" placeholder="e.g. Register Now">
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">CTA button URL</label>
-            <input class="admin-ann-input" id="spotCtaUrl" type="url" placeholder="https://…">
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">Type</label>
-            <select class="admin-ann-select" id="spotType">
-              <option value="ad">📣 Ad</option>
-              <option value="event">🎉 Event</option>
-              <option value="news">📰 News</option>
-              <option value="promo">🔥 Promo</option>
-            </select>
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">Display order</label>
-            <input class="admin-ann-input" id="spotOrder" type="number" value="0" min="0" placeholder="0 = first">
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">Show from (optional)</label>
-            <input class="admin-ann-input" id="spotStart" type="datetime-local">
-          </div>
-          <div class="admin-ann-field">
-            <label class="admin-ann-label">Show until (optional)</label>
-            <input class="admin-ann-input" id="spotEnd" type="datetime-local">
-          </div>
+      ${sectionHero('Homepage Spotlight', 'These banners rotate in the homepage hero. Turn Live on so visitors see them.')}
+      <div class="admin-spot-guide">
+        <div class="admin-spot-guide-steps">
+          <div><strong>1</strong><span>Create a banner</span></div>
+          <div><strong>2</strong><span>Flip Live when ready</span></div>
+          <div><strong>3</strong><span>Reorder with ↑ ↓</span></div>
         </div>
-        <div class="admin-ann-actions">
-          <button class="admin-btn" id="spotSubmit" style="background:#C0392B;color:#fff;border-color:#C0392B;padding:9px 22px;font-size:13px">Publish Spotlight</button>
+        <p>You can publish <strong>multiple</strong> spotlights — live ones rotate in the homepage carousel. Add a link so visitors open the ad when they click the banner.</p>
+      </div>
+      <div class="ix-stat-grid">
+        ${sectionStat('Total', spots.length, true)}
+        ${sectionStat('Live on site', activeCount)}
+        ${sectionStat('Paused', spots.length - activeCount)}
+      </div>
+
+      <div class="admin-spot-toolbar">
+        <input class="admin-ann-input admin-spot-search" id="spotSearch" type="search" placeholder="Search title, type, badge…" aria-label="Search spotlights">
+        <div class="admin-spot-filters" role="group" aria-label="Filter by status">
+          <button type="button" class="admin-spot-filter is-active" data-status="all">All</button>
+          <button type="button" class="admin-spot-filter" data-status="live">Live</button>
+          <button type="button" class="admin-spot-filter" data-status="paused">Paused</button>
+        </div>
+        <button type="button" class="admin-btn" id="spotToggleComposer" style="background:#E63946;color:#fff;border-color:#E63946;margin-left:auto">${openComposer ? 'Hide form' : '+ New spotlight'}</button>
+      </div>
+
+      <div class="admin-spot-composer" id="spotComposerPanel" ${openComposer ? '' : 'hidden'}>
+        <div class="admin-spot-composer-grid" id="spotComposer">
+          <div class="admin-ann-form admin-spot-form">
+            <div class="admin-ann-form-title">Create a homepage banner</div>
+            <p class="admin-spot-form-hint">Fill the fields — the preview on the right updates as you type.</p>
+            <div id="spotFormError" class="admin-spot-error" hidden></div>
+            <div class="admin-ann-grid">
+              <div class="admin-ann-field admin-ann-full">
+                <label class="admin-ann-label">Headline <span style="color:#E63946">*</span></label>
+                <input class="admin-ann-input" id="spotTitle" placeholder="e.g. Dashain Mela 2026 — Register Now" maxlength="200" required>
+                <div class="admin-spot-field-error" data-spot-field-error="spotTitle" hidden></div>
+              </div>
+              <div class="admin-ann-field admin-ann-full">
+                <label class="admin-ann-label">Supporting line</label>
+                <input class="admin-ann-input" id="spotSubtitle" placeholder="One short sentence under the headline" maxlength="200">
+              </div>
+              <div class="admin-ann-field admin-ann-full">
+                <label class="admin-ann-label">Extra details (optional)</label>
+                <textarea class="admin-ann-textarea" id="spotBody" placeholder="Shown under the supporting line" rows="2" maxlength="400"></textarea>
+              </div>
+              <div class="admin-ann-field admin-ann-full">
+                <label class="admin-ann-label">Banner image <span style="color:#E63946">*</span></label>
+                <div class="admin-spot-image-row">
+                  <label class="admin-spot-file" id="spotFileLbl">📁 Choose image<input type="file" id="spotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden></label>
+                  <input class="admin-ann-input" id="spotImageUrl" type="url" placeholder="or paste https:// image URL">
+                </div>
+                <div id="spotImgPreviewWrap" class="admin-spot-thumb-wrap" hidden>
+                  <img id="spotImgPreview" class="admin-spot-thumb" src="" alt="Banner preview">
+                </div>
+                <div class="admin-spot-field-error" data-spot-field-error="spotImageUrl" hidden></div>
+              </div>
+              <div class="admin-ann-field admin-ann-full">
+                <label class="admin-ann-label">Type</label>
+                <input type="hidden" id="spotType" value="ad">
+                <div class="admin-spot-types" role="group" aria-label="Spotlight type">
+                  <button type="button" class="admin-spot-type is-active" data-type="ad">📣 Ad</button>
+                  <button type="button" class="admin-spot-type" data-type="event">🎉 Event</button>
+                  <button type="button" class="admin-spot-type" data-type="news">📰 News</button>
+                  <button type="button" class="admin-spot-type" data-type="promo">🔥 Promo</button>
+                </div>
+              </div>
+              <div class="admin-ann-field">
+                <label class="admin-ann-label">Corner badge</label>
+                <input class="admin-ann-input" id="spotBadgeText" placeholder="e.g. FREE ENTRY" maxlength="40">
+                <div class="admin-spot-field-error" data-spot-field-error="spotBadgeText" hidden></div>
+              </div>
+              <div class="admin-ann-field">
+                <label class="admin-ann-label">Badge color</label>
+                <input class="admin-ann-input" id="spotBadgeColor" type="color" value="#E63946">
+              </div>
+              <div class="admin-ann-field">
+                <label class="admin-ann-label">Button label (optional)</label>
+                <input class="admin-ann-input" id="spotCtaText" placeholder="e.g. Register Now" maxlength="60">
+                <div class="admin-spot-field-error" data-spot-field-error="spotCtaText" hidden></div>
+              </div>
+              <div class="admin-ann-field">
+                <label class="admin-ann-label">Ad link — click banner opens this</label>
+                <input class="admin-ann-input" id="spotCtaUrl" type="url" placeholder="https://…" inputmode="url">
+                <div class="admin-spot-field-error" data-spot-field-error="spotCtaUrl" hidden></div>
+              </div>
+              <div class="admin-ann-field">
+                <label class="admin-ann-label">Carousel order</label>
+                <input class="admin-ann-input" id="spotOrder" type="number" value="0" min="0" step="1" title="Lower numbers show first">
+                <div class="admin-spot-field-error" data-spot-field-error="spotOrder" hidden></div>
+              </div>
+              <div class="admin-ann-field admin-ann-full">
+                <label class="admin-ann-label">Schedule (optional)</label>
+                <div class="admin-spot-schedule">
+                  <div>
+                    <span class="admin-spot-schedule-label">Show from</span>
+                    <input class="admin-ann-input" id="spotStart" type="datetime-local" aria-label="Show from">
+                    <div class="admin-spot-field-error" data-spot-field-error="spotStart" hidden></div>
+                  </div>
+                  <div>
+                    <span class="admin-spot-schedule-label">Show until</span>
+                    <input class="admin-ann-input" id="spotEnd" type="datetime-local" aria-label="Show until">
+                    <div class="admin-spot-field-error" data-spot-field-error="spotEnd" hidden></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="admin-ann-actions admin-spot-actions">
+              <button type="button" class="admin-btn admin-btn-ghost" id="spotCancelComposer">Cancel</button>
+              <button type="button" class="admin-btn" id="spotSubmit" style="background:#E63946;color:#fff;border-color:#E63946">Publish to homepage</button>
+            </div>
+          </div>
+          <aside class="admin-spot-preview-pane">
+            <div class="admin-spot-preview-label">Homepage preview</div>
+            <div id="spotLivePreview">${spotlightPreviewHtml({})}</div>
+            <p class="admin-spot-preview-note">Visitors see this in the homepage carousel. With a link, clicking the banner opens the ad. Multiple live spotlights rotate automatically.</p>
+          </aside>
         </div>
       </div>
 
-      <div class="admin-ann-list" id="spotList">
-        ${data.spotlights.length ? data.spotlights.map((s: AdminSpotlight) => `
-          <div class="admin-ann-card ix-clickable-card" style="align-items:flex-start" tabindex="0" role="button" data-open-spot="${esc(s.id)}">
-            <div class="admin-ann-stripe admin-ann-stripe-${s.type === 'event' ? 'success' : s.type === 'promo' ? 'warning' : 'info'}"></div>
-            ${s.imageUrl ? `<img src="${esc(s.imageUrl)}" alt="" style="width:96px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;margin-right:2px;margin-top:2px">` : ''}
-            <div class="admin-ann-content" style="flex:1;min-width:0">
-              <div class="admin-ann-card-title">${esc(s.title)}</div>
-              ${s.subtitle ? `<div style="font-size:12px;color:#555;margin-bottom:4px">${esc(s.subtitle)}</div>` : ''}
-              <div class="admin-ann-card-meta">
-                ${badge(s.active ? 'Live' : 'Inactive', s.active ? 'green' : 'gray')}
-                ${badge(s.type || 'ad', typeColors[s.type] || 'gray')}
-                ${s.badgeText ? badge(s.badgeText, 'blue') : ''}
-                <span>Order ${s.order ?? 0}</span>
-                <span>By ${esc(s.createdBy || 'admin')}</span>
-                ${s.endDate ? `<span>Until ${fmtDate(s.endDate)}</span>` : ''}
-              </div>
-              ${s.ctaText ? `<div style="font-size:11px;color:#888;margin-top:4px">CTA: ${esc(s.ctaText)}</div>` : ''}
+      <div class="admin-spot-list-head">
+        <h3>Your spotlights</h3>
+        <span>${spots.length} total · ${activeCount} live</span>
+      </div>
+      <div class="admin-ann-list admin-spot-list" id="spotList">
+        ${spots.length ? spots.map((s, index) => `
+          <div class="admin-spot-card ix-clickable-card" tabindex="0" role="button"
+               data-open-spot="${esc(s.id)}" data-spot-card
+               data-spot-active="${s.active ? 'true' : 'false'}"
+               data-spot-search="${esc([s.title, s.subtitle, s.type, s.badgeText, s.ctaText].filter(Boolean).join(' '))}">
+            <div class="admin-spot-card-media" style="${s.imageUrl ? `background-image:url('${esc(s.imageUrl).replace(/'/g, '%27')}')` : ''}">
+              ${s.active ? '<span class="admin-spot-pill admin-spot-pill--live">Live</span>' : '<span class="admin-spot-pill">Paused</span>'}
             </div>
-            <div class="admin-ann-card-actions">
-              <button class="admin-btn admin-btn-ghost" data-view-spot="${esc(s.id)}">👁 View</button>
-              <button class="admin-btn admin-btn-ghost" data-edit-spot="${esc(s.id)}">✏️ Edit</button>
-              <button class="admin-btn admin-btn-ghost" data-toggle-spot="${esc(s.id)}" title="${s.active ? 'Deactivate' : 'Activate'}">
-                ${s.active ? '⏸ Pause' : '▶ Activate'}
+            <div class="admin-spot-card-body">
+              <div class="admin-spot-card-title">${esc(s.title || 'Untitled')}</div>
+              ${s.subtitle ? `<div class="admin-spot-card-sub">${esc(s.subtitle)}</div>` : ''}
+              <div class="admin-ann-card-meta">
+                ${badge(typeLabels[s.type || 'ad'] || 'Ad', typeColors[s.type || ''] || 'gray')}
+                ${s.badgeText ? badge(s.badgeText, 'blue') : ''}
+                <span>Order ${s.order ?? index}</span>
+                ${s.endDate ? `<span>Until ${fmtDate(s.endDate)}</span>` : ''}
+                ${s.ctaText ? `<span>Button: ${esc(s.ctaText)}</span>` : ''}
+              </div>
+            </div>
+            <div class="admin-spot-card-actions">
+              <button type="button" class="admin-spot-switch ${s.active ? 'is-on' : ''}" data-toggle-spot="${esc(s.id)}" title="${s.active ? 'Pause on homepage' : 'Show on homepage'}" aria-pressed="${s.active ? 'true' : 'false'}">
+                <span class="admin-spot-switch-knob"></span>
+                <span class="admin-spot-switch-label">${s.active ? 'Live' : 'Paused'}</span>
               </button>
-              <button class="admin-btn admin-btn-danger" data-del-spot="${esc(s.id)}">🗑</button>
+              <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="-1" title="Show earlier in carousel">↑</button>
+              <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="1" title="Show later in carousel">↓</button>
+              <button type="button" class="admin-btn admin-btn-ghost" data-edit-spot="${esc(s.id)}">Edit</button>
+              <button type="button" class="admin-btn admin-btn-danger" data-del-spot="${esc(s.id)}" title="Delete">🗑</button>
             </div>
           </div>
-        `).join('') : '<div class="admin-empty">No spotlights yet. Create one above to show a hero banner on the homepage.</div>'}
+        `).join('') : '<div class="admin-empty">No spotlights yet. Click <strong>+ New spotlight</strong> to create your first homepage banner.</div>'}
       </div>
+      <div class="admin-empty" id="spotEmpty" hidden>No spotlights match this search or filter.</div>
     `);
 
     animateStatValues();
-    wireInteractiveRows('[data-open-spot]', row => openViewSpotlight(row.dataset.openSpot!));
-
-    function showSpotImgPreview(src: string): void {
-      const wrap = document.getElementById('spotImgPreviewWrap') as HTMLDivElement | null;
-      const img  = document.getElementById('spotImgPreview') as HTMLImageElement | null;
-      if (!wrap || !img) return;
-      if (src) { img.src = src; wrap.style.display = 'block'; }
-      else { wrap.style.display = 'none'; img.src = ''; }
-    }
-
-    // File picker → read as data URL, populate URL input and show preview
-    document.getElementById('spotImageFile')?.addEventListener('change', async function(this: HTMLInputElement) {
-      const file = this.files?.[0];
-      if (!file) return;
-      const lbl = document.getElementById('spotFileLbl');
-      if (lbl) lbl.textContent = `📁 ${file.name}`;
-      try {
-        const dataUrl = await readFileAsDataUrl(file);
-        const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
-        if (urlInput) urlInput.value = '';
-        (document.getElementById('spotImageUrl') as HTMLInputElement)?.setAttribute('data-file-data', dataUrl);
-        showSpotImgPreview(dataUrl);
-      } catch (_) {}
-    });
-
-    // URL input → show preview on blur
-    document.getElementById('spotImageUrl')?.addEventListener('blur', function(this: HTMLInputElement) {
-      if (this.value.trim()) showSpotImgPreview(this.value.trim());
-    });
-
-    document.getElementById('spotSubmit')?.addEventListener('click', async () => {
-      const title    = (document.getElementById('spotTitle') as HTMLInputElement)?.value.trim();
-      const subtitle = (document.getElementById('spotSubtitle') as HTMLInputElement)?.value.trim();
-      const body     = (document.getElementById('spotBody') as HTMLTextAreaElement)?.value.trim();
-      const urlInput = document.getElementById('spotImageUrl') as HTMLInputElement | null;
-      const fileData = urlInput?.getAttribute('data-file-data') || '';
-      const imageUrl = fileData || urlInput?.value.trim() || '';
-      const badgeText  = (document.getElementById('spotBadgeText') as HTMLInputElement)?.value.trim();
-      const badgeColor = (document.getElementById('spotBadgeColor') as HTMLInputElement)?.value.trim();
-      const ctaText  = (document.getElementById('spotCtaText') as HTMLInputElement)?.value.trim();
-      const ctaUrl   = (document.getElementById('spotCtaUrl') as HTMLInputElement)?.value.trim();
-      const type     = (document.getElementById('spotType') as HTMLSelectElement)?.value;
-      const order    = parseInt((document.getElementById('spotOrder') as HTMLInputElement)?.value || '0', 10);
-      const startDate = (document.getElementById('spotStart') as HTMLInputElement)?.value || null;
-      const endDate   = (document.getElementById('spotEnd') as HTMLInputElement)?.value || null;
-      const errEl    = document.getElementById('spotFormError');
-      const btn      = document.getElementById('spotSubmit') as HTMLButtonElement | null;
-
-      errEl.style.display = 'none';
-      if (!title) { errEl.textContent = 'Title is required.'; errEl.style.display = 'block'; return; }
-      if (!imageUrl) { errEl.textContent = 'Image is required — upload a file or paste a URL.'; errEl.style.display = 'block'; return; }
-      btn.disabled = true; btn.textContent = 'Publishing…';
-      try {
-        await api('/api/admin/spotlights', {
-          method: 'POST',
-          body: JSON.stringify({ title, subtitle, body, imageUrl, badgeText, badgeColor, ctaText, ctaUrl, type, order, startDate, endDate }),
-        });
-        showSpotlights();
-        notify('Spotlight published.', 'success');
-      } catch (err) {
-        errEl.textContent = err.message; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Publish Spotlight';
-      }
-    });
-
-  } catch (err) { content(`<div class="admin-error">${esc(err.message)}</div>`); }
+    bindSpotlightComposer();
+    bindSpotlightList(spots);
+  } catch (err: any) {
+    content(`<div class="admin-error">${esc(err.message)}</div>`);
+  }
 }
 
 async function openViewSpotlight(id: string): Promise<void> {
   let s: AdminSpotlight;
   try { s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`); }
-  catch (err) { notify(err.message, 'error'); return; }
+  catch (err: any) { notify(err.message, 'error'); return; }
 
   const typeColors: Record<string, string> = { ad: 'blue', event: 'green', news: 'gray', promo: 'red' };
-  openModal(`👁 ${esc(s.title || 'Spotlight')}`, `
-    ${s.imageUrl ? `<img src="${esc(s.imageUrl)}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-bottom:16px;display:block">` : ''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;font-size:13px">
-      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Status</span>${badge(s.active ? 'Live' : 'Inactive', s.active ? 'green' : 'gray')}</div>
-      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Type</span>${badge(s.type || 'ad', typeColors[s.type || ''] || 'gray')}</div>
-      ${s.badgeText ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Badge</span><span style="background:${esc(s.badgeColor||'#C0392B')};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">${esc(s.badgeText)}</span></div>` : ''}
-      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Order</span>${s.order ?? 0}</div>
-      ${s.subtitle ? `<div style="grid-column:1/-1"><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Subtitle</span>${esc(s.subtitle)}</div>` : ''}
-      ${s.body ? `<div style="grid-column:1/-1"><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Body</span><span style="color:#555">${esc(s.body)}</span></div>` : ''}
-      ${s.ctaText ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">CTA</span>${esc(s.ctaText)}</div>` : ''}
-      ${s.ctaUrl ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">CTA URL</span><a href="${esc(s.ctaUrl)}" target="_blank" rel="noopener" style="color:var(--red);word-break:break-all">${esc(s.ctaUrl)}</a></div>` : ''}
-      ${s.startDate ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Show from</span>${fmtDate(s.startDate)}</div>` : ''}
-      ${s.endDate ? `<div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Show until</span>${fmtDate(s.endDate)}</div>` : ''}
-      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Created by</span>${esc(s.createdBy || 'admin')}</div>
-      <div><span style="font-weight:600;color:#555;display:block;margin-bottom:3px">Created</span>${fmtDate(s.createdAt)}</div>
+  const typeLabels: Record<string, string> = { ad: 'Ad', event: 'Event', news: 'News', promo: 'Promo' };
+  openModal(esc(s.title || 'Untitled spotlight'), `
+    <div class="admin-spot-view">
+      ${spotlightPreviewHtml(s)}
+      <div class="admin-spot-view-meta">
+        <div class="admin-spot-view-row"><span>Status</span>${badge(s.active ? 'Live on homepage' : 'Paused', s.active ? 'green' : 'gray')}</div>
+        <div class="admin-spot-view-row"><span>Type</span>${badge(typeLabels[s.type || 'ad'] || 'Ad', typeColors[s.type || ''] || 'gray')}</div>
+        <div class="admin-spot-view-row"><span>Carousel order</span><strong>${s.order ?? 0}</strong></div>
+        ${s.ctaUrl ? `<div class="admin-spot-view-row"><span>Button link</span><a href="${esc(s.ctaUrl)}" target="_blank" rel="noopener">${esc(s.ctaUrl)}</a></div>` : ''}
+        ${s.startDate ? `<div class="admin-spot-view-row"><span>Shows from</span>${fmtDate(s.startDate)}</div>` : ''}
+        ${s.endDate ? `<div class="admin-spot-view-row"><span>Shows until</span>${fmtDate(s.endDate)}</div>` : ''}
+        <div class="admin-spot-view-row"><span>Created</span>${esc(s.createdBy || 'admin')} · ${fmtDate(s.createdAt)}</div>
+      </div>
+      <div class="admin-spot-view-actions">
+        <button type="button" class="admin-btn" data-spot-view-edit="${esc(s.id)}" style="background:#E63946;color:#fff;border-color:#E63946">Edit banner</button>
+        <button type="button" class="admin-btn admin-btn-ghost" data-spot-view-toggle="${esc(s.id)}">${s.active ? 'Pause on homepage' : 'Make live'}</button>
+      </div>
     </div>
   `, null);
+
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>('[data-spot-view-edit]')?.addEventListener('click', () => {
+      closeModal();
+      openEditSpotlight(id);
+    });
+    document.querySelector<HTMLElement>('[data-spot-view-toggle]')?.addEventListener('click', async () => {
+      try {
+        await api(`/api/admin/spotlights/${encodeURIComponent(id)}/toggle`, { method: 'PUT' });
+        closeModal();
+        showSpotlights();
+        notify(s.active ? 'Spotlight paused.' : 'Spotlight is live on the homepage.', 'success');
+      } catch (err: any) { notify(err.message, 'error'); }
+    });
+  });
 }
 
 function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
@@ -2792,121 +3142,189 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
     if (!d) return '';
     try { return new Date(d).toISOString().slice(0, 16); } catch { return ''; }
   };
+  const type = s.type || 'ad';
   return `
-    <div class="admin-modal-grid">
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Title <span style="color:#C0392B">*</span></label>
-        <input class="admin-modal-input" id="editSpotTitle" maxlength="200" value="${esc(s.title || '')}">
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Subtitle</label>
-        <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(s.subtitle || '')}">
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Description</label>
-        <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(s.body || '')}</textarea>
-      </div>
-      <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Banner image <span style="font-weight:400;color:#888">(upload or URL)</span></label>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:white;white-space:nowrap" id="editSpotFileLbl">
-            📁 Browse…
-            <input type="file" id="editSpotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
-          </label>
-          <input class="admin-modal-input" id="editSpotImageUrl" type="url" placeholder="…or paste https:// URL" value="${esc(s.imageUrl || '')}" style="flex:1;min-width:160px">
+    <div class="admin-spot-edit-layout">
+      <div class="admin-modal-grid">
+        <div class="admin-modal-field admin-modal-full">
+          <label class="admin-modal-label">Headline <span style="color:#E63946">*</span></label>
+          <input class="admin-modal-input" id="editSpotTitle" maxlength="200" value="${esc(s.title || '')}" required>
+          <div class="admin-spot-field-error" data-spot-field-error="editSpotTitle" hidden></div>
         </div>
-        <div id="editSpotImgPreviewWrap" style="margin-top:8px;${s.imageUrl ? '' : 'display:none'}">
-          <img id="editSpotImgPreview" src="${esc(s.imageUrl || '')}" alt="Preview" style="max-width:100%;max-height:140px;border-radius:6px;border:1.5px solid var(--border);object-fit:cover">
+        <div class="admin-modal-field admin-modal-full">
+          <label class="admin-modal-label">Supporting line</label>
+          <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(s.subtitle || '')}">
+        </div>
+        <div class="admin-modal-field admin-modal-full">
+          <label class="admin-modal-label">Extra details</label>
+          <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(s.body || '')}</textarea>
+        </div>
+        <div class="admin-modal-field admin-modal-full">
+          <label class="admin-modal-label">Banner image</label>
+          <div class="admin-spot-image-row">
+            <label class="admin-spot-file" id="editSpotFileLbl">📁 Choose image
+              <input type="file" id="editSpotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+            </label>
+            <input class="admin-modal-input" id="editSpotImageUrl" type="url" placeholder="or paste https:// URL" value="${esc(s.imageUrl || '')}">
+          </div>
+          <div id="editSpotImgPreviewWrap" class="admin-spot-thumb-wrap" ${s.imageUrl ? '' : 'hidden'}>
+            <img id="editSpotImgPreview" class="admin-spot-thumb" src="${esc(s.imageUrl || '')}" alt="Banner preview">
+          </div>
+          <div class="admin-spot-field-error" data-spot-field-error="editSpotImageUrl" hidden></div>
+        </div>
+        <div class="admin-modal-field admin-modal-full">
+          <label class="admin-modal-label">Type</label>
+          <input type="hidden" id="editSpotType" value="${esc(type)}">
+          <div class="admin-spot-types" id="editSpotTypes" role="group" aria-label="Spotlight type">
+            <button type="button" class="admin-spot-type ${type === 'ad' ? 'is-active' : ''}" data-type="ad">📣 Ad</button>
+            <button type="button" class="admin-spot-type ${type === 'event' ? 'is-active' : ''}" data-type="event">🎉 Event</button>
+            <button type="button" class="admin-spot-type ${type === 'news' ? 'is-active' : ''}" data-type="news">📰 News</button>
+            <button type="button" class="admin-spot-type ${type === 'promo' ? 'is-active' : ''}" data-type="promo">🔥 Promo</button>
+          </div>
+        </div>
+        <div class="admin-modal-field">
+          <label class="admin-modal-label">Corner badge</label>
+          <input class="admin-modal-input" id="editSpotBadgeText" maxlength="40" value="${esc(s.badgeText || '')}">
+          <div class="admin-spot-field-error" data-spot-field-error="editSpotBadgeText" hidden></div>
+        </div>
+        <div class="admin-modal-field">
+          <label class="admin-modal-label">Badge color</label>
+          <input class="admin-modal-input" id="editSpotBadgeColor" type="color" value="${esc(s.badgeColor || '#E63946')}">
+        </div>
+        <div class="admin-modal-field">
+          <label class="admin-modal-label">Button label (optional)</label>
+          <input class="admin-modal-input" id="editSpotCtaText" maxlength="60" value="${esc(s.ctaText || '')}">
+          <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaText" hidden></div>
+        </div>
+        <div class="admin-modal-field">
+          <label class="admin-modal-label">Ad link — click banner opens this</label>
+          <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(s.ctaUrl || '')}" inputmode="url" placeholder="https://…">
+          <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaUrl" hidden></div>
+        </div>
+        <div class="admin-modal-field">
+          <label class="admin-modal-label">Carousel order</label>
+          <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" step="1" value="${s.order ?? 0}">
+          <div class="admin-spot-field-error" data-spot-field-error="editSpotOrder" hidden></div>
+        </div>
+        <div class="admin-modal-field admin-modal-full">
+          <label class="admin-modal-label">Schedule (optional)</label>
+          <div class="admin-spot-schedule">
+            <div>
+              <span class="admin-spot-schedule-label">Show from</span>
+              <input class="admin-modal-input" id="editSpotStart" type="datetime-local" value="${toDatetimeLocal(s.startDate)}" aria-label="Show from">
+              <div class="admin-spot-field-error" data-spot-field-error="editSpotStart" hidden></div>
+            </div>
+            <div>
+              <span class="admin-spot-schedule-label">Show until</span>
+              <input class="admin-modal-input" id="editSpotEnd" type="datetime-local" value="${toDatetimeLocal(s.endDate)}" aria-label="Show until">
+              <div class="admin-spot-field-error" data-spot-field-error="editSpotEnd" hidden></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Badge text</label>
-        <input class="admin-modal-input" id="editSpotBadgeText" maxlength="40" value="${esc(s.badgeText || '')}">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Badge color</label>
-        <input class="admin-modal-input" id="editSpotBadgeColor" type="color" value="${esc(s.badgeColor || '#C0392B')}" style="height:38px;padding:2px 6px">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">CTA button text</label>
-        <input class="admin-modal-input" id="editSpotCtaText" maxlength="60" value="${esc(s.ctaText || '')}">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">CTA button URL</label>
-        <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(s.ctaUrl || '')}">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Type</label>
-        <select class="admin-modal-select" id="editSpotType">
-          <option value="ad" ${s.type === 'ad' || !s.type ? 'selected' : ''}>📣 Ad</option>
-          <option value="event" ${s.type === 'event' ? 'selected' : ''}>🎉 Event</option>
-          <option value="news" ${s.type === 'news' ? 'selected' : ''}>📰 News</option>
-          <option value="promo" ${s.type === 'promo' ? 'selected' : ''}>🔥 Promo</option>
-        </select>
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Display order</label>
-        <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" value="${s.order ?? 0}">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Show from</label>
-        <input class="admin-modal-input" id="editSpotStart" type="datetime-local" value="${toDatetimeLocal(s.startDate)}">
-      </div>
-      <div class="admin-modal-field">
-        <label class="admin-modal-label">Show until</label>
-        <input class="admin-modal-input" id="editSpotEnd" type="datetime-local" value="${toDatetimeLocal(s.endDate)}">
-      </div>
+      <aside class="admin-spot-preview-pane admin-spot-preview-pane--modal">
+        <div class="admin-spot-preview-label">Homepage preview</div>
+        <div id="editSpotLivePreview">${spotlightPreviewHtml(s)}</div>
+      </aside>
     </div>`;
 }
 
 async function openEditSpotlight(id: string): Promise<void> {
   let s: AdminSpotlight;
   try { s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`); }
-  catch (err) { notify(err.message, 'error'); return; }
+  catch (err: any) { notify(err.message, 'error'); return; }
 
-  openModal(`✏️ Edit Spotlight`, spotlightFormHtml(s), async () => {
-    const urlInput = document.getElementById('editSpotImageUrl') as HTMLInputElement | null;
-    const fileData = urlInput?.getAttribute('data-file-data') || '';
-    const imageUrl = fileData || urlInput?.value.trim() || s.imageUrl || '';
-    const payload = {
-      title:      (document.getElementById('editSpotTitle') as HTMLInputElement)?.value.trim(),
-      subtitle:   (document.getElementById('editSpotSubtitle') as HTMLInputElement)?.value.trim(),
-      body:       (document.getElementById('editSpotBody') as HTMLTextAreaElement)?.value.trim(),
-      imageUrl,
-      badgeText:  (document.getElementById('editSpotBadgeText') as HTMLInputElement)?.value.trim(),
-      badgeColor: (document.getElementById('editSpotBadgeColor') as HTMLInputElement)?.value.trim(),
-      ctaText:    (document.getElementById('editSpotCtaText') as HTMLInputElement)?.value.trim(),
-      ctaUrl:     (document.getElementById('editSpotCtaUrl') as HTMLInputElement)?.value.trim(),
-      type:       (document.getElementById('editSpotType') as HTMLSelectElement)?.value,
-      order:      parseInt((document.getElementById('editSpotOrder') as HTMLInputElement)?.value || '0', 10),
-      startDate:  (document.getElementById('editSpotStart') as HTMLInputElement)?.value || null,
-      endDate:    (document.getElementById('editSpotEnd') as HTMLInputElement)?.value || null,
-    };
-    if (!payload.title) throw new Error('Title is required.');
+  openModal(`Edit homepage banner`, spotlightFormHtml(s), async () => {
+    const payload = readSpotlightEditValues(s.imageUrl || '');
+    const firstError = validateSpotlightFields(payload, {
+      title: 'editSpotTitle',
+      image: 'editSpotImageUrl',
+      ctaText: 'editSpotCtaText',
+      ctaUrl: 'editSpotCtaUrl',
+      order: 'editSpotOrder',
+      start: 'editSpotStart',
+      end: 'editSpotEnd',
+      badgeText: 'editSpotBadgeText',
+    });
+    if (firstError) {
+      document.querySelector('.is-invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      throw new Error(firstError);
+    }
     await api(`/api/admin/spotlights/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
     showSpotlights();
   });
 
-  // Wire file picker after modal renders
   requestAnimationFrame(() => {
-    document.getElementById('editSpotImageFile')?.addEventListener('change', async function(this: HTMLInputElement) {
+    const modal = document.querySelector('#adminModalOverlay .admin-modal');
+    modal?.classList.add('admin-modal-wide');
+
+    const syncPreview = (): void => {
+      const urlInput = document.getElementById('editSpotImageUrl') as HTMLInputElement | null;
+      const fileData = urlInput?.getAttribute('data-file-data') || '';
+      const host = document.getElementById('editSpotLivePreview');
+      if (!host) return;
+      host.innerHTML = spotlightPreviewHtml({
+        title: (document.getElementById('editSpotTitle') as HTMLInputElement)?.value.trim(),
+        subtitle: (document.getElementById('editSpotSubtitle') as HTMLInputElement)?.value.trim(),
+        body: (document.getElementById('editSpotBody') as HTMLTextAreaElement)?.value.trim(),
+        badgeText: (document.getElementById('editSpotBadgeText') as HTMLInputElement)?.value.trim(),
+        badgeColor: (document.getElementById('editSpotBadgeColor') as HTMLInputElement)?.value.trim() || '#E63946',
+        ctaText: (document.getElementById('editSpotCtaText') as HTMLInputElement)?.value.trim(),
+        ctaUrl: (document.getElementById('editSpotCtaUrl') as HTMLInputElement)?.value.trim(),
+        imageUrl: fileData || urlInput?.value.trim() || s.imageUrl || '',
+        type: (document.getElementById('editSpotType') as HTMLInputElement)?.value || 'ad',
+      });
+    };
+
+    document.querySelectorAll('#editSpotTitle,#editSpotSubtitle,#editSpotBody,#editSpotBadgeText,#editSpotBadgeColor,#editSpotCtaText,#editSpotCtaUrl,#editSpotOrder,#editSpotStart,#editSpotEnd,#editSpotImageUrl').forEach(el => {
+      el.addEventListener('input', () => {
+        syncPreview();
+        el.classList.remove('is-invalid');
+        const err = document.querySelector(`[data-spot-field-error="${(el as HTMLElement).id}"]`) as HTMLElement | null;
+        if (err) { err.hidden = true; err.textContent = ''; }
+      });
+      el.addEventListener('change', syncPreview);
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('#editSpotTypes .admin-spot-type').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#editSpotTypes .admin-spot-type').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const hidden = document.getElementById('editSpotType') as HTMLInputElement | null;
+        if (hidden) hidden.value = btn.dataset.type || 'ad';
+        syncPreview();
+      });
+    });
+
+    document.getElementById('editSpotImageFile')?.addEventListener('change', async function (this: HTMLInputElement) {
       const file = this.files?.[0];
       if (!file) return;
       const lbl = document.getElementById('editSpotFileLbl');
-      if (lbl) lbl.textContent = `📁 ${file.name}`;
+      if (lbl) {
+        const input = lbl.querySelector('input');
+        lbl.textContent = `📁 ${file.name}`;
+        if (input) lbl.appendChild(input);
+      }
       try {
         const dataUrl = await readFileAsDataUrl(file);
         const urlInput2 = document.getElementById('editSpotImageUrl') as HTMLInputElement | null;
         if (urlInput2) { urlInput2.value = ''; urlInput2.setAttribute('data-file-data', dataUrl); }
         const wrap = document.getElementById('editSpotImgPreviewWrap') as HTMLDivElement | null;
-        const img  = document.getElementById('editSpotImgPreview') as HTMLImageElement | null;
-        if (wrap && img) { img.src = dataUrl; wrap.style.display = 'block'; }
-      } catch (_) {}
+        const img = document.getElementById('editSpotImgPreview') as HTMLImageElement | null;
+        if (wrap && img) { img.src = dataUrl; wrap.hidden = false; }
+        syncPreview();
+      } catch (_) { /* ignore */ }
     });
-    document.getElementById('editSpotImageUrl')?.addEventListener('blur', function(this: HTMLInputElement) {
+
+    document.getElementById('editSpotImageUrl')?.addEventListener('blur', function (this: HTMLInputElement) {
       const wrap = document.getElementById('editSpotImgPreviewWrap') as HTMLDivElement | null;
-      const img  = document.getElementById('editSpotImgPreview') as HTMLImageElement | null;
-      if (wrap && img && this.value.trim()) { img.src = this.value.trim(); wrap.style.display = 'block'; }
+      const img = document.getElementById('editSpotImgPreview') as HTMLImageElement | null;
+      if (wrap && img && this.value.trim()) {
+        this.removeAttribute('data-file-data');
+        img.src = this.value.trim();
+        wrap.hidden = false;
+        syncPreview();
+      }
     });
   });
 }
@@ -2926,7 +3344,7 @@ async function showAnnouncements(): Promise<void> {
       </div>
       <div class="admin-ann-form">
         <div class="admin-ann-form-title">📢 Create New Announcement</div>
-        <div id="annFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#C0392B;margin-bottom:12px"></div>
+        <div id="annFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#E63946;margin-bottom:12px"></div>
         <div class="admin-ann-grid">
           <div class="admin-ann-field admin-ann-full">
             <label class="admin-ann-label">Title</label>
@@ -2950,7 +3368,7 @@ async function showAnnouncements(): Promise<void> {
           </div>
         </div>
         <div class="admin-ann-actions">
-          <button class="admin-btn" id="annSubmit" style="background:#C0392B;color:#fff;border-color:#C0392B;padding:9px 22px;font-size:13px">Publish Announcement</button>
+          <button class="admin-btn" id="annSubmit" style="background:#E63946;color:#fff;border-color:#E63946;padding:9px 22px;font-size:13px">Publish Announcement</button>
         </div>
       </div>
 
@@ -3094,7 +3512,7 @@ async function openViewListing(id: string): Promise<void> {
     </div>
 
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#C0392B;color:#fff;border-color:#C0392B" data-edit-listing="${esc(l.id)}">✏️ Edit Listing</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-listing="${esc(l.id)}">✏️ Edit Listing</button>
       <button class="admin-btn admin-btn-danger" data-del-listing="${esc(l.id)}">🗑 Delete</button>
     </div>
   `, null);
@@ -3140,7 +3558,7 @@ async function openViewDiscussion(id: string): Promise<void> {
     </div>
 
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#C0392B;color:#fff;border-color:#C0392B" data-edit-discussion="${esc(d.id)}">✏️ Edit Discussion</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-discussion="${esc(d.id)}">✏️ Edit Discussion</button>
       <button class="admin-btn admin-btn-danger" data-del-discussion="${esc(d.id)}">🗑 Delete</button>
     </div>
   `, null);
@@ -3298,7 +3716,7 @@ function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>
       ${bodyHtml}
       ${hasActions ? `<div class="admin-modal-actions">
         <button class="admin-btn admin-btn-ghost" id="adminModalCancel">Cancel</button>
-        <button class="admin-btn" id="adminModalSave" style="background:#C0392B;color:#fff;border-color:#C0392B;padding:8px 20px;font-size:13px">Save Changes</button>
+        <button class="admin-btn" id="adminModalSave" style="background:#E63946;color:#fff;border-color:#E63946;padding:8px 20px;font-size:13px">Save Changes</button>
       </div>` : `<div class="admin-modal-actions">
         <button class="admin-btn admin-btn-ghost" id="adminModalCancel">Close</button>
       </div>`}
@@ -3656,10 +4074,33 @@ document.addEventListener('click', async e => {
   const toggleSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-toggle-spot]');
   if (toggleSpot) {
     try {
-      await api(`/api/admin/spotlights/${encodeURIComponent(toggleSpot.dataset.toggleSpot)}/toggle`, { method: 'PUT' });
+      await api(`/api/admin/spotlights/${encodeURIComponent(toggleSpot.dataset.toggleSpot!)}/toggle`, { method: 'PUT' });
       showSpotlights();
-      notify('Spotlight status updated.', 'success');
-    } catch (err) { notify(err.message, 'error'); }
+      notify('Spotlight updated — Live means it shows on the homepage.', 'success');
+    } catch (err: any) { notify(err.message, 'error'); }
+    return;
+  }
+
+  // Reorder spotlight in carousel
+  const moveSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-move-spot]');
+  if (moveSpot) {
+    const id = moveSpot.dataset.moveSpot!;
+    const dir = Number(moveSpot.dataset.moveDir || 0);
+    try {
+      const data = await api('/api/admin/spotlights');
+      const items: AdminSpotlight[] = [...(data.spotlights || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const idx = items.findIndex(s => s.id === id);
+      const swap = idx + dir;
+      if (idx < 0 || swap < 0 || swap >= items.length) return;
+      const a = items[idx];
+      const b = items[swap];
+      const orderA = a.order ?? idx;
+      const orderB = b.order ?? swap;
+      await api(`/api/admin/spotlights/${encodeURIComponent(a.id)}`, { method: 'PUT', body: JSON.stringify({ order: orderB }) });
+      await api(`/api/admin/spotlights/${encodeURIComponent(b.id)}`, { method: 'PUT', body: JSON.stringify({ order: orderA }) });
+      showSpotlights();
+      notify('Carousel order updated.', 'success');
+    } catch (err: any) { notify(err.message, 'error'); }
     return;
   }
 

@@ -1,0 +1,271 @@
+/* Shared navy site-header (home + inner pages via body.has-dash-nav).
+   Do NOT put homepage two-column .page layout here. */
+
+body.is-home > .ticker-wrap,
+body.has-dash-nav > .ticker-wrap {
+  display: none !important;
+}
+
+body.is-home nav.site-header,
+body.has-dash-nav nav.site-header {
+  height: 54px;
+  padding: 0 20px;
+  gap: 14px;
+  background: var(--navy);
+  border-bottom: 2px solid var(--red);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  flex-wrap: nowrap;
+}
+
+body.is-home .nav-logo svg,
+body.has-dash-nav .nav-logo svg {
+  display: none;
+}
+
+body.is-home .site-header .nav-wordmark,
+body.is-home .site-header .logo-text,
+body.has-dash-nav .site-header .nav-wordmark,
+body.has-dash-nav .site-header .logo-text {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+}
+
+body.is-home .site-header .nav-wordmark span,
+body.is-home .site-header .logo-text span,
+body.has-dash-nav .site-header .nav-wordmark span,
+body.has-dash-nav .site-header .logo-text span {
+  color: var(--red);
+}
+
+body.is-home .logo-wrap,
+body.has-dash-nav .logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+body.is-home .logo-np,
+body.has-dash-nav .logo-np {
+  font-family: 'Tiro Devanagari Nepali', serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.5px;
+}
+
+body.is-home .site-header .nav-links.home-mini-links,
+body.has-dash-nav .site-header .nav-links.home-mini-links {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 2px;
+  max-width: none;
+}
+
+body.is-home .site-header .nav-links.home-mini-links a,
+body.has-dash-nav .site-header .nav-links.home-mini-links a {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+  padding: 6px 10px;
+  border-radius: 20px;
+}
+
+body.is-home .site-header .nav-links.home-mini-links a:hover,
+body.is-home .site-header .nav-links.home-mini-links a.active,
+body.has-dash-nav .site-header .nav-links.home-mini-links a:hover,
+body.has-dash-nav .site-header .nav-links.home-mini-links a.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+body.is-home .site-header .nav-links.home-mini-links a.pg-link,
+body.has-dash-nav .site-header .nav-links.home-mini-links a.pg-link {
+  background: var(--red);
+  color: #fff;
+}
+
+body.is-home .site-header .nav-search-btn,
+body.has-dash-nav .site-header .nav-search-btn {
+  display: none;
+}
+
+body.is-home .mobile-drawer,
+body.has-dash-nav .mobile-drawer {
+  top: 54px;
+}
+
+body.is-home .hamburger span,
+body.has-dash-nav .hamburger span {
+  background: #fff;
+}
+
+body.is-home .hdr-search,
+body.has-dash-nav .hdr-search {
+  flex: 1;
+  max-width: 340px;
+  min-width: 140px;
+  position: relative;
+}
+
+body.is-home .site-header .nav-search.hdr-search,
+body.has-dash-nav .site-header .nav-search.hdr-search {
+  flex: 1;
+  max-width: 340px;
+  margin-left: 0;
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 0;
+}
+
+body.is-home .hdr-search input,
+body.is-home .hdr-search .nav-search-input,
+body.has-dash-nav .hdr-search input,
+body.has-dash-nav .hdr-search .nav-search-input {
+  width: 100%;
+  padding: 7px 14px 7px 36px;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+body.is-home .hdr-search input::placeholder,
+body.is-home .hdr-search .nav-search-input::placeholder,
+body.has-dash-nav .hdr-search input::placeholder,
+body.has-dash-nav .hdr-search .nav-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+body.is-home .hdr-search .si,
+body.has-dash-nav .hdr-search .si {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+body.is-home .hdr-right,
+body.has-dash-nav .hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+body.is-home .site-header .nav-ctas,
+body.has-dash-nav .site-header .nav-ctas {
+  margin-left: 0;
+}
+
+body.is-home .hbtn,
+body.has-dash-nav .hbtn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+body.is-home .hbtn.ghost,
+body.has-dash-nav .hbtn.ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.is-home .hbtn.ghost:hover,
+body.has-dash-nav .hbtn.ghost:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+body.is-home .hbtn.cta,
+body.has-dash-nav .hbtn.cta {
+  background: var(--red);
+  color: #fff;
+}
+
+body.is-home .hbtn.cta:hover,
+body.has-dash-nav .hbtn.cta:hover {
+  background: var(--red-dark);
+}
+
+body.is-home .hdr-date,
+body.has-dash-nav .hdr-date {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  line-height: 1.4;
+  text-align: right;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.is-home .site-header .user-btn,
+body.has-dash-nav .site-header .user-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+body.is-home .site-header .user-name,
+body.has-dash-nav .site-header .user-name {
+  color: #fff;
+}
+
+@media (max-width: 1100px) {
+  body.is-home .site-header .nav-links.home-mini-links,
+  body.has-dash-nav .site-header .nav-links.home-mini-links {
+    display: none;
+  }
+  body.is-home .hamburger,
+  body.has-dash-nav .hamburger {
+    display: flex;
+  }
+}
+
+@media (max-width: 980px) {
+  body.is-home .logo-np,
+  body.has-dash-nav .logo-np,
+  body.is-home .hdr-date,
+  body.has-dash-nav .hdr-date {
+    display: none;
+  }
+  body.is-home .hdr-search,
+  body.has-dash-nav .hdr-search {
+    max-width: none;
+  }
+}
+
+@media (max-width: 720px) {
+  body.is-home .site-header .hdr-search,
+  body.has-dash-nav .site-header .hdr-search {
+    display: none;
+  }
+  body.is-home .nav-ctas .hbtn.ghost,
+  body.has-dash-nav .nav-ctas .hbtn.ghost {
+    display: none;
+  }
+}

@@ -455,11 +455,51 @@ document.addEventListener('DOMContentLoaded', function () {
         const mainInput = document.getElementById('searchInput') as HTMLInputElement | null;
         if (mainInput) mainInput.value = query;
         doSearch();
-      } else {
-        window.location.href = `../../index.html?search=${encodeURIComponent(query)}`;
+        return;
       }
+      // Prefer in-page listing search when already on a browse page
+      const pageSearch = document.getElementById('searchInput') as HTMLInputElement | null;
+      if (pageSearch && document.getElementById('listingsFeed')) {
+        pageSearch.value = query;
+        pageSearch.dispatchEvent(new Event('input', { bubbles: true }));
+        hydrateDynamicListings(inferPageCategory(), { page: 1, append: false });
+        pageSearch.focus();
+        return;
+      }
+      const logo = document.querySelector('.nav-logo') as HTMLAnchorElement | null;
+      const home = new URL(logo?.getAttribute('href') || 'index.html', window.location.href);
+      const jobsUrl = new URL('pages/jobs/jobs.html', home);
+      jobsUrl.searchParams.set('q', query);
+      window.location.href = jobsUrl.href;
     });
   });
+
+  // Home dashboard: click/touch dropdowns (hover alone fails on mobile)
+  document.querySelectorAll('.right-panel .dropdown').forEach(dd => {
+    const trigger = dd.querySelector('.pill');
+    if (!trigger) return;
+    trigger.addEventListener('click', (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const open = dd.classList.contains('open');
+      document.querySelectorAll('.right-panel .dropdown.open').forEach(el => el.classList.remove('open'));
+      if (!open) dd.classList.add('open');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.right-panel .dropdown.open').forEach(el => el.classList.remove('open'));
+  });
+
+  // Live header date on homepage
+  const hdrDate = document.getElementById('hdrDate');
+  if (hdrDate) {
+    const now = new Date();
+    const western = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', weekday: 'long' });
+    hdrDate.innerHTML = `📅 ${western}`;
+  }
+
+  initHomeInlineFeed();
+  initHomeNews();
 
   // ── Geolocation ──
   const changeLocBtn = document.getElementById('changeLocation');
@@ -495,8 +535,8 @@ document.addEventListener('DOMContentLoaded', function () {
   bindBrowseListingActions();
   guardPostingPage();
 
-  // ── Weather ──
-  loadWeather();
+  // ── Weather + live FX info bar ──
+  initHomeInfoBar();
 
   // ── Announcement banner ──
   checkSiteAnnouncement();
@@ -582,41 +622,172 @@ function updateWeatherWidget({ icon, temp, condition, city, humidity, wind, high
   if (header) header.textContent = '🌤 ' + city.split(',')[0].trim() + ' Weather';
 }
 
+const WEATHER_CACHE_KEY = 'biscoonWeatherCache';
+
+function cacheWeatherSnapshot(params: WeatherWidgetParams): void {
+  try {
+    sessionStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ ...params, at: Date.now() }));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function restoreCachedWeather(): boolean {
+  try {
+    const raw = sessionStorage.getItem(WEATHER_CACHE_KEY);
+    if (!raw) return false;
+    const cached = JSON.parse(raw) as WeatherWidgetParams & { at?: number };
+    if (!cached?.temp || !cached?.condition) return false;
+    if (cached.at && Date.now() - cached.at > 3 * 60 * 60 * 1000) return false;
+    updateWeatherWidget(cached);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function showWeatherUnavailable(): void {
+  if (restoreCachedWeather()) return;
+  const icon = document.getElementById('weatherIcon');
+  const temp = document.getElementById('weatherTemp');
+  const cond = document.getElementById('weatherCondition');
+  if (icon) icon.textContent = '⛅';
+  if (temp) {
+    temp.textContent = '—';
+    temp.removeAttribute('style');
+  }
+  if (cond) cond.textContent = 'Unavailable · tap location to retry';
+}
+
 async function fetchWeatherForCoords(lat: number, lon: number, cityLabel: string): Promise<void> {
-  const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', String(lat));
-  url.searchParams.set('longitude', String(lon));
-  url.searchParams.set('current', 'temperature_2m,weathercode,windspeed_10m,winddirection_10m,relativehumidity_2m');
-  url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min');
-  url.searchParams.set('temperature_unit', 'fahrenheit');
-  url.searchParams.set('windspeed_unit', 'mph');
-  url.searchParams.set('timezone', 'auto');
-  url.searchParams.set('forecast_days', '1');
+  const url = new URL(`${getApiBase()}/api/weather`);
+  url.searchParams.set('lat', String(lat));
+  url.searchParams.set('lon', String(lon));
+  url.searchParams.set('city', cityLabel);
 
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error('Weather API error');
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Weather API error');
+  const w = data.weather || {};
 
-  const cur = data.current;
-  const daily = data.daily;
-  const code = cur.weathercode;
-  const meta = WMO_CODES[code] || { label: 'Unknown', emoji: '🌡️' };
-  const temp = Math.round(cur.temperature_2m);
-  const high = Math.round(daily.temperature_2m_max[0]);
-  const low  = Math.round(daily.temperature_2m_min[0]);
-  const wind = Math.round(cur.windspeed_10m);
-  const dir  = windDegreesToCardinal(cur.winddirection_10m);
+  const snapshot: WeatherWidgetParams = {
+    icon: String(w.icon || '⛅'),
+    temp: String(w.temp || '—'),
+    condition: String(w.condition || 'Unknown'),
+    city: String(w.city || cityLabel),
+    humidity: String(w.humidity || '—'),
+    wind: String(w.wind || '—'),
+    high: String(w.high || '—'),
+    low: String(w.low || '—'),
+  };
+  updateWeatherWidget(snapshot);
+  cacheWeatherSnapshot(snapshot);
+}
 
-  updateWeatherWidget({
-    icon:      meta.emoji,
-    temp:      temp + '°F',
-    condition: meta.label,
-    city:      cityLabel,
-    humidity:  cur.relativehumidity_2m + '%',
-    wind:      wind + ' mph ' + dir,
-    high:      high + '°',
-    low:       low + '°',
+const KTM_COORDS = { lat: 27.7172, lon: 85.3240, city: 'Kathmandu' };
+
+async function loadKathmanduWeather(): Promise<void> {
+  const icon = document.getElementById('ktmWeatherIcon');
+  const temp = document.getElementById('ktmWeatherTemp');
+  const cond = document.getElementById('ktmWeatherCondition');
+  if (!icon && !temp && !cond) return;
+  try {
+    const url = new URL(`${getApiBase()}/api/weather`);
+    url.searchParams.set('lat', String(KTM_COORDS.lat));
+    url.searchParams.set('lon', String(KTM_COORDS.lon));
+    url.searchParams.set('city', KTM_COORDS.city);
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Weather unavailable');
+    const w = data.weather || {};
+    if (icon) icon.textContent = String(w.icon || '🌦');
+    if (temp) temp.textContent = String(w.temp || '—');
+    if (cond) cond.textContent = String(w.condition || '—');
+  } catch {
+    if (temp) temp.textContent = '—';
+    if (cond) cond.textContent = 'Unavailable';
+  }
+}
+
+const FOREX_PREV_KEY = 'biscoonForexPrev';
+const INFO_BAR_FX = ['USD', 'GBP', 'AUD', 'CAD', 'EUR', 'QAR'] as const;
+
+function applyInfoBarForex(rates: Array<{ sym: string; rate: number | null }>, updatedAt?: number | string): void {
+  let prev: Record<string, number> = {};
+  try {
+    prev = JSON.parse(localStorage.getItem(FOREX_PREV_KEY) || '{}') || {};
+  } catch {
+    prev = {};
+  }
+  const next: Record<string, number> = { ...prev };
+
+  INFO_BAR_FX.forEach(sym => {
+    const row = document.querySelector(`[data-fx="${sym}"]`);
+    if (!row) return;
+    const rateEl = row.querySelector('[data-fx-rate]') as HTMLElement | null;
+    const chgEl = row.querySelector('[data-fx-chg]') as HTMLElement | null;
+    const hit = rates.find(r => r.sym === sym);
+    if (!hit || hit.rate == null || !rateEl) return;
+    const rate = Number(hit.rate);
+    rateEl.textContent = rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    next[sym] = rate;
+    if (!chgEl) return;
+    const prior = Number(prev[sym]);
+    if (!prior || !Number.isFinite(prior) || prior === rate) {
+      chgEl.hidden = true;
+      chgEl.textContent = '';
+      chgEl.classList.remove('ib-up', 'ib-dn');
+      return;
+    }
+    const pct = ((rate - prior) / prior) * 100;
+    const up = pct >= 0;
+    chgEl.hidden = false;
+    chgEl.classList.toggle('ib-up', up);
+    chgEl.classList.toggle('ib-dn', !up);
+    chgEl.textContent = `${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(2)}%`;
   });
+
+  try {
+    localStorage.setItem(FOREX_PREV_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+
+  const stamp = document.getElementById('fxUpdatedAt');
+  if (stamp && updatedAt) {
+    const d = new Date(typeof updatedAt === 'number' ? updatedAt : updatedAt);
+    if (!Number.isNaN(d.getTime())) {
+      stamp.textContent = `Live · updated ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+    }
+  }
+}
+
+async function loadInfoBarForex(): Promise<void> {
+  if (!document.querySelector('[data-fx]')) return;
+  try {
+    const res = await fetch(`${getApiBase()}/api/market`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data.forex)) {
+      applyInfoBarForex(data.forex, data.updatedAt);
+    }
+  } catch {
+    // keep last-rendered values
+  }
+}
+
+async function initHomeInfoBar(): Promise<void> {
+  if (!document.body.classList.contains('is-home')) return;
+  await Promise.all([
+    loadWeather(),
+    loadKathmanduWeather(),
+    loadInfoBarForex(),
+  ]);
+  setInterval(() => {
+    void loadWeather();
+    void loadKathmanduWeather();
+    void loadInfoBarForex();
+  }, 60_000);
 }
 
 const WEATHER_DEFAULT: WeatherCoords = { lat: 42.3601, lon: -71.0589, city: 'Boston, Massachusetts' };
@@ -648,8 +819,7 @@ async function detectLocationAndWeather(): Promise<void> {
   try {
     await fetchWeatherForCoords(coords.lat, coords.lon, coords.city);
   } catch {
-    const cond = document.getElementById('weatherCondition');
-    if (cond) cond.textContent = 'Unavailable';
+    showWeatherUnavailable();
   }
 }
 
@@ -708,17 +878,19 @@ async function initHeroSpotlight(): Promise<void> {
 
     const buildSlide = (s: HeroSpotlight): string => {
       const img = safeUrl(s.imageUrl);
-      const cta = s.ctaText && s.ctaUrl ? safeUrl(s.ctaUrl) : '';
+      const link = safeUrl(s.ctaUrl);
       const typeLabel = ({ ad: 'AD', event: 'EVENT', news: 'NEWS', promo: 'PROMO' })[s.type || 'ad'] || 'AD';
       const badgeHtml = s.badgeText
-        ? `<span class="spotlight-badge" style="background:${escapeHtml(s.badgeColor || '#C0392B')}">${escapeHtml(s.badgeText)}</span>`
+        ? `<span class="spotlight-badge" style="background:${escapeHtml(s.badgeColor || '#E63946')}">${escapeHtml(s.badgeText)}</span>`
         : `<span class="spotlight-badge spotlight-badge-type">${typeLabel}</span>`;
-      const ctaHtml = cta
-        ? `<a href="${escapeHtml(cta)}" class="spotlight-cta" rel="noopener">${escapeHtml(s.ctaText!)}</a>`
+      const ctaLabel = (s.ctaText || '').trim() || (link ? 'Learn more' : '');
+      const ctaHtml = link
+        ? `<span class="spotlight-cta">${escapeHtml(ctaLabel)}</span>`
         : '';
       // Use double quotes for style attribute; encode only " in URL to avoid breaking attribute boundary
       const cssImg = img.replace(/"/g, '%22');
-      return `<div class="swiper-slide spotlight-slide" style="background-image:url(&quot;${cssImg}&quot;)">
+      const slideClass = `swiper-slide spotlight-slide${link ? ' spotlight-slide--linked' : ''}`;
+      const inner = `
         <div class="spotlight-overlay"></div>
         <div class="spotlight-content">
           ${badgeHtml}
@@ -726,8 +898,12 @@ async function initHeroSpotlight(): Promise<void> {
           ${s.subtitle ? `<p class="spotlight-subtitle">${escapeHtml(s.subtitle)}</p>` : ''}
           ${s.body ? `<p class="spotlight-body">${escapeHtml(s.body)}</p>` : ''}
           ${ctaHtml}
-        </div>
-      </div>`;
+        </div>`;
+      // Whole banner is clickable when a link is set (image + text area)
+      if (link) {
+        return `<a class="${slideClass}" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" style="background-image:url(&quot;${cssImg}&quot;)" aria-label="${escapeHtml(s.title || 'Open spotlight')}">${inner}</a>`;
+      }
+      return `<div class="${slideClass}" style="background-image:url(&quot;${cssImg}&quot;)">${inner}</div>`;
     };
 
     const swiperDiv = document.createElement('div');
@@ -742,6 +918,18 @@ async function initHeroSpotlight(): Promise<void> {
       const pag = document.createElement('div');
       pag.className = 'swiper-pagination spotlight-pagination';
       swiperDiv.appendChild(pag);
+
+      const hitPrev = document.createElement('button');
+      hitPrev.type = 'button';
+      hitPrev.className = 'spotlight-edge spotlight-edge--prev';
+      hitPrev.setAttribute('aria-label', 'Previous spotlight');
+      swiperDiv.appendChild(hitPrev);
+
+      const hitNext = document.createElement('button');
+      hitNext.type = 'button';
+      hitNext.className = 'spotlight-edge spotlight-edge--next';
+      hitNext.setAttribute('aria-label', 'Next spotlight');
+      swiperDiv.appendChild(hitNext);
     }
 
     wrap.appendChild(swiperDiv);
@@ -751,13 +939,17 @@ async function initHeroSpotlight(): Promise<void> {
 
     const Swiper = (window as any).Swiper;
     if (!Swiper) return;
+    const multi = spotlights.length > 1;
     new Swiper('.spotlight-swiper', {
-      loop: spotlights.length > 1,
-      autoplay: spotlights.length > 1
-        ? { delay: 6000, disableOnInteraction: false, pauseOnMouseEnter: true }
+      loop: multi,
+      autoplay: multi
+        ? { delay: 10000, disableOnInteraction: false, pauseOnMouseEnter: true }
         : false,
       speed: 700,
-      pagination: spotlights.length > 1 ? { el: '.spotlight-pagination', clickable: true } : false,
+      pagination: multi ? { el: '.spotlight-pagination', clickable: true } : false,
+      navigation: multi
+        ? { nextEl: '.spotlight-edge--next', prevEl: '.spotlight-edge--prev' }
+        : false,
       keyboard: { enabled: true },
       a11y: { enabled: true },
     });
@@ -1733,6 +1925,70 @@ function updateListingsControls(controls: HTMLElement, session: BrowseSession): 
   }
 }
 
+/** Parent browse hubs: filename → API category (subcategory comes from chips/URL). */
+const BROWSE_HUB_CATEGORY: Record<string, string> = {
+  jobs: 'jobs',
+  housing: 'housing',
+  kinbech: 'marketplace',
+  services: 'marketplace',
+  events: 'community',
+};
+
+function isBrowseHubPage(slug = inferPageCategory()): boolean {
+  return Boolean(BROWSE_HUB_CATEGORY[slug]);
+}
+
+function getActiveChipElement(): HTMLElement | null {
+  return document.querySelector('.filter-chips .chip.active[data-filter]') as HTMLElement | null;
+}
+
+function syncSubcategoryUrl(subcategory: string): void {
+  if (!isBrowseHubPage()) return;
+  const url = new URL(window.location.href);
+  if (!subcategory || subcategory === 'all') url.searchParams.delete('subcategory');
+  else url.searchParams.set('subcategory', subcategory);
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+}
+
+function ensureChipForSubcategory(subcategory: string): void {
+  const group = document.querySelector('.filter-chips') as HTMLElement | null;
+  if (!group || !subcategory || subcategory === 'all') return;
+  let chip = group.querySelector(`.chip[data-filter="${CSS.escape(subcategory)}"]`) as HTMLButtonElement | null;
+  if (!chip) {
+    chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.dataset.filter = subcategory;
+    chip.setAttribute('aria-pressed', 'false');
+    chip.textContent = subcategory.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    group.appendChild(chip);
+  }
+  group.querySelectorAll('.chip').forEach(c => {
+    c.classList.remove('active');
+    c.setAttribute('aria-pressed', 'false');
+  });
+  chip.classList.add('active');
+  chip.setAttribute('aria-pressed', 'true');
+}
+
+function syncChipsFromUrl(): void {
+  if (!isBrowseHubPage()) return;
+  const sub = new URLSearchParams(window.location.search).get('subcategory') || 'all';
+  ensureChipForSubcategory(sub === 'all' ? '' : sub);
+  if (!sub || sub === 'all') {
+    const group = document.querySelector('.filter-chips');
+    const allChip = group?.querySelector('.chip[data-filter="all"]') as HTMLElement | null;
+    group?.querySelectorAll('.chip').forEach(c => {
+      c.classList.remove('active');
+      c.setAttribute('aria-pressed', 'false');
+    });
+    if (allChip) {
+      allChip.classList.add('active');
+      allChip.setAttribute('aria-pressed', 'true');
+    }
+  }
+}
+
 function resolveBrowseQuery(category = inferPageCategory()): { category: string; subcategory: string; search: string } {
   const params = new URLSearchParams(window.location.search);
   const requestedScope = getListingScopeForCategory(params.get('category') || '');
@@ -1741,27 +1997,56 @@ function resolveBrowseQuery(category = inferPageCategory()): { category: string;
   const homeScope = activeHomeFilter
     ? getListingScopeForCategory(getFilterFromButton(activeHomeFilter))
     : { category: '', subcategory: '' };
+  const activeChip = getActiveChipElement();
   const chip = getActiveChipFilter();
-  const requestedSearch = params.get('search') || '';
+  const chipIsSearch = activeChip?.dataset.filterMode === 'search';
+  const requestedSearch = params.get('search') || params.get('q') || '';
+  const urlSub = params.get('subcategory') || '';
+  const inputEl = document.getElementById('searchInput') as HTMLInputElement | null;
+  const typedSearch = (inputEl?.value || '').trim();
+  const effectiveSearch = typedSearch || requestedSearch;
 
-  const selectedCategory = requestedScope.category || homeScope.category || pageScope.category;
-  const baseSubcategory = params.get('subcategory')
-    || pageScope.subcategory
-    || homeScope.subcategory
-    || requestedScope.subcategory
-    || '';
+  // Homepage / explicit category param
+  if (homeScope.category || (requestedScope.category && !isBrowseHubPage(category))) {
+    const selectedCategory = requestedScope.category || homeScope.category || pageScope.category;
+    const selectedSubcategory = urlSub || homeScope.subcategory || requestedScope.subcategory || pageScope.subcategory || '';
+    return { category: selectedCategory, subcategory: selectedSubcategory, search: effectiveSearch };
+  }
 
-  let selectedSubcategory = baseSubcategory;
-  let search = requestedSearch;
+  // Parent hub pages (jobs, housing, kinbech, services, events)
+  if (isBrowseHubPage(category)) {
+    const hubCategory = BROWSE_HUB_CATEGORY[category];
+    let search = effectiveSearch;
+    let selectedSubcategory = '';
+    let selectedCategory = hubCategory;
 
+    if (chip && chipIsSearch) {
+      selectedSubcategory = urlSub;
+      search = [effectiveSearch, chip].filter(Boolean).join(' ').trim();
+    } else if (chip) {
+      const scope = getListingScopeForCategory(chip);
+      selectedCategory = scope.category || hubCategory;
+      selectedSubcategory = scope.subcategory || chip;
+    } else if (urlSub) {
+      const scope = getListingScopeForCategory(urlSub);
+      selectedCategory = scope.category || hubCategory;
+      selectedSubcategory = scope.subcategory || urlSub;
+    }
+
+    return { category: selectedCategory, subcategory: selectedSubcategory, search };
+  }
+
+  // Dedicated specialty pages (student, immigration, paying-guest, …)
+  const selectedCategory = requestedScope.category || pageScope.category;
+  let selectedSubcategory = urlSub || pageScope.subcategory || requestedScope.subcategory || '';
+  let search = effectiveSearch;
   if (chip) {
-    if (baseSubcategory && chip !== baseSubcategory) {
-      search = [requestedSearch, chip].filter(Boolean).join(' ').trim();
-    } else if (!baseSubcategory) {
+    if (selectedSubcategory && chip !== selectedSubcategory) {
+      search = [effectiveSearch, chip].filter(Boolean).join(' ').trim();
+    } else if (!selectedSubcategory) {
       selectedSubcategory = chip;
     }
   }
-
   return { category: selectedCategory, subcategory: selectedSubcategory, search };
 }
 
@@ -2470,6 +2755,277 @@ async function setFilter(button: HTMLElement | null, category: string): Promise<
   }
 }
 
+function readHomeFeedTarget(el: HTMLElement): {
+  category: string;
+  subcategory: string;
+  search: string;
+  title: string;
+  moreHref: string;
+} | null {
+  const node = el.closest('[data-feed-cat]') as HTMLElement | null;
+  if (!node) return null;
+  const rawCat = node.dataset.feedCat || '';
+  const rawSub = node.dataset.feedSub || '';
+  const scope = getListingScopeForCategory(rawSub || rawCat);
+  return {
+    category: scope.category || rawCat,
+    subcategory: scope.subcategory || (rawSub && rawSub !== rawCat ? rawSub : ''),
+    search: node.dataset.feedSearch || '',
+    title: node.dataset.feedTitle || node.textContent?.trim() || 'Listings',
+    moreHref: node.dataset.feedMore || (node as HTMLAnchorElement).href || '#',
+  };
+}
+
+async function showHomeInlineFeed(opts: {
+  category: string;
+  subcategory: string;
+  search: string;
+  title: string;
+  moreHref: string;
+}): Promise<void> {
+  const panel = document.getElementById('homeInlineFeed');
+  const body = document.getElementById('homeInlineFeedBody');
+  const titleEl = document.getElementById('homeInlineFeedTitle');
+  const more = document.getElementById('homeInlineFeedMore') as HTMLAnchorElement | null;
+  if (!panel || !body || !titleEl) return;
+
+  panel.hidden = false;
+  titleEl.textContent = opts.title;
+  if (more) more.href = opts.moreHref || '#';
+  body.innerHTML = listingSkeletons(4);
+
+  try {
+    const listings = await fetchListings(opts.category, opts.search, 12, opts.subcategory);
+    if (!listings.length) {
+      body.innerHTML = `
+        <div class="empty-state" style="padding:28px 16px">
+          <div class="icon">📭</div>
+          <h3>No ads yet</h3>
+          <p>Be the first to post in this section.</p>
+          <a class="btn-primary" href="${getPostListingPath(opts.subcategory || opts.category)}">+ Post Free Ad</a>
+        </div>`;
+    } else {
+      body.innerHTML = listings.map(listingToCard).join('');
+    }
+  } catch {
+    body.innerHTML = `<div class="empty-state" style="padding:28px 16px"><h3>Couldn’t load listings</h3><p>Try again in a moment.</p></div>`;
+  }
+
+  requestAnimationFrame(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+}
+
+type HomeNewsArticle = {
+  id?: string;
+  slug?: string;
+  title?: string;
+  summary?: string;
+  category?: string;
+  featured?: boolean;
+  imageUrl?: string;
+  sourceName?: string;
+  authorName?: string;
+  publishedAt?: string;
+  createdAt?: string;
+};
+
+const HOME_NEPAL_CATS = new Set(['nepal']);
+const HOME_DIASPORA_CATS = new Set(['usa', 'immigration', 'community', 'culture', 'business']);
+
+function newsArticleHref(article: HomeNewsArticle): string {
+  const slug = String(article.slug || '').trim();
+  return slug ? `pages/news/index.html?story=${encodeURIComponent(slug)}` : 'pages/news/index.html';
+}
+
+function homeNewsCategoryLabel(category = ''): string {
+  const value = String(category || 'news').trim().toLowerCase();
+  if (value === 'usa') return 'USA';
+  if (!value) return 'News';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function newsCategoryTone(category = '', index = 0): string {
+  const value = String(category || '').toLowerCase();
+  if (value === 'immigration' || value === 'culture') return 'purple';
+  if (value === 'community' || value === 'business') return 'teal';
+  return index % 3 === 1 ? 'teal' : index % 3 === 2 ? 'purple' : '';
+}
+
+function newsRelativeTime(value?: string): string {
+  if (!value) return '';
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '';
+  const diffMs = Date.now() - then;
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return days === 1 ? 'Yesterday' : `${days} days ago`;
+  return formatListingDate(value);
+}
+
+function newsThumb(article: HomeNewsArticle): string {
+  if (article.imageUrl) {
+    return `<img src="${escapeHtml(article.imageUrl)}" alt="" loading="lazy">`;
+  }
+  const icons: Record<string, string> = {
+    usa: '🇺🇸', immigration: '🛂', community: '🤝', culture: '🎭',
+    business: '💼', nepal: '🏔', news: '📰',
+  };
+  return icons[String(article.category || '').toLowerCase()] || '📰';
+}
+
+function renderHomeNewsItem(article: HomeNewsArticle, index: number): string {
+  const tone = newsCategoryTone(article.category, index);
+  const num = String(index + 1).padStart(2, '0');
+  const when = newsRelativeTime(article.publishedAt || article.createdAt);
+  return `
+    <a class="n-item" href="${newsArticleHref(article)}">
+      <div class="ni-num">${num}</div>
+      <div>
+        <div class="ni-cat${tone ? ` ${tone}` : ''}">${escapeHtml(homeNewsCategoryLabel(article.category))}</div>
+        <div class="ni-title">${escapeHtml(article.title || 'Untitled story')}</div>
+        <div class="ni-meta">${escapeHtml([when, article.sourceName || 'Biscoon Newsroom'].filter(Boolean).join(' · '))}</div>
+      </div>
+      <div class="ni-thumb">${newsThumb(article)}</div>
+    </a>`;
+}
+
+function renderHomeFeatured(article: HomeNewsArticle | null): string {
+  if (!article) {
+    return `<div class="home-news-empty">No featured stories yet. <a href="pages/news/index.html">Browse news →</a></div>`;
+  }
+  const when = newsRelativeTime(article.publishedAt || article.createdAt);
+  const media = article.imageUrl
+    ? `<img src="${escapeHtml(article.imageUrl)}" alt="">`
+    : 'B';
+  return `
+    <a class="feat-story" href="${newsArticleHref(article)}">
+      <div class="feat-img">${media}</div>
+      <div class="feat-cat">Top Story · ${escapeHtml(homeNewsCategoryLabel(article.category))}</div>
+      <div class="feat-title">${escapeHtml(article.title || 'Untitled story')}</div>
+      <div class="feat-meta">
+        <span>${escapeHtml(article.sourceName || article.authorName || 'Biscoon Newsroom')}</span>
+        ${when ? `<span>·</span><span>${escapeHtml(when)}</span>` : ''}
+        ${article.featured ? '<span class="feat-badge">Featured</span>' : ''}
+      </div>
+    </a>`;
+}
+
+function renderHomeNewsTicker(articles: HomeNewsArticle[]): string {
+  const items = articles.slice(0, 12);
+  if (!items.length) {
+    return `<span class="t-item">No headlines yet — check back soon &nbsp;<span class="t-sep">◆</span></span>`;
+  }
+  const html = items.map(article =>
+    `<span class="t-item"><a href="${newsArticleHref(article)}">${escapeHtml(article.title || 'Untitled')}</a> &nbsp;<span class="t-sep">◆</span></span>`
+  ).join('');
+  // Duplicate for seamless CSS loop
+  return html + html;
+}
+
+async function initHomeNews(): Promise<void> {
+  if (!document.body.classList.contains('is-home')) return;
+  const ticker = document.getElementById('homeNewsTicker');
+  const featured = document.getElementById('homeFeaturedStory');
+  const diasporaList = document.getElementById('homeDiasporaList');
+  const nepalList = document.getElementById('homeNepalList');
+  if (!ticker && !featured && !diasporaList && !nepalList) return;
+
+  try {
+    const response = await fetch(`${getApiBase()}/api/news?limit=24`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load news.');
+    const articles = (Array.isArray(data.news) ? data.news : []) as HomeNewsArticle[];
+
+    if (ticker) ticker.innerHTML = renderHomeNewsTicker(articles);
+
+    const featuredArticle =
+      articles.find(a => a.featured) ||
+      articles[0] ||
+      null;
+    if (featured) featured.innerHTML = renderHomeFeatured(featuredArticle);
+
+    const featuredId = featuredArticle?.id || featuredArticle?.slug;
+    const rest = articles.filter(a => (a.id || a.slug) !== featuredId);
+
+    const nepal = rest.filter(a => HOME_NEPAL_CATS.has(String(a.category || '').toLowerCase()));
+    let diaspora = rest.filter(a => HOME_DIASPORA_CATS.has(String(a.category || '').toLowerCase()));
+    if (!diaspora.length) {
+      diaspora = rest.filter(a => !HOME_NEPAL_CATS.has(String(a.category || '').toLowerCase()));
+    }
+
+    const diasporaBadge = document.getElementById('homeDiasporaBadge');
+    const nepalBadge = document.getElementById('homeNepalBadge');
+    if (diasporaBadge) diasporaBadge.textContent = diaspora.length ? `${Math.min(diaspora.length, 8)}` : '0';
+    if (nepalBadge) nepalBadge.textContent = nepal.length ? `${Math.min(nepal.length, 8)}` : '0';
+
+    if (diasporaList) {
+      diasporaList.innerHTML = diaspora.length
+        ? diaspora.slice(0, 4).map(renderHomeNewsItem).join('')
+        : `<div class="home-news-empty">No diaspora stories yet.</div>`;
+    }
+    if (nepalList) {
+      nepalList.innerHTML = nepal.length
+        ? nepal.slice(0, 5).map(renderHomeNewsItem).join('')
+        : `<div class="home-news-empty">No Nepal stories yet.</div>`;
+    }
+  } catch {
+    if (ticker) {
+      ticker.innerHTML = `<span class="t-item">Unable to load headlines &nbsp;<span class="t-sep">◆</span></span>`;
+    }
+    if (featured) {
+      featured.innerHTML = `<div class="home-news-empty">Couldn’t load news. <a href="pages/news/index.html">Open newsroom →</a></div>`;
+    }
+    if (diasporaList) diasporaList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
+    if (nepalList) nepalList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
+  }
+}
+
+function initHomeInlineFeed(): void {
+  const panel = document.getElementById('homeInlineFeed');
+  if (!panel || !document.body.classList.contains('is-home')) return;
+
+  document.getElementById('homeInlineFeedClose')?.addEventListener('click', () => {
+    panel.hidden = true;
+  });
+
+  const openFrom = (el: HTMLElement) => {
+    const opts = readHomeFeedTarget(el);
+    if (!opts) return;
+    void showHomeInlineFeed(opts);
+  };
+
+  document.querySelectorAll<HTMLElement>('.home-feed-trigger').forEach(hdr => {
+    const fire = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = hdr.closest('[data-feed-cat]') as HTMLElement | null;
+      if (card) openFrom(card);
+    };
+    hdr.addEventListener('click', fire);
+    hdr.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') fire(e);
+    });
+  });
+
+  document.querySelector('.right-panel')?.addEventListener('click', (e: Event) => {
+    const target = e.target as HTMLElement | null;
+    const hit = target?.closest('[data-feed-cat]') as HTMLElement | null;
+    if (!hit) return;
+    // Don't hijack post CTAs or external/dropdown menus
+    if (target?.closest('.ch-sub, .dd-menu, .dropdown')) return;
+    if (!hit.matches('.chip, .bz-item, .qcard, a.pill[data-feed-cat], .card[data-feed-cat]')) {
+      // allow header-triggered cards only via .home-feed-trigger
+      if (!target?.closest('.home-feed-trigger')) return;
+    }
+    if (hit.matches('a.pill') && hit.closest('.dropdown')) return;
+    e.preventDefault();
+    openFrom(hit);
+  });
+}
+
 function bindHomeFilterButtons(): void {
   document.querySelectorAll<HTMLElement>('.filter-bar .filter-btn[data-filter]').forEach(btn => {
     if (btn.dataset.filterBound === 'true') return;
@@ -2582,9 +3138,14 @@ function bindDynamicFilterChips(): void {
       this.classList.add('active');
       this.setAttribute('aria-pressed', 'true');
 
+      const filter = this.dataset.filter || 'all';
+      if (this.dataset.filterMode !== 'search') {
+        syncSubcategoryUrl(filter === 'all' ? '' : filter);
+      }
+
       const target = getDynamicListingsContainer();
       if (!target) {
-        filterListings(this.dataset.filter || '');
+        filterListings(filter);
         return;
       }
 
@@ -2693,12 +3254,27 @@ async function hydrateListingDetail(): Promise<void> {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Seed listing search from ?q= / ?search=
+  const urlQ = new URLSearchParams(window.location.search).get('q')
+    || new URLSearchParams(window.location.search).get('search');
+  const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+  if (urlQ && searchInput && !searchInput.value) searchInput.value = urlQ;
+  if (searchInput && document.getElementById('listingsFeed')) {
+    let timer: number | undefined;
+    searchInput.addEventListener('input', () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        hydrateDynamicListings(inferPageCategory(), { page: 1, append: false });
+      }, 280);
+    });
+  }
+
   bindHomeFilterButtons();
+  syncChipsFromUrl();
+  bindDynamicFilterChips();
   hydrateDynamicListings();
   hydrateListingDetail();
   hydrateDynamicStats();
-
-  bindDynamicFilterChips();
 });
 
 // ── Heatmap ──
@@ -2764,7 +3340,7 @@ function biscoonOpenSendMessageModal({ listingId, recipientId, listingTitle }: {
   modal.innerHTML = `
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.45)" id="biscoonSendMsgBackdrop"></div>
     <div style="position:relative;z-index:1;background:white;border-radius:12px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.18);margin:0 16px" role="dialog" aria-modal="true">
-      <h3 style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin-bottom:6px">Message Poster</h3>
+      <h3 style="font-family:Inter,sans-serif;font-size:24px;color:var(--navy);margin-bottom:6px">Message Poster</h3>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">About: ${esc(listingTitle || 'this listing')}</p>
       <div id="biscoonSendMsgError" style="display:none;font-size:13px;color:var(--red);margin-bottom:10px"></div>
       <textarea id="biscoonSendMsgBody" placeholder="Write your message…" rows="4" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;min-height:90px;outline:none;margin-bottom:14px;transition:border-color .15s"></textarea>
