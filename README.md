@@ -9,9 +9,11 @@ The application uses a static HTML/CSS frontend with browser-side TypeScript, an
 - Category-aware listings for jobs, housing, services, events, marketplace items, and photography
 - Keyword, category, and location search with optional Elasticsearch acceleration
 - User accounts, profiles, email-verification support, saved listings, and activity history
+- Confirmation email, resend verification, forgot-password, and reset-password flows with SMTP or local outbox delivery
 - Discussions with comments, nested replies, and notifications
 - Private, listing-linked conversations with encrypted message bodies
 - Community newsroom with draft, publish, feature, and rich-media workflows
+- Diaspora utility pages for Unique Connections, AD/BS date conversion, Nepali radio links, and donations
 - Real-time notifications and messaging through Socket.IO
 - Admin tools for users, listings, discussions, comments, reports, announcements, news, audit logs, and deleted content
 - Responsive galleries, PhotoSwipe lightboxes, MapLibre previews, event calendars, and accessible reduced-motion behavior
@@ -41,6 +43,9 @@ The current UI pass moves Biscoon closer to a compact community dashboard:
 - **Legacy category redirects** — thin subcategory HTML pages were folded into parent browse hubs with `?subcategory=` URLs. Deleted pages are preserved as 301 redirects through `src/config/legacyPageRedirects.ts`.
 - **Browse hub subcategories** — parent category pages can select and sync subcategory chips from the URL, keeping older deep links usable while reducing duplicated static pages.
 - **Client type safety cleanup** — browser TypeScript and generated JavaScript were rebuilt so shared helpers do not collide across global scripts.
+- **Account recovery pages** — signup, login, verification, password reset, and profile verification prompts now share one browser auth module.
+- **Community utilities** — the homepage now links to Unique Connections, Nepali Radio, a Bikram Sambat date converter, and a donation page.
+- **Mail delivery fallback** — SMTP sends account emails when configured; development writes HTML copies to `data/mail-outbox/`.
 
 ## Tech Stack
 
@@ -107,7 +112,12 @@ In development, the server automatically tries the next available port if port `
 | `CORS_ORIGINS` | Yes | Comma-separated allowed browser origins |
 | `APP_BASE_URL` | Recommended | Public application URL |
 | `ELASTICSEARCH_URL` | No | Enables Elasticsearch when the service is available |
-| `EMAIL_VERIFICATION_REQUIRED` | No | Blocks protected actions until email is verified |
+| `EMAIL_VERIFICATION_REQUIRED` | No | Blocks sign-in and protected actions until email is confirmed. Defaults to on except in tests |
+| `SMTP_HOST` | No | SMTP server for confirmation and password-reset email |
+| `SMTP_PORT` | No | SMTP port; defaults to `587` |
+| `SMTP_USER` / `SMTP_PASS` | No | SMTP credentials |
+| `SMTP_SECURE` | No | `true` for port 465 TLS |
+| `MAIL_FROM` | No | From address; defaults to `Biscoon <noreply@biscoon.com>` |
 | `UPLOAD_DIR` | No | Upload directory; defaults to `uploads` |
 | `JSON_BODY_LIMIT` | No | JSON request limit; defaults to `25mb` |
 | `TRUST_PROXY` | Recommended | Express proxy setting; defaults to `1` in production |
@@ -157,7 +167,8 @@ Production startup fails when `MONGODB_URI`, `JWT_SECRET`, `MSG_ENCRYPTION_KEY`,
 │   ├── jobs/
 │   ├── marketplace/
 │   ├── news/
-│   └── post/
+│   ├── post/
+│   └── donate.html
 ├── scripts/             # Migration and maintenance scripts
 ├── src/
 │   ├── config/          # Environment, database, and monitoring setup
@@ -186,7 +197,11 @@ Search falls back to MongoDB when Elasticsearch is not configured or unavailable
 
 ### Community and News
 
-Authenticated members can create discussion topics, comment, reply, and receive related notifications. The newsroom supports public published stories while keeping drafts private. Authorized staff can edit rich text, place media, and feature stories from the admin dashboard.
+Authenticated members can create discussion topics, comment, reply, and receive related notifications. Community utility pages include Unique Connections prompts, Nepali radio links, and an AD/BS date converter. The newsroom supports public published stories while keeping drafts private. Authorized staff can edit rich text, place media, and feature stories from the admin dashboard.
+
+### Accounts and Email
+
+Registration creates an email-confirmation token. When `EMAIL_VERIFICATION_REQUIRED` is on, users must verify before signing in or performing protected actions. Members can request a new verification email from profile or auth screens, and forgot-password sends a one-hour reset link. Configure SMTP with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, and `MAIL_FROM`; without SMTP, development writes rendered emails to `data/mail-outbox/` and returns test links in non-production API responses.
 
 ### Messaging and Notifications
 
@@ -251,7 +266,7 @@ The Compose stack starts MongoDB and the application at [http://localhost:4000](
 - Persist both MongoDB data and the configured upload directory.
 - Back up database data and uploads together.
 - Keep JWT and message-encryption secrets stable.
-- Leave `EMAIL_VERIFICATION_REQUIRED=false` until an email delivery provider is connected.
+- Set SMTP_* to send confirmation and password-reset mail. Until then, local copies land in `data/mail-outbox/`.
 - Use `/api/ready` for container or load-balancer readiness checks.
 - Review [DEPLOYMENT.md](DEPLOYMENT.md) before deploying or creating the first super admin.
 
