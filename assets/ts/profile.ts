@@ -128,6 +128,8 @@ async function fetchProfile(): Promise<void> {
   (document.getElementById('profileName') as HTMLInputElement).value = data.user.name || '';
   (document.getElementById('profileEmail') as HTMLInputElement).value = data.user.email || '';
   (document.getElementById('profilePhone') as HTMLInputElement).value = data.user.phone || '';
+  const banner = document.getElementById('emailVerifyBanner');
+  if (banner) banner.hidden = Boolean(data.user.emailVerified);
 }
 
 async function handleProfileSubmit(event: Event): Promise<void> {
@@ -732,6 +734,27 @@ function handleLogout(): void {
   window.location.href = 'login.html';
 }
 
+async function handleResendVerification(): Promise<void> {
+  const response = await fetch(`${profileApiBase}/api/auth/request-email-verification`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return showProfileMessage(data.error || 'Unable to resend confirmation email.', 'error');
+  }
+  if (data.emailVerified) {
+    const banner = document.getElementById('emailVerifyBanner');
+    if (banner) banner.hidden = true;
+    return showProfileMessage('Your email is already confirmed.', 'success');
+  }
+  showProfileMessage('Confirmation email sent. Check your inbox.', 'success');
+}
+
 document.addEventListener('DOMContentLoaded', function (): void {
   document.getElementById('profileForm')?.addEventListener('submit', handleProfileSubmit);
   document.getElementById('editListingForm')?.addEventListener('submit', handleEditListingSubmit);
@@ -745,6 +768,7 @@ document.addEventListener('DOMContentLoaded', function (): void {
     if ((event.target as HTMLElement).closest('[data-close-profile-listing-modal]')) closeProfileListingModal();
   });
   document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+  document.getElementById('resendVerifyBtn')?.addEventListener('click', handleResendVerification);
 
   if (requireAuth()) {
     fetchProfile();

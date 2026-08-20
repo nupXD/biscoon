@@ -14,7 +14,12 @@ JWT_SECRET=<at-least-32-random-characters>
 MSG_ENCRYPTION_KEY=<at-least-32-random-characters>
 CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
 APP_BASE_URL=https://your-domain.com
-EMAIL_VERIFICATION_REQUIRED=false
+EMAIL_VERIFICATION_REQUIRED=true
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+MAIL_FROM=Biscoon <noreply@biscoon.com>
 UPLOAD_DIR=uploads
 TRUST_PROXY=1
 SENTRY_DSN=
@@ -63,7 +68,7 @@ New listing images and message attachments are stored under `uploads/`. In produ
 
 ## Email Verification
 
-The app stores email-verification and password-reset tokens as hashes. Local development and tests return raw tokens in API responses so the flow can be verified without an email provider. Production responses do not expose raw tokens. Keep `EMAIL_VERIFICATION_REQUIRED=false` until SMTP or another email delivery service is connected.
+Signup sends a confirmation link. Password reset sends a one-hour link. Tokens are stored as hashes. Without `SMTP_HOST`, development writes copies of the emails to `data/mail-outbox/` and logs the link. Non-production API responses also include `verificationUrl` / `resetUrl` so the flow can be tested without a mailbox. Production responses never expose raw tokens. Set `EMAIL_VERIFICATION_REQUIRED=true` once you are ready to require confirmation before sign-in.
 
 ## Reverse Proxy
 

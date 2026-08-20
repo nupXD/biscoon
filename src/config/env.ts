@@ -51,7 +51,15 @@ export const MSG_ENCRYPTION_KEY = getRequiredSecret('MSG_ENCRYPTION_KEY', 'bisco
 export const MONGODB_URI = getRequiredProductionValue('MONGODB_URI', 'mongodb://localhost:27017/biscoon');
 export const CORS_ORIGINS = getRequiredProductionValue('CORS_ORIGINS', '');
 export const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:4000';
-export const EMAIL_VERIFICATION_REQUIRED = getBoolean('EMAIL_VERIFICATION_REQUIRED', false);
+export const EMAIL_VERIFICATION_REQUIRED = NODE_ENV === 'test'
+  ? false
+  : getBoolean('EMAIL_VERIFICATION_REQUIRED', true);
+export const SMTP_HOST = clean(process.env.SMTP_HOST) || '';
+export const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || '587', 10);
+export const SMTP_USER = clean(process.env.SMTP_USER) || '';
+export const SMTP_PASS = process.env.SMTP_PASS || '';
+export const SMTP_SECURE = getBoolean('SMTP_SECURE', SMTP_PORT === 465);
+export const MAIL_FROM = clean(process.env.MAIL_FROM) || 'Biscoon <noreply@biscoon.com>';
 export const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '25mb';
 export const TRUST_PROXY = process.env.TRUST_PROXY || (isProduction ? '1' : '');
 export const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';

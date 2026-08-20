@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Confirm email — Biscoon</title>
+<meta name="description" content="Confirm your Biscoon account email."/>
+<link rel="stylesheet" href="../../assets/css/main.css"/>
+<link rel="stylesheet" href="../../assets/css/dash-nav.css"/>
+<link rel="stylesheet" href="../../assets/css/pages/auth/login.css"/>
+</head>
+<body class="has-dash-nav" data-auth-page="verify-email">
+<nav class="site-header">
+  <a href="../../index.html" class="nav-logo logo-wrap" aria-label="Biscoon.com home">
+    <span class="nav-wordmark logo-text" aria-hidden="true">Bis<span>coon</span>.com</span>
+  </a>
+  <div class="logo-np np">विश्व नेपालीको डिजिटल थलो</div>
+  <div class="hdr-right">
+    <div class="nav-ctas" id="navCtas">
+      <a class="btn-ghost hbtn ghost" href="login.html">Sign In</a>
+    </div>
+  </div>
+  <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-drawer" id="mobileDrawer">
+  <a href="login.html">Sign In</a>
+  <a href="signup.html">Sign Up</a>
+</div>
+
+<div class="breadcrumb">
+  <a href="../../index.html">🏠 Biscoon</a>
+  <span class="sep">›</span>
+  <span aria-current="page">Confirm email</span>
+</div>
+<section class="auth-page">
+  <div class="auth-hero">
+    <div class="auth-headline">Confirm email</div>
+    <p class="auth-subtitle">We’re checking the confirmation link from your inbox.</p>
+  </div>
+  <div class="auth-layout auth-layout-single">
+    <div class="auth-card">
+      <div id="authMessage" class="form-helper">Confirming your email…</div>
+      <div class="resend-row" id="resendRow">
+        <input class="form-input" id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+        <button type="button" class="btn-link" id="resendVerificationBtn">Resend confirmation email</button>
+      </div>
+      <div class="auth-footer"><a href="login.html">Back to sign in</a></div>
+    </div>
+  </div>
+</section>
+<script src="../../assets/js/biscoon.js"></script>
+<script src="../../assets/js/auth.js"></script>
+</body>
+</html>

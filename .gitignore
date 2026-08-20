@@ -6,6 +6,7 @@ data/users.json
 data/*.db
 data/mongo/
 data/logs/
+data/mail-outbox/
 uploads/
 .claude/
 .codex/

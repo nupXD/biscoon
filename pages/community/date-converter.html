@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Date converter — Biscoon</title>
+<meta name="description" content="Convert dates between Gregorian (AD) and Bikram Sambat (BS)."/>
+<link rel="stylesheet" href="../../assets/css/main.css"/>
+<link rel="stylesheet" href="../../assets/css/dash-nav.css"/>
+<link rel="stylesheet" href="../../assets/css/pages/tools.css"/>
+</head>
+<body class="has-dash-nav">
+<nav class="site-header">
+  <a href="../../index.html" class="nav-logo logo-wrap" aria-label="Biscoon.com home">
+    <span class="nav-wordmark logo-text" aria-hidden="true">Bis<span>coon</span>.com</span>
+  </a>
+  <div class="logo-np np">विश्व नेपालीको डिजिटल थलो</div>
+  <div class="nav-links home-mini-links" aria-label="Primary">
+    <a href="../jobs/jobs.html">Jobs</a>
+    <a href="../housing/housing.html">Housing</a>
+    <a href="events.html">Events</a>
+    <a href="../housing/paying-guest.html" class="pg-link">🏡 PG</a>
+  </div>
+  <div class="hdr-right">
+    <div class="nav-ctas" id="navCtas">
+      <a class="btn-ghost hbtn donate" href="../donate.html">Donate</a>
+      <a class="btn-ghost hbtn ghost" href="../auth/login.html">Sign In</a>
+      <a class="btn-primary hbtn cta" href="../post/listing.html">+ Post Free Ad</a>
+    </div>
+  </div>
+  <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-drawer" id="mobileDrawer">
+  <a href="date-converter.html">Date converter</a>
+  <div class="mobile-drawer-btns" id="mobileBtns">
+    <a class="btn-ghost" href="../auth/login.html">Sign In</a>
+    <a class="btn-primary" href="../auth/signup.html">Sign Up</a>
+  </div>
+</div>
+
+<main class="tool-page">
+  <p class="tool-kicker">Calendar</p>
+  <h1>Date converter</h1>
+  <p class="tool-lead">Switch between Gregorian (A.D.) and Bikram Sambat. Range: BS 2070–2090.</p>
+  <div class="convert-grid">
+    <section class="convert-card">
+      <h2>Gregorian (AD)</h2>
+      <label class="tool-label" for="adDate">Date</label>
+      <input class="form-input" id="adDate" type="date"/>
+      <button class="btn-primary" type="button" id="adToBs">Convert to BS</button>
+    </section>
+    <section class="convert-card">
+      <h2>Bikram Sambat (BS)</h2>
+      <div class="bs-row">
+        <label>Year <input class="form-input" id="bsYear" type="number" min="2070" max="2090"/></label>
+        <label>Month
+          <select class="form-select" id="bsMonth">
+            <option value="1">Baisakh</option>
+            <option value="2">Jestha</option>
+            <option value="3">Ashadh</option>
+            <option value="4">Shrawan</option>
+            <option value="5">Bhadra</option>
+            <option value="6">Ashwin</option>
+            <option value="7">Kartik</option>
+            <option value="8">Mangsir</option>
+            <option value="9">Poush</option>
+            <option value="10">Magh</option>
+            <option value="11">Falgun</option>
+            <option value="12">Chaitra</option>
+          </select>
+        </label>
+        <label>Day <input class="form-input" id="bsDay" type="number" min="1" max="32"/></label>
+      </div>
+      <button class="btn-ghost" type="button" id="bsToAd">Convert to AD</button>
+    </section>
+  </div>
+  <p class="convert-out" id="convertOut"></p>
+</main>
+<script src="../../assets/js/biscoon.js"></script>
+<script src="../../assets/js/date-converter.js"></script>
+</body>
+</html>

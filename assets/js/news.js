@@ -28,6 +28,19 @@ function newsCategoryLabel(value) {
   return value === 'usa' ? 'USA' : (value ? value.charAt(0).toUpperCase() + value.slice(1) : 'News');
 }
 
+function uniqueNews(articles, limit) {
+  const seen = new Set();
+  const out = [];
+  for (const article of articles) {
+    const key = article.id || article.slug;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(article);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 async function newsFetch(path) {
   const response = await fetch(`${newsApiBase}${path}`);
   const data = await response.json();
@@ -103,7 +116,9 @@ function renderNewsFront(articles) {
         <div class="news-secondary-grid">${secondary.map(storyCard).join('')}</div>
       </div>
       <aside class="news-sidebar">
-        <div class="news-sidebar-title">Latest</div>
+        <div class="news-sidebar-title">Trending status</div>
+        ${uniqueNews(articles.filter(a => a.featured).concat(articles), 5).map(latestItem).join('')}
+        <div class="news-sidebar-title" style="margin-top:18px">Latest</div>
         ${(latest.length ? latest : secondary).map(latestItem).join('')}
       </aside>
     </div>

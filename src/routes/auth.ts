@@ -10,6 +10,7 @@ import { APP_BASE_URL, EMAIL_VERIFICATION_REQUIRED, JWT_SECRET, isProduction } f
 import { findUserByEmail, findUserById, sanitizeUser } from '../utils/users';
 import { isAdminAccount } from '../utils/adminPermissions';
 import { createAccountToken, hashAccountToken, tokenIsFresh } from '../utils/accountTokens';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../services/mail';
 import { validate } from '../utils/validate';
 import type { AuthRequest, SanitizedUser } from '../types';
 
@@ -68,19 +69,32 @@ function buildAccountActionUrl(path: string, email: string, token: string): stri
   return url.toString();
 }
 
-function accountActionPayload(type: string, email: string, token: string): Record<string, string> {
-  if (isProduction) return {};
+function accountActionPayload(type: string, email: string, token: string, includeLink = false): Record<string, string> {
+  if (isProduction && !includeLink) return {};
   return {
     [`${type}Token`]: token,
     [`${type}Url`]: buildAccountActionUrl(
-      type === 'verification' ? '/api/auth/verify-email' : '/pages/auth/login.html',
+      type === 'verification' ? '/pages/auth/verify-email.html' : '/pages/auth/reset-password.html',
       email,
       token
     ),
   };
 }
 
-async function authenticateLogin(body: unknown): Promise<{ user?: any; status?: number; error?: string }> {
+function isPendingEmailConfirmation(user: { emailVerified?: boolean; emailVerificationTokenHash?: string }): boolean {
+  return !user.emailVerified && Boolean(user.emailVerificationTokenHash);
+}
+
+async function dispatchMail(send: () => Promise<boolean>): Promise<boolean> {
+  try {
+    return await send();
+  } catch (err) {
+    console.error('[mail] failed to send account email', err);
+    return false;
+  }
+}
+
+async function authenticateLogin(body: unknown): Promise<{ user?: any; status?: number; error?: string; code?: string }> {
   const parsedPayload = validate(loginSchema, body);
   if (parsedPayload.error) {
     return { status: 400, error: parsedPayload.error };
@@ -100,6 +114,14 @@ async function authenticateLogin(body: unknown): Promise<{ user?: any; status?: 
   const passwordMatches = await bcrypt.compare(password, user.password);
   if (!passwordMatches) {
     return { status: 401, error: 'Invalid email or password.' };
+  }
+
+  if (EMAIL_VERIFICATION_REQUIRED && isPendingEmailConfirmation(user)) {
+    return {
+      status: 403,
+      code: 'EMAIL_NOT_VERIFIED',
+      error: 'Please confirm your email before signing in. Check your inbox for the confirmation link.',
+    };
   }
 
   return { user };
@@ -141,17 +163,20 @@ router.post('/register', authRegisterLimiter, async (req: Request, res: Response
     throw err;
   }
 
+  const emailSent = await dispatchMail(() => sendVerificationEmail(normalizedEmail, verification.token));
+
   res.status(201).json({
     user: sanitizeUser(user),
     token: createToken(user),
+    emailSent,
     emailVerificationRequired: EMAIL_VERIFICATION_REQUIRED,
-    ...accountActionPayload('verification', normalizedEmail, verification.token),
+    ...accountActionPayload('verification', normalizedEmail, verification.token, !emailSent),
   });
 });
 
 router.post('/login', authLoginLimiter, async (req: Request, res: Response): Promise<void> => {
   const auth = await authenticateLogin(req.body);
-  if (auth.error) { res.status(auth.status!).json({ error: auth.error }); return; }
+  if (auth.error) { res.status(auth.status!).json({ error: auth.error, code: auth.code }); return; }
   if (isAdminAccount(auth.user)) {
     res.status(403).json({ error: 'Admin accounts must sign in through the Admin Panel.' }); return;
   }
@@ -164,7 +189,7 @@ router.post('/login', authLoginLimiter, async (req: Request, res: Response): Pro
 
 router.post('/admin/login', authLoginLimiter, async (req: Request, res: Response): Promise<void> => {
   const auth = await authenticateLogin(req.body);
-  if (auth.error) { res.status(auth.status!).json({ error: auth.error }); return; }
+  if (auth.error) { res.status(auth.status!).json({ error: auth.error, code: auth.code }); return; }
   if (!isAdminAccount(auth.user)) {
     res.status(403).json({ error: 'This account does not have admin access.' }); return;
   }
@@ -189,11 +214,41 @@ router.post('/request-email-verification', authMiddleware, authRecoveryLimiter, 
   user.updatedAt = new Date();
   await user.save();
 
+  const emailSent = await dispatchMail(() => sendVerificationEmail(user.email, verification.token));
+
   res.json({
     ok: true,
     emailVerified: false,
+    emailSent,
     emailVerificationRequired: EMAIL_VERIFICATION_REQUIRED,
-    ...accountActionPayload('verification', user.email, verification.token),
+    ...accountActionPayload('verification', user.email, verification.token, !emailSent),
+  });
+});
+
+router.post('/resend-verification', authRecoveryLimiter, async (req: Request, res: Response): Promise<void> => {
+  const parsedPayload = validate(emailSchema, req.body);
+  if (parsedPayload.error) { res.status(400).json({ error: parsedPayload.error }); return; }
+
+  const email = parsedPayload.value.email.trim().toLowerCase();
+  const user = await findUserByEmail(email);
+  let recoveryPayload: Record<string, string> = {};
+  let emailSent = false;
+
+  if (user && !user.deleted && !user.emailVerified) {
+    const verification = createAccountToken(24);
+    user.emailVerificationTokenHash = verification.tokenHash;
+    user.emailVerificationExpiresAt = verification.expiresAt;
+    user.updatedAt = new Date();
+    await user.save();
+    emailSent = await dispatchMail(() => sendVerificationEmail(user.email, verification.token));
+    recoveryPayload = accountActionPayload('verification', user.email, verification.token, !emailSent);
+  }
+
+  res.json({
+    ok: true,
+    emailSent,
+    message: 'If an account exists for that email, a confirmation link is on its way.',
+    ...recoveryPayload,
   });
 });
 
@@ -233,18 +288,21 @@ router.post('/forgot-password', authRecoveryLimiter, async (req: Request, res: R
   const email = parsedPayload.value.email.trim().toLowerCase();
   const user = await findUserByEmail(email);
   let recoveryPayload: Record<string, string> = {};
+  let emailSent = false;
 
-  if (user) {
+  if (user && !user.deleted) {
     const reset = createAccountToken(1);
     user.passwordResetTokenHash = reset.tokenHash;
     user.passwordResetExpiresAt = reset.expiresAt;
     user.updatedAt = new Date();
     await user.save();
-    recoveryPayload = accountActionPayload('reset', user.email, reset.token);
+    emailSent = await dispatchMail(() => sendPasswordResetEmail(user.email, reset.token));
+    recoveryPayload = accountActionPayload('reset', user.email, reset.token, !emailSent);
   }
 
   res.json({
     ok: true,
+    emailSent,
     message: 'If an account exists for that email, password reset instructions are ready.',
     ...recoveryPayload,
   });

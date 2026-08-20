@@ -34,6 +34,7 @@
   <div class="hdr-right">
     <div class="hdr-date" id="hdrDate">📅</div>
     <div class="nav-ctas" id="navCtas">
+      <a class="btn-ghost hbtn donate" href="pages/donate.html">Donate</a>
       <a class="btn-ghost hbtn ghost" href="pages/auth/login.html">Sign In</a>
       <a class="btn-primary hbtn cta" href="pages/post/listing.html">+ Post Free Ad</a>
     </div>
@@ -61,7 +62,8 @@
   <a href="pages/community/organizations.html">संगठन</a>
   <a href="pages/community/events.html">Events</a>
   <a href="pages/community/discussions.html">Discussions</a>
-  <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
+    <a href="pages/donate.html">Donate</a>
+    <a href="pages/housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   <div class="mobile-drawer-btns" id="mobileBtns">
     <a class="btn-ghost" href="pages/auth/login.html">Sign In</a>
     <a class="btn-primary" href="pages/auth/signup.html">Sign Up</a>
@@ -137,7 +139,7 @@
     </div>
   </div>
   <div class="ib-item" style="border-right:none;">
-    <div id="fxUpdatedAt" style="font-size:10px;color:rgba(255,255,255,.35);">Live · FX rates</div>
+    <div id="fxUpdatedAt" style="font-size:10px;color:var(--gray-500);">Live · FX rates</div>
   </div>
 </div>
 
@@ -171,6 +173,11 @@
       <div class="feat-title">Loading latest news…</div>
       <div class="feat-meta"><span>Biscoon Newsroom</span></div>
     </div>
+  </div>
+
+  <div id="homeTrendingNews">
+    <div class="sec-hdr">Trending status <span class="badge">Live</span></div>
+    <div class="home-news-list" id="homeTrendingList"></div>
   </div>
 
   <div id="homeDiasporaNews">
@@ -262,6 +269,7 @@
     <div class="dropdown">
       <span class="pill purple">📰 Patrika <span class="arr">▼</span></span>
       <div class="dd-menu" style="min-width:220px;">
+        <a href="https://baahrakhari.com" target="_blank" rel="noopener">1. Baahrakhari.com</a>
         <a href="https://ekantipur.com" target="_blank" rel="noopener">🗞 Kantipur / Ekantipur</a>
         <a href="https://kathmandupost.com" target="_blank" rel="noopener">🗞 The Kathmandu Post</a>
         <a href="https://myrepublica.nagariknetwork.com" target="_blank" rel="noopener">🗞 My Republica</a>
@@ -278,6 +286,12 @@
     <a class="qcard pg" href="pages/housing/paying-guest.html" data-feed-cat="housing" data-feed-sub="paying-guest" data-feed-title="🏠 Paying Guest" data-feed-more="pages/housing/paying-guest.html"><div class="qico">🏠</div><div class="qlbl">Paying Guest</div><div class="qsub">Find rooms &amp; flatmates</div></a>
     <a class="qcard lami" href="pages/community/events.html?subcategory=matchmaker" data-feed-cat="community" data-feed-sub="matchmaker" data-feed-title="💍 Lami · लामी" data-feed-more="pages/community/events.html?subcategory=matchmaker"><div class="qico">💍</div><div class="qlbl">Lami · लामी</div><div class="qsub">Family-led matrimonials</div></a>
     <a class="qcard safari" href="pages/community/events.html?subcategory=travel" data-feed-cat="community" data-feed-sub="travel" data-feed-title="🗺 TiTiGuin · Safar" data-feed-more="pages/community/events.html?subcategory=travel"><div class="qico">🗺</div><div class="qlbl">TiTiGuin · Safar</div><div class="qsub">Travel, treks &amp; adventures</div></a>
+  </div>
+
+  <div class="tools-row">
+    <a class="tool-link" href="pages/community/connections.html"><span class="tool-ico" aria-hidden="true">◎</span><div><div class="tool-lbl">Unique Connections</div><div class="tool-sub">Meet Nepalis worldwide</div></div></a>
+    <a class="tool-link" href="pages/community/date-converter.html"><span class="tool-ico" aria-hidden="true">⇄</span><div><div class="tool-lbl">Date converter</div><div class="tool-sub">AD ↔ Bikram Sambat</div></div></a>
+    <a class="tool-link" href="pages/community/radio.html"><span class="tool-ico" aria-hidden="true">◉</span><div><div class="tool-lbl">Nepali Radio Links</div><div class="tool-sub">Live stations</div></div></a>
   </div>
 
   <div class="ev-banner">
@@ -368,6 +382,7 @@
         <span>📰</span><span class="ch-title">Nepali Patrika Online</span><span class="ch-sub">Opens ↗</span>
       </div>
       <div class="pat-list">
+        <a class="pat-row" href="https://baahrakhari.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#C41A1A;"></div><span class="pat-name">1. Baahrakhari.com</span><span class="pat-type">Nepali</span><span class="pat-ext">↗</span></a>
         <a class="pat-row" href="https://ekantipur.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#C41A1A;"></div><span class="pat-name">Kantipur</span><span class="pat-type">Nepali</span><span class="pat-ext">↗</span></a>
         <a class="pat-row" href="https://kathmandupost.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#1E3A8A;"></div><span class="pat-name">Kathmandu Post</span><span class="pat-type">English</span><span class="pat-ext">↗</span></a>
         <a class="pat-row" href="https://myrepublica.nagariknetwork.com" target="_blank" rel="noopener"><div class="pat-dot" style="background:#D97706;"></div><span class="pat-name">My Republica</span><span class="pat-type">English</span><span class="pat-ext">↗</span></a>
@@ -412,6 +427,18 @@
     <a class="see-all" style="color:var(--teal);" href="pages/jobs/student.html">View all organizations →</a>
   </div>
 
+  <div class="card">
+    <div class="card-hdr" style="background:linear-gradient(90deg,var(--red-dark),var(--red));">
+      <span>◉</span><span class="ch-title">Nepali Radio Links</span>
+      <a class="ch-sub" href="pages/community/radio.html" style="color:inherit;text-decoration:none">All stations</a>
+    </div>
+    <a class="radio-row" href="https://radionepal.gov.np" target="_blank" rel="noopener"><span class="radio-dot"></span><span class="radio-name">Radio Nepal</span><span class="radio-freq">National</span></a>
+    <a class="radio-row" href="https://ujyaaloonline.com" target="_blank" rel="noopener"><span class="radio-dot"></span><span class="radio-name">Ujyaalo 90 Network</span><span class="radio-freq">90.0</span></a>
+    <a class="radio-row" href="https://www.hitsfm.com.np" target="_blank" rel="noopener"><span class="radio-dot"></span><span class="radio-name">Hits FM</span><span class="radio-freq">91.2</span></a>
+    <a class="radio-row" href="https://www.bbc.com/nepali" target="_blank" rel="noopener"><span class="radio-dot"></span><span class="radio-name">BBC Nepali</span><span class="radio-freq">World</span></a>
+    <a class="see-all" href="pages/community/radio.html">Open all Nepali radio links →</a>
+  </div>
+
   <div class="guff">
     <div class="g-hdr">
       <div class="g-odot"></div>
@@ -439,15 +466,16 @@
 </div>
 
 <div class="dash-footer">
-  <span class="dash-footer-logo">🇳🇵 Biscoon.com</span>
-  <a href="#">About</a>
-  <a href="#">Advertise</a>
+  <span class="dash-footer-logo">Biscoon.com<span class="tm">™</span></span>
+  <a href="pages/donate.html">Donate</a>
+  <a href="pages/community/connections.html">Unique Connections</a>
+  <a href="pages/community/date-converter.html">Date converter</a>
+  <a href="pages/community/radio.html">Nepali Radio</a>
   <a href="pages/community/events.html?subcategory=matchmaker">Lami</a>
   <a href="pages/community/events.html?subcategory=travel">TiTiGuin</a>
   <a href="pages/community/discussions.html">GuffSuff</a>
-  <a href="pages/housing/paying-guest.html">Paying Guest</a>
   <a href="pages/jobs/jobs.html">Jobs</a>
-  <span style="margin-left:auto;opacity:.4;">© 2026 Biscoon.com — Global Nepali's Digital Platform</span>
+  <span style="margin-left:auto;">© 2026 Biscoon.com™ — Biscoon wordmark is a trademark of Biscoon Inc.</span>
 </div>
 
 <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>

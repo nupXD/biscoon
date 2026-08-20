@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Donate — Biscoon</title>
+<meta name="description" content="Support Biscoon, the digital platform for Nepalis worldwide."/>
+<link rel="stylesheet" href="../assets/css/main.css"/>
+<link rel="stylesheet" href="../assets/css/dash-nav.css"/>
+<link rel="stylesheet" href="../assets/css/pages/tools.css"/>
+</head>
+<body class="has-dash-nav">
+<nav class="site-header">
+  <a href="../index.html" class="nav-logo logo-wrap" aria-label="Biscoon.com home">
+    <span class="nav-wordmark logo-text" aria-hidden="true">Bis<span>coon</span>.com</span>
+  </a>
+  <div class="logo-np np">विश्व नेपालीको डिजिटल थलो</div>
+  <div class="nav-links home-mini-links" aria-label="Primary">
+    <a href="jobs/jobs.html">Jobs</a>
+    <a href="housing/housing.html">Housing</a>
+    <a href="marketplace/services.html">Services</a>
+    <a href="marketplace/kinbech.html">Bazar</a>
+    <a href="community/events.html">Events</a>
+    <a href="housing/paying-guest.html" class="pg-link">🏡 PG</a>
+  </div>
+  <div class="hdr-right">
+    <div class="nav-ctas" id="navCtas">
+      <a class="btn-ghost hbtn donate" href="donate.html">Donate</a>
+      <a class="btn-ghost hbtn ghost" href="auth/login.html">Sign In</a>
+      <a class="btn-primary hbtn cta" href="post/listing.html">+ Post Free Ad</a>
+    </div>
+  </div>
+  <button class="hamburger" id="hamburger" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileDrawer"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-drawer" id="mobileDrawer">
+  <a href="jobs/jobs.html">Jobs</a>
+  <a href="donate.html">Donate</a>
+  <div class="mobile-drawer-btns" id="mobileBtns">
+    <a class="btn-ghost" href="auth/login.html">Sign In</a>
+    <a class="btn-primary" href="auth/signup.html">Sign Up</a>
+  </div>
+</div>
+
+<main class="tool-page">
+  <p class="tool-kicker">Support the platform</p>
+  <h1>Donate to Biscoon</h1>
+  <p class="tool-lead">Keep jobs, housing, news, and community tools free for Nepalis worldwide. Biscoon.com™ is a community platform — donations help hosting, moderation, and new features.</p>
+  <form class="donate-card" action="mailto:donate@biscoon.com" method="get">
+    <input type="hidden" name="subject" value="Biscoon donation"/>
+    <p class="tool-label">Choose an amount</p>
+    <div class="donate-amounts">
+      <label><input type="radio" name="body" value="I would like to donate $10 to Biscoon." checked/> $10</label>
+      <label><input type="radio" name="body" value="I would like to donate $25 to Biscoon."/> $25</label>
+      <label><input type="radio" name="body" value="I would like to donate $50 to Biscoon."/> $50</label>
+      <label><input type="radio" name="body" value="I would like to donate $100 to Biscoon."/> $100</label>
+    </div>
+    <button class="btn-primary" type="submit">Continue to donate</button>
+    <p class="tool-note">Opens your email to donate@biscoon.com. Add a PayPal or bank transfer later from that thread.</p>
+  </form>
+</main>
+<script src="../assets/js/biscoon.js"></script>
+</body>
+</html>

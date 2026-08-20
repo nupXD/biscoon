@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="../../assets/css/pages/community/events.css"/>
 
 </head>
-<body class="has-dash-nav"><div class="ticker-track anim-35"><span class="ticker-item"><span class="sym pages-community-events-inline-1">NASDAQ</span><span class="val up">18,234</span><span class="chg up">▲+1.24%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-1">S&amp;P 500</span><span class="val up">5,128</span><span class="chg up">▲+0.87%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-1">Dow</span><span class="val down">38,790</span><span class="chg down">▼-0.32%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-2">NVDA</span><span class="val up">$884</span><span class="chg up">▲+3.21%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-2">AAPL</span><span class="val up">$192</span><span class="chg up">▲+0.94%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-3">NEPSE</span><span class="val up">2,341</span><span class="chg up">▲+0.63%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-1">NASDAQ</span><span class="val up">18,234</span><span class="chg up">▲+1.24%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-1">S&amp;P 500</span><span class="val up">5,128</span><span class="chg up">▲+0.87%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-1">Dow</span><span class="val down">38,790</span><span class="chg down">▼-0.32%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-2">NVDA</span><span class="val up">$884</span><span class="chg up">▲+3.21%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-2">AAPL</span><span class="val up">$192</span><span class="chg up">▲+0.94%</span></span><span class="ticker-item"><span class="sym pages-community-events-inline-3">NEPSE</span><span class="val up">2,341</span><span class="chg up">▲+0.63%</span></span></div></div>
+<body class="has-dash-nav events-agenda-on">
 
 <nav class="site-header">
   <a href="../../index.html" class="nav-logo logo-wrap" aria-label="Biscoon.com home">
@@ -80,12 +80,17 @@
   <a href="../../index.html">🏠 Biscoon</a>
   <span class="sep">›</span>
   <span>Events (कार्यक्रम)</span>
-</div><div class="page-hero">
+</div>
+<section class="events-agenda" id="eventsAgenda">
+  <h1 class="events-agenda-title">Upcoming Events</h1>
+  <div id="eventsWeekBar"></div>
+  <div id="eventsAgendaList"></div>
+</section>
+<div class="page-hero">
   <div class="page-hero-eyebrow">Biscoon · Events & Festivals</div>
   <div class="page-hero-title"><span class="emoji">🎉</span>Events & Festivals</div>
   <div class="page-hero-devanagari">कार्यक्रम</div>
   <div class="page-hero-desc">Discover upcoming Nepali community events, Dashain & Tihar celebrations, networking nights, and cultural festivals.</div>
-  
 </div><div class="filter-sort-bar"><div class="filter-chips" data-static-filters="true"><button class="chip active" data-filter="all" aria-pressed="true">सबै / All</button><button class="chip" data-filter="events" aria-pressed="false">Events</button><button class="chip" data-filter="literature" aria-pressed="false">📖 Literature</button><button class="chip" data-filter="music" aria-pressed="false">🎵 Music</button><button class="chip" data-filter="art" aria-pressed="false">🎨 Art</button><button class="chip" data-filter="sports" aria-pressed="false">⚽ Sports</button><button class="chip" data-filter="yoga" aria-pressed="false">🧘 Yoga</button><button class="chip" data-filter="travel" aria-pressed="false">✈️ Travel</button><button class="chip" data-filter="matchmaker" aria-pressed="false">💑 Matchmaker</button><button class="chip" data-filter="matrimony" aria-pressed="false">💍 Matrimony</button><button class="chip" data-filter="pen-pals" aria-pressed="false">✉️ Pen Pals</button><button class="chip" data-filter="jyotish" aria-pressed="false">🔮 Jyotish</button></div></div><div class="page-layout"><div>
     <div class="section-divider">Live listings</div>
     <div id="listingsFeed" class="listings-feed" aria-live="polite"></div>

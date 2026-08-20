@@ -106,6 +106,19 @@ test('email verification and password reset tokens work without exposing hashes'
   });
   expect(forgot.status).toBe(200);
   expect(forgot.body.resetToken).toBeTruthy();
+  expect(forgot.body.resetUrl).toMatch(/reset-password\.html/);
+
+  const unknown = await request(app).post('/api/auth/forgot-password').send({
+    email: 'nobody@example.com',
+  });
+  expect(unknown.status).toBe(200);
+  expect(unknown.body.resetToken).toBeUndefined();
+
+  const resend = await request(app).post('/api/auth/resend-verification').send({
+    email: 'nobody@example.com',
+  });
+  expect(resend.status).toBe(200);
+  expect(resend.body.ok).toBe(true);
 
   const reset = await request(app).post('/api/auth/reset-password').send({
     email: 'verify@example.com',

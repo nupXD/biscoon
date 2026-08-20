@@ -5,8 +5,25 @@ if (authApiBase.startsWith("file://")) {
 function showAuthMessage(message, type = "error") {
   const messageElement = document.getElementById("authMessage");
   if (!messageElement) return;
+  messageElement.replaceChildren();
   messageElement.textContent = message;
   messageElement.className = type === "success" ? "form-helper success-text" : "form-helper error-text";
+}
+function showAuthLink(label, href) {
+  const messageElement = document.getElementById("authMessage");
+  if (!messageElement || !href) return;
+  const link = document.createElement("a");
+  link.href = href;
+  link.textContent = label;
+  const wrap = document.createElement("div");
+  wrap.className = "auth-note";
+  wrap.appendChild(link);
+  messageElement.appendChild(wrap);
+}
+function setBusy(form, busy) {
+  form.querySelectorAll('button[type="submit"]').forEach((button) => {
+    button.disabled = busy;
+  });
 }
 async function postJson(url, body) {
   const response = await fetch(`${authApiBase}${url}`, {
@@ -15,7 +32,9 @@ async function postJson(url, body) {
     body: JSON.stringify(body),
     credentials: "include"
   });
-  return response.json();
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok && !data.error) data.error = "Something went wrong. Please try again.";
+  return data;
 }
 function saveToken(token) {
   if (!token) return;
@@ -31,12 +50,24 @@ function getRedirectTarget() {
   const redirect = new URLSearchParams(window.location.search).get("redirect");
   return redirect || "/index.html";
 }
+function queryParam(name) {
+  return new URLSearchParams(window.location.search).get(name) || "";
+}
+function toggleResendRow(show) {
+  document.getElementById("resendRow")?.classList.toggle("is-visible", show);
+}
 function handleLogin(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const email = form.querySelector("#email").value.trim().toLowerCase();
   const password = form.querySelector("#password").value;
+  setBusy(form, true);
+  toggleResendRow(false);
   postJson("/api/auth/login", { email, password }).then((data) => {
+    if (data.code === "EMAIL_NOT_VERIFIED") {
+      toggleResendRow(true);
+      return showAuthMessage(data.error || "Please confirm your email before signing in.", "error");
+    }
     if (data.error) return showAuthMessage(data.error, "error");
     if (["super-admin", "admin", "staff", "sub-admin"].includes(data.user?.role ?? "")) {
       return showAuthMessage("Admin accounts must sign in through the Admin Panel.", "error");
@@ -44,7 +75,7 @@ function handleLogin(event) {
     saveToken(data.token ?? "");
     showAuthMessage("Login successful! Redirecting...", "success");
     setTimeout(() => window.location.href = getRedirectTarget(), 800);
-  }).catch(() => showAuthMessage("Unable to connect to the authentication server.", "error"));
+  }).catch(() => showAuthMessage("Unable to connect to the authentication server.", "error")).finally(() => setBusy(form, false));
 }
 function handleRegister(event) {
   event.preventDefault();
@@ -57,26 +88,110 @@ function handleRegister(event) {
   if (password !== confirmPassword) {
     return showAuthMessage("Passwords must match.", "error");
   }
+  setBusy(form, true);
   postJson("/api/auth/register", { name, email, phone, password, confirmPassword }).then((data) => {
     if (data.error) return showAuthMessage(data.error, "error");
-    saveToken(data.token ?? "");
-    showAuthMessage("Account created successfully! Redirecting...", "success");
-    setTimeout(() => window.location.href = getRedirectTarget(), 1200);
+    if (data.emailSent) {
+      showAuthMessage(`We sent a confirmation link to ${email}. Open it, then sign in.`, "success");
+      return;
+    }
+    showAuthMessage("This server cannot send mail yet. Confirm your account with the button below, then sign in.", "success");
+    if (data.verificationUrl) showAuthLink("Confirm this email", data.verificationUrl);
+  }).catch(() => showAuthMessage("Unable to connect to the authentication server.", "error")).finally(() => setBusy(form, false));
+}
+function handleForgotPassword(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const email = form.querySelector("#email").value.trim().toLowerCase();
+  setBusy(form, true);
+  postJson("/api/auth/forgot-password", { email }).then((data) => {
+    if (data.error) return showAuthMessage(data.error, "error");
+    showAuthMessage(data.message || "If an account exists for that email, password reset instructions are on the way.", "success");
+    if (!data.emailSent && data.resetUrl) showAuthLink("Choose a new password", data.resetUrl);
+  }).catch(() => showAuthMessage("Unable to connect to the authentication server.", "error")).finally(() => setBusy(form, false));
+}
+function handleResetPassword(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const email = form.querySelector("#email").value.trim().toLowerCase();
+  const token = form.querySelector("#token").value.trim();
+  const password = form.querySelector("#password").value;
+  const confirmPassword = form.querySelector("#confirmPassword").value;
+  if (password !== confirmPassword) {
+    return showAuthMessage("Passwords must match.", "error");
+  }
+  setBusy(form, true);
+  postJson("/api/auth/reset-password", { email, token, password, confirmPassword }).then((data) => {
+    if (data.error) return showAuthMessage(data.error, "error");
+    showAuthMessage("Password updated. You can sign in now.", "success");
+    setTimeout(() => window.location.href = "login.html?reset=1", 900);
+  }).catch(() => showAuthMessage("Unable to connect to the authentication server.", "error")).finally(() => setBusy(form, false));
+}
+function handleResendVerification(event) {
+  event.preventDefault();
+  const emailInput = document.querySelector("#email");
+  const email = (emailInput?.value || queryParam("email")).trim().toLowerCase();
+  if (!email) {
+    return showAuthMessage("Enter your email first.", "error");
+  }
+  postJson("/api/auth/resend-verification", { email }).then((data) => {
+    if (data.error) return showAuthMessage(data.error, "error");
+    showAuthMessage(data.message || "If an account exists for that email, a confirmation link is on its way.", "success");
+    if (!data.emailSent && data.verificationUrl) showAuthLink("Confirm this email", data.verificationUrl);
   }).catch(() => showAuthMessage("Unable to connect to the authentication server.", "error"));
+}
+function initVerifyEmailPage() {
+  const email = queryParam("email").trim().toLowerCase();
+  const token = queryParam("token").trim();
+  if (!email || !token) {
+    showAuthMessage("This confirmation link is missing details. Request a new email from the sign-in page.", "error");
+    toggleResendRow(true);
+    return;
+  }
+  showAuthMessage("Confirming your email\u2026", "success");
+  postJson("/api/auth/verify-email", { email, token }).then((data) => {
+    if (data.error) {
+      toggleResendRow(true);
+      return showAuthMessage(data.error, "error");
+    }
+    showAuthMessage("Email confirmed. You can sign in now.", "success");
+    setTimeout(() => window.location.href = "login.html?verified=1", 900);
+  }).catch(() => {
+    toggleResendRow(true);
+    showAuthMessage("Unable to confirm this email right now.", "error");
+  });
+}
+function initLoginNotices() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("verified") === "1") {
+    showAuthMessage("Email confirmed. You can sign in now.", "success");
+  } else if (params.get("reset") === "1") {
+    showAuthMessage("Password updated. Sign in with your new password.", "success");
+  }
 }
 document.addEventListener("DOMContentLoaded", function() {
   const loginForm = document.getElementById("loginForm");
   const registerForm = document.getElementById("registerForm");
-  if (loginForm) loginForm.addEventListener("submit", handleLogin);
+  const forgotForm = document.getElementById("forgotPasswordForm");
+  const resetForm = document.getElementById("resetPasswordForm");
+  if (loginForm) {
+    loginForm.addEventListener("submit", handleLogin);
+    initLoginNotices();
+  }
   if (registerForm) registerForm.addEventListener("submit", handleRegister);
-  const forgotBtn = document.getElementById("forgotPasswordBtn");
-  if (forgotBtn) {
-    forgotBtn.addEventListener("click", function() {
-      const msg = document.getElementById("authMessage");
-      if (msg) {
-        msg.textContent = "To reset your password, email support@biscoon.com with your registered email address.";
-        msg.className = "form-helper success-text";
-      }
-    });
+  if (forgotForm) forgotForm.addEventListener("submit", handleForgotPassword);
+  if (resetForm) {
+    const emailInput = resetForm.querySelector("#email");
+    const tokenInput = resetForm.querySelector("#token");
+    if (emailInput && !emailInput.value) emailInput.value = queryParam("email");
+    if (tokenInput && !tokenInput.value) tokenInput.value = queryParam("token");
+    if (!queryParam("token")) {
+      showAuthMessage("This reset link is missing or expired. Request a new one.", "error");
+    }
+    resetForm.addEventListener("submit", handleResetPassword);
+  }
+  document.getElementById("resendVerificationBtn")?.addEventListener("click", handleResendVerification);
+  if (document.body.dataset.authPage === "verify-email") {
+    initVerifyEmailPage();
   }
 });

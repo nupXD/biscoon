@@ -280,6 +280,33 @@ function getRelativeNewsPath(): string {
   return '/pages/news/index.html';
 }
 
+function getRelativeDonatePath(): string {
+  return '/pages/donate.html';
+}
+
+function ensureDonateNavLink(): void {
+  const donatePath = getRelativeDonatePath();
+  document.querySelectorAll('#navCtas').forEach(ctas => {
+    if (ctas.querySelector('.donate-nav-link, .hbtn.donate')) return;
+    const a = document.createElement('a');
+    a.href = donatePath;
+    a.className = 'btn-ghost hbtn donate donate-nav-link';
+    a.textContent = 'Donate';
+    const ghost = ctas.querySelector('.hbtn.ghost, .btn-ghost');
+    ghost ? ctas.insertBefore(a, ghost) : ctas.prepend(a);
+  });
+  document.querySelectorAll('.mobile-drawer').forEach(drawer => {
+    if (drawer.querySelector('.donate-nav-link')) return;
+    const a = document.createElement('a');
+    a.href = donatePath;
+    a.className = 'donate-nav-link';
+    a.textContent = 'Donate';
+    const authButtons = drawer.querySelector('.mobile-drawer-btns');
+    if (authButtons) drawer.insertBefore(a, authButtons);
+    else drawer.appendChild(a);
+  });
+}
+
 function ensureNewsNavLink(): void {
   const newsPath = getRelativeNewsPath();
   document.querySelectorAll('.nav-links').forEach(nav => {
@@ -400,6 +427,7 @@ function initScrollProgress(): void {
 document.addEventListener('DOMContentLoaded', function () {
   loadEnhancementPlugins();
   ensureNewsNavLink();
+  ensureDonateNavLink();
   initScrollProgress();
   document.getElementById('hamburger')?.addEventListener('click', toggleMenu);
 
@@ -2070,6 +2098,7 @@ function renderListingsIntoFeed(listings: Listing[], feed: HTMLElement, append: 
         <a class="btn-primary" href="${getPostListingPath(inferPageCategory())}">Post a Listing</a>
       </div>
     `;
+    window.dispatchEvent(new CustomEvent('biscoon:listings-rendered', { detail: { listings: [], feed } }));
     return;
   }
 
@@ -2088,6 +2117,7 @@ function renderListingsIntoFeed(listings: Listing[], feed: HTMLElement, append: 
       ${items.map(listingToCard).join('')}
     `;
   }).join('');
+  window.dispatchEvent(new CustomEvent('biscoon:listings-rendered', { detail: { listings: sorted, feed } }));
 }
 
 async function fetchDiscussions(search = '', limit = 25): Promise<Discussion[]> {
@@ -2876,15 +2906,16 @@ function newsThumb(article: HomeNewsArticle): string {
   return icons[String(article.category || '').toLowerCase()] || '📰';
 }
 
-function renderHomeNewsItem(article: HomeNewsArticle, index: number): string {
+function renderHomeNewsItem(article: HomeNewsArticle, index: number, trending = false): string {
   const tone = newsCategoryTone(article.category, index);
   const num = String(index + 1).padStart(2, '0');
   const when = newsRelativeTime(article.publishedAt || article.createdAt);
+  const trend = trending ? '<span class="ni-trend">Trending</span>' : '';
   return `
     <a class="n-item" href="${newsArticleHref(article)}">
       <div class="ni-num">${num}</div>
       <div>
-        <div class="ni-cat${tone ? ` ${tone}` : ''}">${escapeHtml(homeNewsCategoryLabel(article.category))}</div>
+        <div class="ni-cat${tone ? ` ${tone}` : ''}">${escapeHtml(homeNewsCategoryLabel(article.category))}${trend}</div>
         <div class="ni-title">${escapeHtml(article.title || 'Untitled story')}</div>
         <div class="ni-meta">${escapeHtml([when, article.sourceName || 'Biscoon Newsroom'].filter(Boolean).join(' · '))}</div>
       </div>
@@ -2931,7 +2962,8 @@ async function initHomeNews(): Promise<void> {
   const featured = document.getElementById('homeFeaturedStory');
   const diasporaList = document.getElementById('homeDiasporaList');
   const nepalList = document.getElementById('homeNepalList');
-  if (!ticker && !featured && !diasporaList && !nepalList) return;
+  const trendingList = document.getElementById('homeTrendingList');
+  if (!ticker && !featured && !diasporaList && !nepalList && !trendingList) return;
 
   try {
     const response = await fetch(`${getApiBase()}/api/news?limit=24`);
@@ -2946,6 +2978,19 @@ async function initHomeNews(): Promise<void> {
       articles[0] ||
       null;
     if (featured) featured.innerHTML = renderHomeFeatured(featuredArticle);
+
+    if (trendingList) {
+      const trending = articles.filter(a => a.featured).concat(articles).slice(0, 4);
+      const unique: HomeNewsArticle[] = [];
+      trending.forEach(article => {
+        const key = article.id || article.slug;
+        if (unique.some(item => (item.id || item.slug) === key)) return;
+        unique.push(article);
+      });
+      trendingList.innerHTML = unique.length
+        ? unique.slice(0, 4).map((article, index) => renderHomeNewsItem(article, index, true)).join('')
+        : `<div class="home-news-empty">No trending stories yet.</div>`;
+    }
 
     const featuredId = featuredArticle?.id || featuredArticle?.slug;
     const rest = articles.filter(a => (a.id || a.slug) !== featuredId);
@@ -2963,12 +3008,12 @@ async function initHomeNews(): Promise<void> {
 
     if (diasporaList) {
       diasporaList.innerHTML = diaspora.length
-        ? diaspora.slice(0, 4).map(renderHomeNewsItem).join('')
+        ? diaspora.slice(0, 4).map((article, index) => renderHomeNewsItem(article, index)).join('')
         : `<div class="home-news-empty">No diaspora stories yet.</div>`;
     }
     if (nepalList) {
       nepalList.innerHTML = nepal.length
-        ? nepal.slice(0, 5).map(renderHomeNewsItem).join('')
+        ? nepal.slice(0, 5).map((article, index) => renderHomeNewsItem(article, index)).join('')
         : `<div class="home-news-empty">No Nepal stories yet.</div>`;
     }
   } catch {
@@ -2980,6 +3025,7 @@ async function initHomeNews(): Promise<void> {
     }
     if (diasporaList) diasporaList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
     if (nepalList) nepalList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
+    if (trendingList) trendingList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
   }
 }
 
