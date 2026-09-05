@@ -1,0 +1,36 @@
+# Biscoon
+
+> Biscoon is a community platform for the global Nepali diaspora — job listings, housing, a marketplace, and community discussions, connecting Nepalis across 90+ countries.
+
+Biscoon is free to use. Listings are user-submitted and not verified by Biscoon; Biscoon is not a party to transactions between users.
+
+## Core sections
+
+- [Jobs](https://biscoon.com/pages/jobs/jobs.html): Nepali-friendly job listings, including OPT/CPT/H1B and green card sponsorship filters.
+- [Student Network](https://biscoon.com/pages/jobs/student.html): OPT referrals, study groups, and roommates for Nepali students at US universities.
+- [Immigration](https://biscoon.com/pages/jobs/immigration.html): Nepali-speaking immigration attorneys and TPS/OPT/H1B guidance.
+- [Housing](https://biscoon.com/pages/housing/housing.html): Rooms, apartments, and roommates in Nepali communities across the US.
+- [Paying Guest](https://biscoon.com/pages/housing/paying-guest.html): Paying-guest stays with Nepali host families.
+- [Real Estate](https://biscoon.com/pages/housing/real-estate.html): Buying, selling, and investing in real estate with Nepali agents.
+- [Marketplace (Kinbech)](https://biscoon.com/pages/marketplace/kinbech.html): Buy-and-sell classifieds — furniture, electronics, vehicles, and more.
+- [Services](https://biscoon.com/pages/marketplace/services.html): Nepali professionals offering transport, home cooking, cleaning, and other services.
+- [Restaurants](https://biscoon.com/pages/marketplace/restaurants.html): Nepali restaurants, catering, and tiffin services.
+- [Photography](https://biscoon.com/pages/marketplace/photography.html): Nepali wedding, event, and portrait photographers.
+- [Discussions](https://biscoon.com/pages/community/discussions.html): Community discussion forum.
+- [Events](https://biscoon.com/pages/community/events.html): Nepali community events, festivals, and cultural gatherings.
+- [Organizations](https://biscoon.com/pages/community/organizations.html): Verified Nepali community organizations and non-profits.
+- [News](https://biscoon.com/pages/news/index.html): Community, immigration, business, and Nepal news for the diaspora.
+
+## Company
+
+- [About](https://biscoon.com/pages/about.html): What Biscoon is and why it exists.
+- [Contact](https://biscoon.com/pages/contact.html): Support, feedback, and partnership contact.
+- [Privacy Policy](https://biscoon.com/pages/privacy.html)
+- [Terms & Conditions](https://biscoon.com/pages/terms.html)
+
+## Optional
+
+- [Advertise](https://biscoon.com/pages/advertise.html): Advertising on Biscoon.
+- [Donate](https://biscoon.com/pages/donate.html): Support Biscoon.
+- [Date Converter](https://biscoon.com/pages/community/date-converter.html): Convert Gregorian (AD) and Bikram Sambat (BS) dates.
+- [Nepali Radio](https://biscoon.com/pages/community/radio.html): Live Nepali radio station links.

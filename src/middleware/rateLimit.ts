@@ -82,6 +82,13 @@ function authKey(req: Request): string {
   return `${ip}:${email || 'unknown-email'}`;
 }
 
+function userKey(req: Request): string {
+  const userId = (req as any).user?.id;
+  if (userId) return `user:${userId}`;
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown-ip';
+  return `ip:${ip}`;
+}
+
 const authLoginLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000,
   max: 8,
@@ -106,9 +113,45 @@ const authRecoveryLimiter = createRateLimiter({
   message: 'Too many account recovery attempts. Please wait and try again.',
 });
 
+const contentCreateLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  blockMs: 15 * 60 * 1000,
+  keyFn: userKey,
+  message: 'You are posting too quickly. Please slow down and try again shortly.',
+});
+
+const commentCreateLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  blockMs: 10 * 60 * 1000,
+  keyFn: userKey,
+  message: 'You are commenting too quickly. Please slow down and try again shortly.',
+});
+
+const messageSendLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 40,
+  blockMs: 10 * 60 * 1000,
+  keyFn: userKey,
+  message: 'You are sending messages too quickly. Please slow down and try again shortly.',
+});
+
+const reportCreateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  blockMs: 30 * 60 * 1000,
+  keyFn: userKey,
+  message: 'Too many reports submitted. Please wait and try again later.',
+});
+
 export {
   createRateLimiter,
   authLoginLimiter,
   authRegisterLimiter,
   authRecoveryLimiter,
+  contentCreateLimiter,
+  commentCreateLimiter,
+  messageSendLimiter,
+  reportCreateLimiter,
 };

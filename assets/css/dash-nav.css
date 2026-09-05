@@ -188,7 +188,7 @@ body.has-dash-nav .site-header .nav-ctas {
 body.is-home .hbtn,
 body.has-dash-nav .hbtn {
   padding: 6px 14px;
-  border-radius: 20px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -291,5 +291,17 @@ body.has-dash-nav .site-header .user-name {
   body.is-home .nav-ctas .hbtn.ghost,
   body.has-dash-nav .nav-ctas .hbtn.ghost {
     display: none;
+  }
+  body.is-home .nav-ctas .hbtn.donate,
+  body.has-dash-nav .nav-ctas .hbtn.donate {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  body.is-home nav.site-header,
+  body.has-dash-nav nav.site-header {
+    padding: 0 8px;
+    gap: 6px;
   }
 }

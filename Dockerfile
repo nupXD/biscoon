@@ -1,3 +1,11 @@
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build && npm run build:client
+
 FROM node:22-alpine
 
 WORKDIR /app
@@ -6,7 +14,12 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY . .
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/assets ./assets
+COPY --from=builder /app/pages ./pages
+COPY --from=builder /app/index.html ./index.html
+COPY --from=builder /app/seed.js ./seed.js
+
 RUN mkdir -p uploads
 
 EXPOSE 4000
@@ -14,4 +27,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:' + (process.env.PORT || 4000) + '/api/ready', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["node", "dist/server.js"]

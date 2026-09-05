@@ -589,6 +589,7 @@ async function handleProfileListingModalEditSubmit(event: Event, editableImages:
     }
     fetchMyListings();
     openProfileListingModal(listingId as string);
+    biscoonToast('Listing updated successfully.', 'success');
   } catch {
     if (message) {
       message.textContent = 'Network error. Please check your connection and try again.';
@@ -711,8 +712,11 @@ async function handleEditListingSubmit(event: Event): Promise<void> {
   showEditListingMessage('Listing updated successfully.', 'success');
   form.removeAttribute('data-editing-id');
   form.reset();
-  (document.getElementById('editListingSection') as HTMLElement).style.display = 'none';
   fetchMyListings();
+  // Give the success message a beat on screen before the section collapses.
+  window.setTimeout(() => {
+    (document.getElementById('editListingSection') as HTMLElement).style.display = 'none';
+  }, 1400);
 }
 
 async function deleteListing(id: string): Promise<void> {
@@ -734,7 +738,7 @@ function handleLogout(): void {
   window.location.href = 'login.html';
 }
 
-async function handleResendVerification(): Promise<void> {
+async function handleProfileResendVerification(): Promise<void> {
   const response = await fetch(`${profileApiBase}/api/auth/request-email-verification`, {
     method: 'POST',
     headers: {
@@ -768,7 +772,7 @@ document.addEventListener('DOMContentLoaded', function (): void {
     if ((event.target as HTMLElement).closest('[data-close-profile-listing-modal]')) closeProfileListingModal();
   });
   document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
-  document.getElementById('resendVerifyBtn')?.addEventListener('click', handleResendVerification);
+  document.getElementById('resendVerifyBtn')?.addEventListener('click', handleProfileResendVerification);
 
   if (requireAuth()) {
     fetchProfile();

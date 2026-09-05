@@ -4,23 +4,34 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Admin Panel — Biscoon</title>
+<meta name="description" content="Biscoon admin panel — manage users, listings, news, events, and community content."/>
+<meta name="robots" content="noindex,nofollow"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg"/>
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/favicon-32.png"/>
+<link rel="shortcut icon" href="../../assets/favicon.ico"/>
+<link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png"/>
 <link rel="stylesheet" href="../../assets/css/pages/admin/dashboard.css"/>
 <link rel="stylesheet" href="../../assets/vendor/photoswipe/photoswipe.css"/>
 </head>
 <body class="admin-body">
 <div class="admin-layout" id="adminLayout">
 
+  <div class="admin-sidebar-backdrop" id="adminSidebarBackdrop"></div>
+
   <aside class="admin-sidebar">
     <div class="admin-brand">
-      <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
-        <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#E63946" fill-opacity="0.18" stroke="#E63946" stroke-width="1.5"/>
-        <text x="16" y="21.5" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#E63946">B</text>
-      </svg>
-      <span class="admin-brand-name">Biscoon</span>
-      <span class="admin-brand-tag">ADMIN</span>
+      <a class="admin-brand-link" href="dashboard.html" aria-label="Biscoon Admin — go to dashboard">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+          <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#E63946" fill-opacity="0.18" stroke="#E63946" stroke-width="1.5"/>
+          <text x="16" y="21.5" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#E63946">B</text>
+        </svg>
+        <span class="admin-brand-name">Biscoon</span>
+        <span class="admin-brand-tag">ADMIN</span>
+      </a>
+      <button class="admin-sidebar-close" id="adminSidebarClose" type="button" aria-label="Close menu" title="Close menu">✕</button>
     </div>
 
     <nav class="admin-nav" id="adminNav">
@@ -74,7 +85,7 @@
       <div class="admin-topbar-main">
         <button class="admin-icon-btn admin-sidebar-toggle" id="adminSidebarToggle" type="button" aria-label="Toggle navigation" title="Toggle navigation">☰</button>
         <div>
-          <div class="admin-topbar-title" id="viewTitle">Loading…</div>
+          <h1 class="admin-topbar-title" id="viewTitle">Loading…</h1>
           <div class="admin-topbar-hint" id="viewHint">Preparing admin workspace</div>
         </div>
       </div>

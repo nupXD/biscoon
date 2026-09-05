@@ -5,6 +5,7 @@ import Conversation from '../models/Conversation';
 import Listing from '../models/Listing';
 import authMiddleware from '../middleware/auth';
 import requireVerifiedEmail from '../middleware/requireVerifiedEmail';
+import { messageSendLimiter } from '../middleware/rateLimit';
 import { findUserById } from '../utils/users';
 import { encrypt, decrypt } from '../utils/crypto';
 import { validate } from '../utils/validate';
@@ -130,7 +131,7 @@ function maxBytesForMimeType(mimeType: string): number {
   return MAX_FILE_BYTES;
 }
 
-function sanitizeAttachment(attachment: any): { error?: string; value?: any } {
+async function sanitizeAttachment(attachment: any): Promise<{ error?: string; value?: any }> {
   if (!attachment || typeof attachment !== 'object') {
     return { error: 'Invalid attachment payload.' };
   }
@@ -162,13 +163,13 @@ function sanitizeAttachment(attachment: any): { error?: string; value?: any } {
   }
 
   const storedData = parsed
-    ? saveBase64Upload({ folder: 'messages', mimeType, base64: parsed.base64 })
+    ? await saveBase64Upload({ folder: 'messages', mimeType, base64: parsed.base64 })
     : data;
 
   return { value: { name, mimeType, size, data: storedData } };
 }
 
-function validateAttachments(rawAttachments: unknown): { error?: string; attachments?: any[] } {
+async function validateAttachments(rawAttachments: unknown): Promise<{ error?: string; attachments?: any[] }> {
   if (rawAttachments === undefined || rawAttachments === null) return { attachments: [] };
   if (!Array.isArray(rawAttachments)) {
     return { error: 'Attachments must be an array.' };
@@ -179,7 +180,7 @@ function validateAttachments(rawAttachments: unknown): { error?: string; attachm
 
   const attachments: any[] = [];
   for (const attachment of rawAttachments) {
-    const sanitized = sanitizeAttachment(attachment);
+    const sanitized = await sanitizeAttachment(attachment);
     if (sanitized.error) return { error: sanitized.error };
     attachments.push(sanitized.value);
   }
@@ -285,7 +286,7 @@ router.get('/status', authMiddleware, async (req: Request, res: Response): Promi
   });
 });
 
-router.post('/', authMiddleware, requireVerifiedEmail, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authMiddleware, requireVerifiedEmail, messageSendLimiter, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
   const parsedPayload = validate(messageCreateSchema, req.body);
   if (parsedPayload.error) { res.status(400).json({ error: parsedPayload.error }); return; }
@@ -293,7 +294,7 @@ router.post('/', authMiddleware, requireVerifiedEmail, async (req: Request, res:
   const listingId = cleanString(parsedPayload.value.listingId);
   const recipientId = cleanString(parsedPayload.value.recipientId);
   const body = cleanString(parsedPayload.value.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
-  const validatedAttachments = validateAttachments(parsedPayload.value.attachments);
+  const validatedAttachments = await validateAttachments(parsedPayload.value.attachments);
 
   if (validatedAttachments.error) {
     res.status(400).json({ error: validatedAttachments.error }); return;
@@ -408,13 +409,13 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response): Promise<
   });
 });
 
-router.post('/:id/reply', authMiddleware, requireVerifiedEmail, async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/reply', authMiddleware, requireVerifiedEmail, messageSendLimiter, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
   const parsedPayload = validate(messageReplySchema, req.body);
   if (parsedPayload.error) { res.status(400).json({ error: parsedPayload.error }); return; }
 
   const body = cleanString(parsedPayload.value.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
-  const validatedAttachments = validateAttachments(parsedPayload.value.attachments);
+  const validatedAttachments = await validateAttachments(parsedPayload.value.attachments);
   if (validatedAttachments.error) {
     res.status(400).json({ error: validatedAttachments.error }); return;
   }

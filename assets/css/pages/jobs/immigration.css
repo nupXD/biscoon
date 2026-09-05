@@ -28,17 +28,3 @@
 .pages-jobs-immigration-inline-6 { background:#fff8eb;border-top:3px solid var(--gold);border-bottom:1px solid #fde68a;padding:14px 40px;font-size:13px;display:flex;align-items:center;gap:12px }
 .pages-jobs-immigration-inline-7 { margin-left:auto;color:var(--gold-dark);font-weight:600;font-size:12px;border:1px solid #fde68a;padding:4px 12px;border-radius:20px;text-decoration:none }
 .pages-jobs-immigration-inline-8 { color:var(--text-muted);font-size:13px }
-.pages-jobs-immigration-inline-9 { padding:10px 14px;display:flex;flex-direction:column;gap:0 }
-.pages-jobs-immigration-inline-10 { padding:8px 0;border-bottom:1px solid var(--border) }
-.pages-jobs-immigration-inline-11 { font-size:9.5px;font-weight:700;color:var(--red);font-family:var(--font-mono) }
-.pages-jobs-immigration-inline-12 { font-size:12px;font-weight:500;margin-top:2px }
-.pages-jobs-immigration-inline-13 { font-size:11px;color:var(--text-muted) }
-.pages-jobs-immigration-inline-14 { padding:8px 0 }
-.pages-jobs-immigration-inline-15 { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border) }
-.pages-jobs-immigration-inline-16 { width:34px;height:34px;border-radius:7px;background:#1877F2;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;flex-shrink:0 }
-.pages-jobs-immigration-inline-17 { flex:1;min-width:0 }
-.pages-jobs-immigration-inline-18 { font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
-.pages-jobs-immigration-inline-19 { font-size:10px;color:var(--text-muted) }
-.pages-jobs-immigration-inline-20 { font-size:10px;color:#1877F2;font-weight:700;flex-shrink:0 }
-.pages-jobs-immigration-inline-21 { display:flex;align-items:center;gap:10px;padding:7px 0 }
-.pages-jobs-immigration-inline-22 { width:34px;height:34px;border-radius:7px;background:#0f5132;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;flex-shrink:0 }

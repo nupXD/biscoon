@@ -48,7 +48,7 @@ async function loadIndex(): Promise<void> {
   return loading;
 }
 
-function escapeHtml(value = ''): string {
+function saEscapeHtml(value = ''): string {
   return String(value).replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
@@ -90,10 +90,10 @@ async function showSuggestions(input: HTMLInputElement): Promise<void> {
     return;
   }
   panel.innerHTML = results.map(item => `
-    <a class="biscoon-suggest-item" href="${escapeHtml(item.url)}">
+    <a class="biscoon-suggest-item" href="${saEscapeHtml(item.url)}">
       <span class="biscoon-suggest-kind">${item.kind === 'listing' ? 'Listing' : 'Discussion'}</span>
-      <strong>${escapeHtml(item.title)}</strong>
-      <small>${escapeHtml(item.subtitle)}</small>
+      <strong>${saEscapeHtml(item.title)}</strong>
+      <small>${saEscapeHtml(item.subtitle)}</small>
     </a>
   `).join('');
   panel.hidden = false;

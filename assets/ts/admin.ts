@@ -301,7 +301,11 @@ function loadingState(label: string = 'Loading'): string {
 function setupAdminShell(): void {
   const layout = document.getElementById('adminLayout');
   const sidebarToggle = document.getElementById('adminSidebarToggle');
+  const sidebarClose = document.getElementById('adminSidebarClose');
+  const sidebarBackdrop = document.getElementById('adminSidebarBackdrop');
+  const nav = document.getElementById('adminNav');
   const refreshBtn = document.getElementById('adminRefreshView');
+  const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
   if (!document.getElementById('adminToastHost')) {
     const host = document.createElement('div');
@@ -314,10 +318,28 @@ function setupAdminShell(): void {
     layout.classList.add('admin-sidebar-collapsed');
   }
 
+  const closeMobileSidebar = () => layout?.classList.remove('admin-sidebar-mobile-open');
+
   sidebarToggle?.addEventListener('click', () => {
+    if (isMobile()) {
+      layout?.classList.toggle('admin-sidebar-mobile-open');
+      return;
+    }
     const collapsed = !layout?.classList.contains('admin-sidebar-collapsed');
     layout?.classList.toggle('admin-sidebar-collapsed', collapsed);
     localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  });
+
+  sidebarClose?.addEventListener('click', closeMobileSidebar);
+  sidebarBackdrop?.addEventListener('click', closeMobileSidebar);
+  nav?.addEventListener('click', e => {
+    if (isMobile() && (e.target as HTMLElement).closest('.admin-nav-link')) closeMobileSidebar();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMobileSidebar();
+  });
+  window.addEventListener('resize', () => {
+    if (!isMobile()) closeMobileSidebar();
   });
 
   refreshBtn?.addEventListener('click', () => refreshCurrentView(true));
@@ -1628,7 +1650,7 @@ function renderNewsMediaBlock(media: Partial<MediaDraft> = {}): string {
   const caption = media.caption ? `<figcaption>${esc(media.caption)}</figcaption>` : '';
   const mediaHtml = media.type === 'video'
     ? `<video controls preload="metadata" src="${esc(media.url)}"></video>`
-    : `<img src="${esc(media.url)}" alt="">`;
+    : `<img src="${esc(media.url)}" alt="${esc(media.caption || 'Article image')}">`;
   return `<figure class="admin-news-media">${mediaHtml}${caption}</figure>`;
 }
 
@@ -1719,7 +1741,7 @@ function newsMediaLibraryHtml(): string {
         <div class="admin-news-media-thumb">
           ${item.type === 'video'
             ? `<video src="${esc(item.url)}" muted></video><span>Video</span>`
-            : `<img src="${esc(item.url)}" alt=""><span>Image</span>`}
+            : `<img src="${esc(item.url)}" alt="${esc(item.caption || 'Media image')}"><span>Image</span>`}
         </div>
         <div class="admin-news-media-meta">
           <input class="admin-modal-input" data-news-media-caption="${esc(item.id)}" value="${esc(item.caption || '')}" placeholder="Caption">
@@ -1842,7 +1864,7 @@ function newsFormHtml(article: Partial<AdminNews> = {}): string {
           <div class="news-editor-section-label">Cover image</div>
           <div class="news-dropzone" id="newsCoverDrop" tabindex="0">
             <div class="news-dropzone-preview" id="newsCoverPreview">
-              ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
+              ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'Cover image')}">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
             </div>
             <div class="news-dropzone-actions">
               <input class="admin-modal-input" id="newsImageUrl" value="${esc(article.imageUrl || '')}" placeholder="https://… or leave blank">
@@ -1900,7 +1922,7 @@ function newsFormHtml(article: Partial<AdminNews> = {}): string {
         <div class="news-preview-label">Live preview</div>
         <div class="news-preview-card">
           <div class="news-preview-cover" id="newsPreviewCover">
-            ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="">` : '<span>Cover preview</span>'}
+            ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'Cover image')}">` : '<span>Cover preview</span>'}
           </div>
           <div class="news-preview-badges">
             <span class="admin-badge admin-badge-blue" id="newsPreviewCategory">${esc(newsCategoryLabel(category))}</span>
@@ -1941,12 +1963,13 @@ function wireNewsEditorInteractivity(): void {
   const summaryCount = document.getElementById('newsSummaryCount');
 
   function setCover(url: string) {
+    const coverAlt = esc(title?.value.trim() || 'Cover image');
     const html = url
-      ? `<img src="${esc(url)}" alt="">`
+      ? `<img src="${esc(url)}" alt="${coverAlt}">`
       : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>';
     if (coverPreview) coverPreview.innerHTML = html;
     if (previewCover) {
-      previewCover.innerHTML = url ? `<img src="${esc(url)}" alt="">` : '<span>Cover preview</span>';
+      previewCover.innerHTML = url ? `<img src="${esc(url)}" alt="${coverAlt}">` : '<span>Cover preview</span>';
     }
   }
 
@@ -2133,7 +2156,7 @@ async function showNews(page?: number): Promise<void> {
               <article class="news-row" data-news-open="${esc(article.id)}" tabindex="0" role="button">
                 <div class="news-row-thumb">
                   ${article.imageUrl
-                    ? `<img src="${esc(article.imageUrl)}" alt="" loading="lazy">`
+                    ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'News')}" loading="lazy">`
                     : `<span>${esc((article.title || 'N').charAt(0).toUpperCase())}</span>`}
                 </div>
                 <div class="news-row-body">
@@ -2227,7 +2250,7 @@ async function openViewNews(id: string): Promise<void> {
       ${article.authorName ? `<span>By ${esc(article.authorName)}</span>` : ''}
       <span style="margin-left:auto;font-size:12px">${article.publishedAt ? `Published ${fmtDate(article.publishedAt)}` : `Updated ${fmtDate(article.updatedAt)}`}</span>
     </div>
-    ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="" class="admin-news-preview">` : ''}
+    ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'News')}" class="admin-news-preview">` : ''}
     <div class="admin-view-desc" style="margin-top:12px">${esc(article.summary)}</div>
     <div class="admin-news-body">${formatNewsBody(article.body, article.media || [])}</div>
     <div class="admin-view-actions">

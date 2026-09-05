@@ -26,17 +26,3 @@
 .pages-housing-real-estate-inline-4 { display: none; }
 .pages-housing-real-estate-inline-5 { flex:1;text-align:center; }
 .pages-housing-real-estate-inline-6 { color:var(--text-muted);font-size:13px }
-.pages-housing-real-estate-inline-7 { padding:10px 14px;display:flex;flex-direction:column;gap:0 }
-.pages-housing-real-estate-inline-8 { padding:8px 0;border-bottom:1px solid var(--border) }
-.pages-housing-real-estate-inline-9 { font-size:9.5px;font-weight:700;color:var(--red);font-family:var(--font-mono) }
-.pages-housing-real-estate-inline-10 { font-size:12px;font-weight:500;margin-top:2px }
-.pages-housing-real-estate-inline-11 { font-size:11px;color:var(--text-muted) }
-.pages-housing-real-estate-inline-12 { padding:8px 0 }
-.pages-housing-real-estate-inline-13 { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border) }
-.pages-housing-real-estate-inline-14 { width:34px;height:34px;border-radius:7px;background:#1877F2;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;flex-shrink:0 }
-.pages-housing-real-estate-inline-15 { flex:1;min-width:0 }
-.pages-housing-real-estate-inline-16 { font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
-.pages-housing-real-estate-inline-17 { font-size:10px;color:var(--text-muted) }
-.pages-housing-real-estate-inline-18 { font-size:10px;color:#1877F2;font-weight:700;flex-shrink:0 }
-.pages-housing-real-estate-inline-19 { display:flex;align-items:center;gap:10px;padding:7px 0 }
-.pages-housing-real-estate-inline-20 { width:34px;height:34px;border-radius:7px;background:#0f5132;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;flex-shrink:0 }

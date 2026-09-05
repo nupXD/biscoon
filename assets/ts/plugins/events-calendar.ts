@@ -15,7 +15,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function escapeHtml(value: string): string {
+function evEscapeHtml(value: string): string {
   return String(value || '').replace(/[&<>"']/g, char => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char
   ));
@@ -165,7 +165,7 @@ function eventsOnDay(events: AgendaEvent[], date: Date): AgendaEvent[] {
 
 function renderThumb(event: AgendaEvent): string {
   if (event.image) {
-    return `<img src="${escapeHtml(event.image)}" alt="" loading="lazy">`;
+    return `<img src="${evEscapeHtml(event.image)}" alt="${evEscapeHtml(event.title || 'Event')}" loading="lazy">`;
   }
   return `<span aria-hidden="true">🎉</span>`;
 }
@@ -177,18 +177,18 @@ function renderGroup(date: Date, events: AgendaEvent[]): string {
   return `
     <section class="ev-group" data-group-day="${ymd(date)}">
       <div class="ev-group-head">
-        <span>${escapeHtml(dayName)}</span>
-        <span>${escapeHtml(dateLabel)}</span>
+        <span>${evEscapeHtml(dayName)}</span>
+        <span>${evEscapeHtml(dateLabel)}</span>
       </div>
       ${events.map(event => `
-        <a class="ev-row" href="${escapeHtml(event.href)}" data-event-id="${escapeHtml(event.id)}"${event.sample ? '' : ` data-listing-id="${escapeHtml(event.id)}"`}>
+        <a class="ev-row" href="${evEscapeHtml(event.href)}" data-event-id="${evEscapeHtml(event.id)}"${event.sample ? '' : ` data-listing-id="${evEscapeHtml(event.id)}"`}>
           <div class="ev-thumb">${renderThumb(event)}</div>
           <div class="ev-body">
             <div class="ev-title-row">
-              <h3>${escapeHtml(event.title)}</h3>
-              <time>${escapeHtml(event.timeLabel || 'TBA')}</time>
+              <h3>${evEscapeHtml(event.title)}</h3>
+              <time>${evEscapeHtml(event.timeLabel || 'TBA')}</time>
             </div>
-            <p>${escapeHtml(event.description)}${event.location ? ` · ${escapeHtml(event.location)}` : ''}</p>
+            <p>${evEscapeHtml(event.description)}${event.location ? ` · ${evEscapeHtml(event.location)}` : ''}</p>
           </div>
         </a>
       `).join('')}
@@ -202,6 +202,8 @@ const state = {
   query: '',
   events: [] as AgendaEvent[],
   searchOpen: false,
+  monthPickerOpen: false,
+  pickerYear: new Date().getFullYear(),
 };
 
 function visibleEvents(): AgendaEvent[] {
@@ -217,6 +219,25 @@ function visibleEvents(): AgendaEvent[] {
     .sort((a, b) => a.start.getTime() - b.start.getTime() || a.title.localeCompare(b.title));
 }
 
+function renderMonthPicker(): string {
+  const activeMonth = state.monday.getMonth();
+  const activeYear = state.monday.getFullYear();
+  const months = MONTHS.map((name, index) => {
+    const isActive = state.pickerYear === activeYear && index === activeMonth;
+    return `<button type="button" class="ev-picker-month${isActive ? ' is-active' : ''}" data-pick-month="${index}">${name.slice(0, 3)}</button>`;
+  }).join('');
+  return `
+    <div class="ev-month-picker" role="dialog" aria-label="Choose month and year">
+      <div class="ev-picker-year-nav">
+        <button type="button" class="ev-month-btn" data-picker-year-shift="-1" aria-label="Previous year">‹</button>
+        <span class="ev-picker-year">${state.pickerYear}</span>
+        <button type="button" class="ev-month-btn" data-picker-year-shift="1" aria-label="Next year">›</button>
+      </div>
+      <div class="ev-picker-months">${months}</div>
+    </div>
+  `;
+}
+
 function renderWeek(root: HTMLElement): void {
   const days = weekDays(state.monday);
   const monthLabel = MONTHS[state.monday.getMonth()];
@@ -225,8 +246,9 @@ function renderWeek(root: HTMLElement): void {
       <div class="ev-week-top">
         <div class="ev-month-nav">
           <button type="button" class="ev-month-btn" data-week-shift="-7" aria-label="Previous week">‹</button>
-          <span class="ev-month-label">${escapeHtml(monthLabel)}</span>
+          <button type="button" class="ev-month-label" data-open-month-picker aria-haspopup="true" aria-expanded="${state.monthPickerOpen}">${evEscapeHtml(monthLabel)} ${state.monday.getFullYear()}</button>
           <button type="button" class="ev-month-btn" data-week-shift="7" aria-label="Next week">›</button>
+          ${state.monthPickerOpen ? renderMonthPicker() : ''}
         </div>
         <div class="ev-week-tools">
           <button type="button" class="ev-icon-btn is-on" data-ev-tool="list" aria-label="List view" aria-pressed="true">☰</button>
@@ -235,7 +257,7 @@ function renderWeek(root: HTMLElement): void {
         </div>
       </div>
       <div class="ev-search-wrap${state.searchOpen ? ' is-open' : ''}">
-        <input class="ev-search" type="search" placeholder="Search events" value="${escapeHtml(state.query)}" aria-label="Search events">
+        <input class="ev-search" type="search" placeholder="Search events" value="${evEscapeHtml(state.query)}" aria-label="Search events">
       </div>
       <div class="ev-dow" aria-hidden="true">${days.map(day => `<span>${DAYS_SHORT[day.getDay()]}</span>`).join('')}</div>
       <div class="ev-dates" role="listbox" aria-label="Days this week">
@@ -325,26 +347,26 @@ function closeEventDetail(): void {
 function renderEventDetail(event: AgendaEvent, listing?: Record<string, unknown> | null): string {
   const images = Array.isArray(listing?.images) ? listing.images as string[] : (event.image ? [event.image] : []);
   const gallery = images.length
-    ? `<div class="listing-detail-gallery">${images.map(image => `<img src="${escapeHtml(image)}" alt="">`).join('')}</div>`
+    ? `<div class="listing-detail-gallery">${images.map(image => `<img src="${evEscapeHtml(image)}" alt="${evEscapeHtml(event.title || 'Event')}">`).join('')}</div>`
     : `<div class="ev-detail-hero">${renderThumb(event)}</div>`;
   const phone = listing?.contactPhone ? String(listing.contactPhone) : '';
   const email = listing?.contactEmail ? String(listing.contactEmail) : '';
   const body = String(listing?.description || event.body || event.description);
   const listingLink = event.sample
     ? ''
-    : `<a class="btn-ghost" href="${escapeHtml(event.href)}">Open full page</a>`;
-  const phoneBtn = phone ? `<a class="btn-ghost" href="tel:${escapeHtml(phone)}">${escapeHtml(phone)}</a>` : '';
-  const emailBtn = email ? `<a class="btn-ghost" href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>` : '';
+    : `<a class="btn-ghost" href="${evEscapeHtml(event.href)}">Open full page</a>`;
+  const phoneBtn = phone ? `<a class="btn-ghost" href="tel:${evEscapeHtml(phone)}">${evEscapeHtml(phone)}</a>` : '';
+  const emailBtn = email ? `<a class="btn-ghost" href="mailto:${evEscapeHtml(email)}">${evEscapeHtml(email)}</a>` : '';
   return `
     <div class="listing-detail-kicker">🎉 Event</div>
-    <h2 id="eventDetailTitle">${escapeHtml(event.title)}</h2>
+    <h2 id="eventDetailTitle">${evEscapeHtml(event.title)}</h2>
     ${gallery}
     <div class="listing-detail-meta">
-      <span>📅 ${escapeHtml(formatLongDate(event.start))}</span>
-      <span>🕐 ${escapeHtml(event.timeLabel || 'Time TBA')}</span>
-      ${event.location ? `<span>📍 ${escapeHtml(event.location)}</span>` : ''}
+      <span>📅 ${evEscapeHtml(formatLongDate(event.start))}</span>
+      <span>🕐 ${evEscapeHtml(event.timeLabel || 'Time TBA')}</span>
+      ${event.location ? `<span>📍 ${evEscapeHtml(event.location)}</span>` : ''}
     </div>
-    <p>${escapeHtml(body)}</p>
+    <p>${evEscapeHtml(body)}</p>
     <div class="listing-detail-contact">
       ${phoneBtn}${emailBtn}${listingLink}
     </div>
@@ -387,6 +409,31 @@ function bind(root: HTMLElement): void {
     if (shift) {
       state.monday = addDays(state.monday, Number(shift.dataset.weekShift));
       state.selected = '';
+      state.monthPickerOpen = false;
+      paint();
+      return;
+    }
+    const openPicker = target.closest<HTMLElement>('[data-open-month-picker]');
+    if (openPicker) {
+      state.pickerYear = state.monday.getFullYear();
+      state.monthPickerOpen = !state.monthPickerOpen;
+      paint();
+      return;
+    }
+    const yearShift = target.closest<HTMLElement>('[data-picker-year-shift]');
+    if (yearShift) {
+      state.pickerYear += Number(yearShift.dataset.pickerYearShift);
+      paint();
+      return;
+    }
+    const pickMonth = target.closest<HTMLElement>('[data-pick-month]');
+    if (pickMonth) {
+      const monthIndex = Number(pickMonth.dataset.pickMonth);
+      let monday = mondayOf(new Date(state.pickerYear, monthIndex, 1));
+      if (monday.getMonth() !== monthIndex) monday = addDays(monday, 7);
+      state.monday = monday;
+      state.selected = '';
+      state.monthPickerOpen = false;
       paint();
       return;
     }
@@ -409,6 +456,19 @@ function bind(root: HTMLElement): void {
     if (!input.classList.contains('ev-search')) return;
     state.query = input.value;
     renderList(document.getElementById('eventsAgendaList') as HTMLElement);
+  });
+  document.addEventListener('click', event => {
+    if (!state.monthPickerOpen) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.ev-month-nav')) return;
+    state.monthPickerOpen = false;
+    paint();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && state.monthPickerOpen) {
+      state.monthPickerOpen = false;
+      paint();
+    }
   });
 }
 

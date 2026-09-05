@@ -83,6 +83,7 @@ export interface IDiscussion extends Document {
   title: string;
   body: string;
   category: string;
+  location: string;
   tags: string[];
   comments: IComment[];
   commentCount: number;

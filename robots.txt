@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /pages/admin/
+Disallow: /pages/auth/profile.html
+Disallow: /pages/auth/messages.html
+Disallow: /pages/auth/notifications.html
+Disallow: /pages/auth/activity.html
+Disallow: /pages/auth/reset-password.html
+Disallow: /pages/auth/verify-email.html
+Disallow: /uploads/
+Disallow: /data/
+
+Sitemap: https://biscoon.com/sitemap.xml

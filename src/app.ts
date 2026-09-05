@@ -48,14 +48,14 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
       connectSrc: ["'self'", 'https://ipapi.co', 'https://api.open-meteo.com'],
-      fontSrc: ["'self'", 'data:'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       formAction: ["'self'"],
       frameAncestors: ["'self'"],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
       mediaSrc: ["'self'", 'data:', 'blob:', 'https:'],
       objectSrc: ["'none'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       workerSrc: ["'self'", 'blob:'],
       childSrc: ["'self'", 'blob:'],
       upgradeInsecureRequests: isProduction ? [] : null,
@@ -88,6 +88,22 @@ app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
 app.get(['/', '/index.html'], (_req: Request, res: Response) => {
   res.sendFile(path.join(STATIC_ROOT, 'index.html'));
+});
+
+app.get('/favicon.ico', (_req: Request, res: Response) => {
+  res.sendFile(path.join(STATIC_ROOT, 'assets', 'favicon.ico'));
+});
+
+app.get('/robots.txt', (_req: Request, res: Response) => {
+  res.sendFile(path.join(STATIC_ROOT, 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (_req: Request, res: Response) => {
+  res.sendFile(path.join(STATIC_ROOT, 'sitemap.xml'));
+});
+
+app.get('/llms.txt', (_req: Request, res: Response) => {
+  res.sendFile(path.join(STATIC_ROOT, 'llms.txt'));
 });
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -137,8 +153,11 @@ app.use('/api/news', newsRoutes);
 app.use('/api/spotlight', spotlightRoutes);
 app.use('/api/weather', weatherRoutes);
 
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ error: 'Endpoint not found.' });
+app.use((req: Request, res: Response) => {
+  if (!req.path.startsWith('/api/') && req.accepts('html')) {
+    return res.status(404).sendFile(path.join(STATIC_ROOT, '404.html'));
+  }
+  return res.status(404).json({ error: 'Endpoint not found.' });
 });
 
 app.use((err: Error & { status?: number; statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {

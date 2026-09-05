@@ -170,6 +170,28 @@ function hasSessionExpired(): boolean {
   return Date.now() - lastActivity > BISCOON_SESSION_TIMEOUT_MS;
 }
 
+// ── Toast messages ──
+
+function biscoonToast(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+  if (!message) return;
+  let host = document.getElementById('biscoonToastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'biscoonToastHost';
+    host.className = 'biscoon-toast-host';
+    document.body.appendChild(host);
+  }
+  const item = document.createElement('div');
+  item.className = `biscoon-toast biscoon-toast-${type}`;
+  item.textContent = message;
+  host.appendChild(item);
+  requestAnimationFrame(() => item.classList.add('show'));
+  window.setTimeout(() => {
+    item.classList.remove('show');
+    window.setTimeout(() => item.remove(), 200);
+  }, type === 'error' ? 5000 : 3400);
+}
+
 function getBiscoonToken(): string {
   if (hasSessionExpired()) {
     endBiscoonSession({ redirect: shouldRedirectAfterSessionEnd() });
@@ -296,7 +318,7 @@ function ensureDonateNavLink(): void {
     ghost ? ctas.insertBefore(a, ghost) : ctas.prepend(a);
   });
   document.querySelectorAll('.mobile-drawer').forEach(drawer => {
-    if (drawer.querySelector('.donate-nav-link')) return;
+    if (drawer.querySelector('.donate-nav-link, a[href$="donate.html"]')) return;
     const a = document.createElement('a');
     a.href = donatePath;
     a.className = 'donate-nav-link';
@@ -538,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const cond = document.getElementById('weatherCondition');
       if (loading) { loading.textContent = ' · Detecting…'; loading.style.display = 'inline'; }
       if (cond) cond.textContent = 'Updating…';
-      detectLocationAndWeather().finally(() => {
+      detectLocationAndWeather(true).finally(() => {
         if (loading) loading.style.display = 'none';
       });
     });
@@ -820,27 +842,82 @@ async function initHomeInfoBar(): Promise<void> {
 
 const WEATHER_DEFAULT: WeatherCoords = { lat: 42.3601, lon: -71.0589, city: 'Boston, Massachusetts' };
 
-async function detectLocationAndWeather(): Promise<void> {
-  let coords: WeatherCoords = WEATHER_DEFAULT;
+interface IpGeoResult {
+  lat: number | null;
+  lon: number | null;
+  city: string;
+}
 
-  // Try IP geolocation — if it fails we still show weather for the default city
+const USER_GEO_CACHE_KEY = 'biscoonUserGeo';
+let ipGeoPromise: Promise<IpGeoResult> | null = null;
+
+function readCachedGeo(): IpGeoResult | null {
   try {
-    const geo = await Promise.race([
-      fetch('https://ipapi.co/json/').then(r => r.json()),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000)),
-    ]) as any;
-    if (geo && geo.latitude && geo.longitude && geo.city) {
-      const region = geo.region || geo.region_code || '';
-      coords = {
-        lat: geo.latitude,
-        lon: geo.longitude,
-        city: geo.city + (region ? ', ' + region : ''),
-      };
-      const el = document.getElementById('cityName');
-      if (el) el.textContent = coords.city;
-    }
+    const raw = sessionStorage.getItem(USER_GEO_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
-    // Location detection failed — use default coords, weather still loads
+    return null;
+  }
+}
+
+function writeCachedGeo(result: IpGeoResult): void {
+  try {
+    sessionStorage.setItem(USER_GEO_CACHE_KEY, JSON.stringify(result));
+  } catch {
+    // sessionStorage unavailable (private browsing, etc.) — non-fatal
+  }
+}
+
+// Detects the visitor's approximate city via IP geolocation. Cached per tab session so
+// every page that wants to rank content by location (listings, discussions) doesn't
+// re-hit the geolocation API on every fetch. Empty city on failure — callers must treat
+// "unknown" as "don't rank by location", never guess or default to a specific place.
+async function fetchIpGeo(forceRefresh = false): Promise<IpGeoResult> {
+  if (!forceRefresh) {
+    const cached = readCachedGeo();
+    if (cached) return cached;
+    if (ipGeoPromise) return ipGeoPromise;
+  }
+
+  ipGeoPromise = (async () => {
+    let result: IpGeoResult = { lat: null, lon: null, city: '' };
+    try {
+      const geo = await Promise.race([
+        fetch('https://ipapi.co/json/').then(r => r.json()),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000)),
+      ]) as any;
+      if (geo && geo.city) {
+        const region = geo.region || geo.region_code || '';
+        result = {
+          lat: typeof geo.latitude === 'number' ? geo.latitude : null,
+          lon: typeof geo.longitude === 'number' ? geo.longitude : null,
+          city: geo.city + (region ? ', ' + region : ''),
+        };
+      }
+    } catch {
+      // Location detection failed — result stays empty, callers fall back on their own defaults
+    }
+    writeCachedGeo(result);
+    return result;
+  })();
+
+  return ipGeoPromise;
+}
+
+async function getUserLocationCity(): Promise<string> {
+  const geo = await fetchIpGeo();
+  return geo.city;
+}
+
+async function detectLocationAndWeather(forceRefresh = false): Promise<void> {
+  const geo = await fetchIpGeo(forceRefresh);
+  const coords: WeatherCoords = (geo.city && geo.lat !== null && geo.lon !== null)
+    ? { lat: geo.lat, lon: geo.lon, city: geo.city }
+    : WEATHER_DEFAULT;
+
+  if (geo.city) {
+    const el = document.getElementById('cityName');
+    if (el) el.textContent = geo.city;
   }
 
   // Always attempt to fetch weather, even on location failure
@@ -875,7 +952,7 @@ async function checkSiteAnnouncement(): Promise<void> {
     banner.id = 'siteBanner';
     banner.innerHTML = `
       <span class="site-banner-text">
-        <span class="site-banner-title">${announcement.title}</span>${announcement.body}
+        <span class="site-banner-title">${escapeHtml(announcement.title)}</span>${escapeHtml(announcement.body)}
       </span>
       <button class="site-banner-close" aria-label="Dismiss">×</button>`;
     nav.insertAdjacentElement('afterend', banner);
@@ -1566,11 +1643,11 @@ function doSearch(): void {
       } else if (window.renderListings) {
         window.renderListings(listings);
       } else {
-        alert('Search results are available, but the current page cannot render them.');
+        biscoonToast('Search results are available, but the current page cannot render them.', 'error');
       }
     })
     .catch(() => {
-      alert('Unable to perform search at this time.');
+      biscoonToast('Unable to perform search at this time.', 'error');
     })
     .finally(() => {
       if (btn) { btn.disabled = false; btn.textContent = originalText; }
@@ -1652,6 +1729,30 @@ function escapeHtml(value: string | null | undefined): string {
     '"': '&quot;',
     "'": '&#39;',
   }[char] || char));
+}
+
+interface PageMetaUpdate {
+  title: string;
+  description: string;
+  url?: string;
+}
+
+function updatePageMeta({ title, description, url }: PageMetaUpdate): void {
+  document.title = title;
+
+  const setMeta = (selector: string, attr: string, value: string) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute(attr, value);
+  };
+  setMeta('meta[name="description"]', 'content', description);
+  setMeta('meta[property="og:title"]', 'content', title);
+  setMeta('meta[property="og:description"]', 'content', description);
+  setMeta('meta[name="twitter:title"]', 'content', title);
+  setMeta('meta[name="twitter:description"]', 'content', description);
+
+  const pageUrl = url || window.location.href.split('#')[0];
+  setMeta('link[rel="canonical"]', 'href', pageUrl);
+  setMeta('meta[property="og:url"]', 'content', pageUrl);
 }
 
 function safeExternalHref(value: string | null | undefined): string {
@@ -1811,6 +1912,10 @@ async function fetchListingsPage(options: {
   if (search) url.searchParams.set('search', search);
   url.searchParams.set('page', String(Math.max(1, page)));
   url.searchParams.set('limit', String(limit || LISTINGS_PAGE_SIZE));
+  if (!search) {
+    const near = await getUserLocationCity();
+    if (near) url.searchParams.set('near', near);
+  }
 
   const response = await fetch(url.toString());
   if (!response.ok) throw new Error('Unable to load listings');
@@ -2367,6 +2472,9 @@ function renderListingModalContent(listing: Listing): string {
   const contactPhone = listing.contactPhone
     ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>`
     : '';
+  const contactEmail = listing.contactEmail
+    ? `<a class="btn-ghost" href="mailto:${escapeHtml(listing.contactEmail)}">${escapeHtml(listing.contactEmail)}</a>`
+    : '';
   const externalHref = safeExternalHref(listing.externalLink);
   const externalLink = externalHref
     ? `<a class="btn-ghost" href="${escapeHtml(externalHref)}" target="_blank" rel="noopener">Open link</a>`
@@ -2412,7 +2520,7 @@ function renderListingModalContent(listing: Listing): string {
     ${isPhotoModal ? '' : `<div class="listing-detail-price">${escapeHtml(listing.price || '')}</div>`}
     ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
     <p>${escapeHtml(listing.description || 'No description provided.')}</p>
-    <div class="listing-detail-contact">${saveBtn}${messageBtn}${contactPhone}${externalLink}${reportBtn}</div>
+    <div class="listing-detail-contact">${saveBtn}${messageBtn}${contactPhone}${contactEmail}${externalLink}${reportBtn}</div>
     ${renderListingComments(listing)}
   `;
 }
@@ -2454,7 +2562,7 @@ async function submitReport(targetType: string, targetId: string): Promise<void>
   const normalizedReason = reason.trim().toLowerCase();
   const allowed = ['spam', 'scam', 'harassment', 'illegal', 'misinformation', 'other'];
   if (!allowed.includes(normalizedReason)) {
-    alert('Please use one of: spam, scam, harassment, illegal, misinformation, other.');
+    biscoonToast('Please use one of: spam, scam, harassment, illegal, misinformation, other.', 'error');
     return;
   }
   const details = window.prompt('Optional: add details for the admin team.', '') || '';
@@ -2465,7 +2573,7 @@ async function submitReport(targetType: string, targetId: string): Promise<void>
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Could not submit report.');
-  alert('Thanks. The report was sent to admins.');
+  biscoonToast('Thanks. The report was sent to admins.', 'success');
 }
 
 async function openListingModal(id: string): Promise<void> {
@@ -2524,7 +2632,7 @@ function bindListingDetailModal(): void {
         saveButton.classList.toggle('saved', Boolean(data.saved));
         saveButton.textContent = data.saved ? 'Saved' : 'Save listing';
       } catch (error: any) {
-        alert(error.message);
+        biscoonToast(error.message, 'error');
       } finally {
         (saveButton as HTMLButtonElement).disabled = false;
       }
@@ -2537,7 +2645,7 @@ function bindListingDetailModal(): void {
     try {
       await submitReport(reportButton.dataset.reportTarget || '', reportButton.dataset.reportId || '');
     } catch (error: any) {
-      alert(error.message);
+      biscoonToast(error.message, 'error');
     }
   });
 
@@ -2569,8 +2677,9 @@ function bindListingDetailModal(): void {
       } else {
         await hydrateListingDetail();
       }
+      biscoonToast('Comment posted.', 'success');
     } catch (error: any) {
-      alert(error.message);
+      biscoonToast(error.message, 'error');
     }
   });
 
@@ -2897,7 +3006,7 @@ function newsRelativeTime(value?: string): string {
 
 function newsThumb(article: HomeNewsArticle): string {
   if (article.imageUrl) {
-    return `<img src="${escapeHtml(article.imageUrl)}" alt="" loading="lazy">`;
+    return `<img src="${escapeHtml(article.imageUrl)}" alt="${escapeHtml(article.title || 'News')}" loading="lazy">`;
   }
   const icons: Record<string, string> = {
     usa: '🇺🇸', immigration: '🛂', community: '🤝', culture: '🎭',
@@ -2929,7 +3038,7 @@ function renderHomeFeatured(article: HomeNewsArticle | null): string {
   }
   const when = newsRelativeTime(article.publishedAt || article.createdAt);
   const media = article.imageUrl
-    ? `<img src="${escapeHtml(article.imageUrl)}" alt="">`
+    ? `<img src="${escapeHtml(article.imageUrl)}" alt="${escapeHtml(article.title || 'News')}">`
     : 'B';
   return `
     <a class="feat-story" href="${newsArticleHref(article)}">
@@ -3215,6 +3324,13 @@ async function hydrateListingDetail(): Promise<void> {
     if (!response.ok) throw new Error('Listing not found');
     const listing: Listing = await response.json();
     const meta = getCategoryMeta(listing.category || 'other');
+    const listingDescription = (listing.description || '').replace(/\s+/g, ' ').trim().slice(0, 155)
+      || `${meta.label} listing on Biscoon.`;
+    updatePageMeta({
+      title: `${listing.title || 'Listing'} — Biscoon`,
+      description: listingDescription,
+      url: `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(listing.id || id)}`,
+    });
     const isPhotographyListing = listing.category === 'photography';
     const detailImages = Array.isArray(listing.images) ? listing.images : [];
     const detailGalleryClass = isPhotographyListing && detailImages.length > 1
@@ -3251,6 +3367,7 @@ async function hydrateListingDetail(): Promise<void> {
       detailSaveBtn,
       detailMessageBtn,
       !isPhotographyListing && listing.contactPhone ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>` : '',
+      !isPhotographyListing && listing.contactEmail ? `<a class="btn-ghost" href="mailto:${escapeHtml(listing.contactEmail)}">${escapeHtml(listing.contactEmail)}</a>` : '',
       externalLink,
     ].filter(Boolean).join('');
     const mapHref = listing.location

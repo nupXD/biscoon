@@ -50,7 +50,7 @@ async function newsFetch(path) {
 
 function newsImage(article, className = 'news-image') {
   if (article.imageUrl) {
-    return `<img class="${className}" src="${newsEscape(article.imageUrl)}" alt="">`;
+    return `<img class="${className}" src="${newsEscape(article.imageUrl)}" alt="${newsEscape(article.title || 'News')}">`;
   }
   return `<div class="news-image-placeholder">B</div>`;
 }
@@ -137,7 +137,7 @@ function newsMediaBlock(media = {}) {
   const caption = media.caption ? `<figcaption>${newsEscape(media.caption)}</figcaption>` : '';
   const mediaHtml = media.type === 'video'
     ? `<video controls preload="metadata" src="${newsEscape(media.url)}"></video>`
-    : `<img src="${newsEscape(media.url)}" alt="">`;
+    : `<img src="${newsEscape(media.url)}" alt="${newsEscape(media.caption || 'Article image')}">`;
   return `<figure class="news-inline-media">${mediaHtml}${caption}</figure>`;
 }
 
@@ -219,11 +219,18 @@ async function openNewsArticle(slug, pushState = true) {
       <div class="news-category">${newsEscape(newsCategoryLabel(article.category))}</div>
       <h2>${newsEscape(article.title)}</h2>
       ${articleMeta(article)}
-      ${article.imageUrl ? `<img src="${newsEscape(article.imageUrl)}" alt="">` : ''}
+      ${article.imageUrl ? `<img src="${newsEscape(article.imageUrl)}" alt="${newsEscape(article.title)}">` : ''}
       <p class="news-summary">${newsEscape(article.summary)}</p>
       <div class="news-body">${articleBodyHtml(article.body, article.media || [])}</div>
     </article>
   `;
+  if (typeof updatePageMeta === 'function') {
+    updatePageMeta({
+      title: `${article.title || 'News'} — Biscoon`,
+      description: (article.summary || '').replace(/\s+/g, ' ').trim().slice(0, 155) || 'Biscoon News.',
+      url: `${window.location.origin}${window.location.pathname}?story=${encodeURIComponent(article.slug)}`,
+    });
+  }
   if (pushState) {
     const url = new URL(window.location.href);
     url.searchParams.set('story', article.slug);

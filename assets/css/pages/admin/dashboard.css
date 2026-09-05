@@ -27,8 +27,13 @@ button,input,select,textarea{font:inherit}
 /* ── Sidebar ── */
 .admin-sidebar{background:#121a29;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid rgba(255,255,255,.08);box-shadow:14px 0 34px rgba(18,26,41,.16);z-index:20}
 .admin-brand{padding:22px 20px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);min-height:73px}
+.admin-brand-link{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;border-radius:6px;transition:opacity .14s ease}
+.admin-brand-link:hover{opacity:.85}
 .admin-brand-name{color:#fff;font-size:15px;font-weight:700;letter-spacing:.2px}
 .admin-brand-tag{font-size:9px;font-weight:800;background:#E63946;color:#fff;padding:2px 7px;border-radius:3px;letter-spacing:.5px}
+.admin-sidebar-close{display:none;position:absolute;top:14px;right:12px;width:28px;height:28px;border:1px solid rgba(255,255,255,.16);border-radius:7px;background:rgba(255,255,255,.06);color:#c7d2e0;font-size:13px;align-items:center;justify-content:center;cursor:pointer;transition:background .14s,color .14s}
+.admin-sidebar-close:hover{background:rgba(255,255,255,.12);color:#fff}
+.admin-sidebar-backdrop{display:none}
 
 .admin-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:4px}
 .admin-nav-link{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;color:#9aa8ba;font-size:13.5px;font-family:inherit;background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;text-align:left;transition:background .14s,color .14s,border-color .14s,transform .14s}
@@ -278,14 +283,22 @@ button,input,select,textarea{font:inherit}
 @media(max-width:768px){
   .admin-layout{grid-template-columns:1fr}
   .admin-layout.admin-sidebar-collapsed{grid-template-columns:1fr}
-  .admin-sidebar{height:auto;position:static;flex-direction:row;overflow-x:auto}
-  .admin-brand{padding:14px 16px;flex-shrink:0;border-bottom:none;border-right:1px solid rgba(255,255,255,.08)}
-  .admin-nav{flex-direction:row;display:flex;padding:4px 0;overflow-x:auto}
-  .admin-nav-link{padding:10px 14px;flex-shrink:0;border-left:none;border-bottom:3px solid transparent}
-  .admin-nav-link.active{border-left-color:transparent;border-bottom-color:#E63946}
+
+  .admin-sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(8,12,20,.5);z-index:900;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .admin-layout.admin-sidebar-mobile-open .admin-sidebar-backdrop{opacity:1;pointer-events:auto}
+
+  .admin-sidebar{position:fixed;top:0;left:0;height:100vh;width:264px;max-width:82vw;flex-direction:column;overflow-x:hidden;overflow-y:auto;transform:translateX(-100%);transition:transform .24s cubic-bezier(.32,.72,0,1);box-shadow:none;z-index:1000}
+  .admin-layout.admin-sidebar-mobile-open .admin-sidebar{transform:translateX(0);box-shadow:20px 0 60px rgba(8,12,20,.45)}
+  .admin-layout.admin-sidebar-mobile-open .admin-content{overflow:hidden}
+
+  .admin-brand{padding:18px 44px 16px 18px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);border-right:none;position:relative}
+  .admin-sidebar-close{display:inline-flex}
+  .admin-nav{flex-direction:column;display:flex;padding:12px 10px;overflow-x:visible}
+  .admin-nav-link{padding:11px 12px;flex-shrink:1;border-left:3px solid transparent;border-bottom:none}
+  .admin-nav-link.active{border-left-color:#E63946;border-bottom-color:transparent}
   .admin-sidebar-collapsed .admin-brand-name,.admin-sidebar-collapsed .admin-brand-tag,.admin-sidebar-collapsed .admin-nav-label{opacity:1;width:auto}
   .admin-sidebar-collapsed .admin-nav-link{justify-content:flex-start}
-  .admin-sidebar-footer{display:none}
+  .admin-sidebar-footer{display:flex}
   .admin-topbar{padding:12px 16px;align-items:flex-start}
   .admin-topbar-actions{align-self:center}
   .admin-topbar-hint{white-space:normal;max-width:calc(100vw - 160px)}

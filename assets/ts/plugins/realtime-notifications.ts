@@ -19,16 +19,6 @@ function baseUrl(): string {
   return window.location.origin.startsWith('file://') ? 'http://localhost:4000' : window.location.origin;
 }
 
-function escapeHtml(value = ''): string {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[char] || char));
-}
-
 function toast(message: string): void {
   let tray = document.getElementById('biscoonRealtimeTray');
   if (!tray) {
@@ -39,7 +29,7 @@ function toast(message: string): void {
   }
   const item = document.createElement('div');
   item.className = 'biscoon-realtime-toast';
-  item.innerHTML = escapeHtml(message);
+  item.textContent = message;
   tray.appendChild(item);
   requestAnimationFrame(() => item.classList.add('show'));
   window.setTimeout(() => {

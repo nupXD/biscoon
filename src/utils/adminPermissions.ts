@@ -68,9 +68,6 @@ function isAdminAccount(user: Partial<SanitizedUser> | null | undefined): boolea
 
 function getAdminPermissions(user: Partial<SanitizedUser> | null | undefined): readonly string[] {
   if (isSuperAdmin(user)) return ALL_ADMIN_PERMISSIONS;
-  if (user?.role === 'sub-admin' && (!user.permissions || user.permissions.length === 0)) {
-    return ASSIGNABLE_ADMIN_PERMISSIONS.map(permission => permission.key);
-  }
   return normalizePermissions(user?.permissions || []);
 }
 

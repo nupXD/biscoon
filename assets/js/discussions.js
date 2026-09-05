@@ -54,6 +54,12 @@ function openDiscussionModal() {
   modal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('discussion-modal-open');
   document.getElementById('discussionTitle')?.focus();
+  const locationInput = document.getElementById('discussionLocation');
+  if (locationInput && !locationInput.value && typeof getUserLocationCity === 'function') {
+    getUserLocationCity().then(city => {
+      if (city && !locationInput.value) locationInput.value = city;
+    }).catch(() => {});
+  }
 }
 
 function closeDiscussionModal() {
@@ -91,6 +97,7 @@ function renderDiscussionList() {
       <div class="discussion-list-title">${discussionEscapeHtml(topic.title)}</div>
       <div class="discussion-list-meta">
         <span class="discussion-category">${discussionEscapeHtml(topic.category || 'general')}</span>
+        ${topic.location ? `<span>${discussionEscapeHtml(topic.location)}</span>` : ''}
         <span>${discussionEscapeHtml(topic.authorName || 'Community member')}</span>
         <span>${Number(topic.commentCount || 0)} comments</span>
         <span>${formatDiscussionDate(topic.updatedAt || topic.createdAt)}</span>
@@ -142,9 +149,10 @@ function renderDiscussionDetail(topic) {
 
   detail.innerHTML = `
     <div class="discussion-topic-head">
-      <h1 class="discussion-topic-title">${discussionEscapeHtml(topic.title)}</h1>
+      <h2 class="discussion-topic-title">${discussionEscapeHtml(topic.title)}</h2>
       <div class="discussion-topic-meta">
         <span class="discussion-category">${discussionEscapeHtml(topic.category || 'general')}</span>
+        ${topic.location ? `<span>${discussionEscapeHtml(topic.location)}</span>` : ''}
         <span>Started by ${discussionEscapeHtml(topic.authorName || 'Community member')}</span>
         <span>${formatDiscussionDate(topic.createdAt)}</span>
       </div>
@@ -174,6 +182,10 @@ async function loadDiscussions() {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
   if (category && category !== 'all') params.set('category', category);
+  if (!search && typeof getUserLocationCity === 'function') {
+    const near = await getUserLocationCity();
+    if (near) params.set('near', near);
+  }
 
   const data = await discussionFetch(`/api/discussions${params.toString() ? `?${params}` : ''}`);
   discussionTopics = data.discussions || [];
@@ -204,6 +216,7 @@ async function handleDiscussionSubmit(event) {
     title: form.querySelector('#discussionTitle').value.trim(),
     category: form.querySelector('#discussionCategory').value,
     body: form.querySelector('#discussionBody').value.trim(),
+    location: form.querySelector('#discussionLocation')?.value.trim() || '',
     tags: form.querySelector('#discussionTags').value,
   };
 

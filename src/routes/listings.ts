@@ -5,6 +5,7 @@ import User from '../models/User';
 import Listing from '../models/Listing';
 import authMiddleware from '../middleware/auth';
 import requireVerifiedEmail from '../middleware/requireVerifiedEmail';
+import { contentCreateLimiter, commentCreateLimiter } from '../middleware/rateLimit';
 import { findListingById, normalizeListing } from '../utils/listings';
 import { createNotification } from '../utils/notifications';
 import { findUserById } from '../utils/users';
@@ -52,6 +53,14 @@ function cleanString(value: unknown, fallback = ''): string {
   return String(value).trim();
 }
 
+function escapeRegExp(value: unknown): string {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function primaryLocationTerm(near: string): string {
+  return near.split(',')[0].trim();
+}
+
 function cleanTags(tags: unknown): string[] {
   return Array.isArray(tags)
     ? tags.map(tag => cleanString(tag).slice(0, 40)).filter(Boolean).slice(0, 8)
@@ -77,26 +86,27 @@ function maxImagesForCategory(category: string): number {
   return category === 'photography' ? MAX_PHOTOGRAPHY_IMAGES : MAX_LISTING_IMAGES;
 }
 
-function cleanImages(images: unknown, category = ''): string[] {
-  return Array.isArray(images)
-    ? images
-      .map(image => cleanString(image))
-      .filter(image => {
-        if (!image) return false;
-        if (/^https?:\/\//i.test(image) || !image.includes(':')) return true;
-        if (!image.startsWith('data:image/')) return false;
-        const parsed = parseImageDataUrl(image);
-        if (!parsed) return false;
-        const size = getBase64Bytes(parsed.base64);
-        return size > 0 && size <= MAX_LISTING_IMAGE_BYTES;
-      })
-      .map(image => {
-        if (!image.startsWith('data:image/')) return image;
-        const parsed = parseImageDataUrl(image)!;
-        return saveBase64Upload({ folder: 'listings', mimeType: parsed.mimeType, base64: parsed.base64 });
-      })
-      .slice(0, maxImagesForCategory(category))
-    : [];
+async function cleanImages(images: unknown, category = ''): Promise<string[]> {
+  if (!Array.isArray(images)) return [];
+
+  const candidates = images
+    .map(image => cleanString(image))
+    .filter(image => {
+      if (!image) return false;
+      if (/^https?:\/\//i.test(image) || !image.includes(':')) return true;
+      if (!image.startsWith('data:image/')) return false;
+      const parsed = parseImageDataUrl(image);
+      if (!parsed) return false;
+      const size = getBase64Bytes(parsed.base64);
+      return size > 0 && size <= MAX_LISTING_IMAGE_BYTES;
+    })
+    .slice(0, maxImagesForCategory(category));
+
+  return Promise.all(candidates.map(image => {
+    if (!image.startsWith('data:image/')) return image;
+    const parsed = parseImageDataUrl(image)!;
+    return saveBase64Upload({ folder: 'listings', mimeType: parsed.mimeType, base64: parsed.base64 });
+  }));
 }
 
 function cleanExternalLink(value: unknown): string | null {
@@ -124,7 +134,7 @@ function findRootListingComment(comments: any[], comment: any): any {
   return current;
 }
 
-router.post('/', authMiddleware, requireVerifiedEmail, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authMiddleware, requireVerifiedEmail, contentCreateLimiter, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
   const parsedPayload = validate(listingPayloadSchema, req.body);
   if (parsedPayload.error) { res.status(400).json({ error: parsedPayload.error }); return; }
@@ -154,7 +164,7 @@ router.post('/', authMiddleware, requireVerifiedEmail, async (req: Request, res:
   const cleanSubcategory = cleanString(subcategory).slice(0, 120);
   const cleanLocation = (cleanString(location) || (isPhotographyListing ? 'Photography showcase' : '')).slice(0, 220);
   const cleanExternal = cleanExternalLink(externalLink);
-  const cleanedImages = cleanImages(images, cleanCategory);
+  const cleanedImages = await cleanImages(images, cleanCategory);
 
   if (!cleanTitle || !cleanDescription || !cleanCategory || !cleanSubcategory || !cleanLocation) {
     res.status(400).json({ error: 'Title, description, category, specific type, and location are required.' }); return;
@@ -218,6 +228,26 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   // MongoDB fallback
   let query: any = { deleted: { $ne: true }, ...listingCategoryFilter(category, subcategory) };
   if (search) query = { $text: { $search: search }, ...query };
+
+  const near = !search ? cleanString(req.query.near).slice(0, 120) : '';
+  const nearTerm = near ? primaryLocationTerm(near) : '';
+
+  if (nearTerm) {
+    const nearRegex = new RegExp(escapeRegExp(nearTerm), 'i');
+    const [listings, totalCount] = await Promise.all([
+      Listing.aggregate([
+        { $match: query },
+        { $addFields: { _nearMatch: { $cond: [{ $regexMatch: { input: { $ifNull: ['$location', ''] }, regex: nearRegex } }, 0, 1] } } },
+        { $sort: { _nearMatch: 1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _nearMatch: 0 } },
+      ]),
+      Listing.countDocuments(query),
+    ]);
+    res.json(pagedResponse('listings', listings.map(normalizeListing), totalCount, page, limit));
+    return;
+  }
 
   const [listings, total] = await Promise.all([
     Listing.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -336,7 +366,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   res.json(normalized);
 });
 
-router.post('/:id/comments', authMiddleware, requireVerifiedEmail, async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/comments', authMiddleware, requireVerifiedEmail, commentCreateLimiter, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
   const listing = await findListingById(req.params.id as string);
   if (!listing) {
@@ -428,7 +458,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response): Promise<
   const cleanSubcategory = cleanString(subcategory).slice(0, 120);
   const cleanLocation = (cleanString(location) || (isPhotographyListing ? 'Photography showcase' : '')).slice(0, 220);
   const cleanExternal = cleanExternalLink(externalLink);
-  const cleanedImages = cleanImages(images, cleanCategory);
+  const cleanedImages = await cleanImages(images, cleanCategory);
 
   if (!cleanTitle || !cleanDescription || !cleanCategory || !cleanSubcategory || !cleanLocation) {
     res.status(400).json({ error: 'Title, description, category, specific type, and location are required.' }); return;

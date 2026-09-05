@@ -19,6 +19,7 @@ const discussionSchema = new mongoose.Schema({
   title: { type: String, required: true },
   body: { type: String, required: true },
   category: { type: String, default: 'general', index: true },
+  location: { type: String, default: '' },
   tags: [{ type: String }],
   comments: [commentSchema],
   deleted:   { type: Boolean, default: false },

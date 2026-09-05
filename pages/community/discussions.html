@@ -5,9 +5,46 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Discussions — Biscoon</title>
 <meta name="description" content="Start and join Biscoon community discussions with comments and replies."/>
+<link rel="canonical" href="https://biscoon.com/pages/community/discussions.html"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="Biscoon"/>
+<meta property="og:title" content="Discussions — Biscoon"/>
+<meta property="og:description" content="Start and join Biscoon community discussions with comments and replies."/>
+<meta property="og:url" content="https://biscoon.com/pages/community/discussions.html"/>
+<meta property="og:image" content="https://biscoon.com/assets/social-share.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Discussions — Biscoon"/>
+<meta name="twitter:description" content="Start and join Biscoon community discussions with comments and replies."/>
+<meta name="twitter:image" content="https://biscoon.com/assets/social-share.png"/>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg"/>
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/favicon-32.png"/>
+<link rel="shortcut icon" href="../../assets/favicon.ico"/>
+<link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png"/>
 <link rel="stylesheet" href="../../assets/css/main.css"/>
 <link rel="stylesheet" href="../../assets/css/dash-nav.css"/>
 <link rel="stylesheet" href="../../assets/css/pages/community/discussions.css"/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Biscoon",
+      "item": "https://biscoon.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Discussions",
+      "item": "https://biscoon.com/pages/community/discussions.html"
+    }
+  ]
+}
+</script>
 </head>
 <body class="has-dash-nav">
 
@@ -56,9 +93,7 @@
   <a href="../jobs/jobs.html">रोजगार</a>
   <a href="../housing/housing.html">घर / कोठा</a>
   <a href="../marketplace/services.html">सेवाहरू</a>
-  <a href="organizations.html">संगठन</a>
   <a href="events.html">Events</a>
-  <a href="discussions.html">Discussions</a>
   <a href="../housing/paying-guest.html" class="pg-link">🏡 Paying Guest</a>
   <div class="mobile-drawer-btns" id="mobileBtns">
     <a class="btn-ghost" href="../auth/login.html">Sign In</a>
@@ -77,13 +112,13 @@
 </div>
 
 <div class="breadcrumb">
-  <a href="../../index.html">🏠 Biscoon</a>
+  <a href="../../index.html">Biscoon</a>
   <span class="sep">›</span>
   <span aria-current="page">Discussions</span>
 </div>
 <div class="page-hero">
   <div class="page-hero-eyebrow">Biscoon · Community</div>
-  <div class="page-hero-title"><span class="emoji" aria-hidden="true">💬</span>Discussions</div>
+  <h1 class="page-hero-title">Discussions</h1>
   <div class="page-hero-devanagari">छलफल</div>
   <div class="page-hero-desc">Ask questions, share advice, and keep conversations organized with comments and replies.</div>
 </div>
@@ -148,9 +183,15 @@
         <label class="form-label required" for="discussionBody">Details</label>
         <textarea class="form-input" id="discussionBody" name="body" rows="5" required></textarea>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="discussionTags">Tags</label>
-        <input class="form-input" id="discussionTags" name="tags" type="text" placeholder="visa, boston, room, momo" />
+      <div class="form-row--two">
+        <div class="form-group">
+          <label class="form-label" for="discussionLocation">Location (optional)</label>
+          <input class="form-input" id="discussionLocation" name="location" type="text" maxlength="120" placeholder="e.g. Boston, MA" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="discussionTags">Tags</label>
+          <input class="form-input" id="discussionTags" name="tags" type="text" placeholder="visa, boston, room, momo" />
+        </div>
       </div>
       <div id="discussionMessage" class="form-helper"></div>
       <div class="discussion-modal-actions">
@@ -167,7 +208,7 @@
     <div class="footer-col"><h5>Marketplace</h5><ul><li><a href="../marketplace/kinbech.html">किनबेच</a></li><li><a href="../jobs/jobs.html">रोजगार</a></li><li><a href="../housing/housing.html">घर / कोठा</a></li><li><a href="../marketplace/services.html">सेवाहरू</a></li></ul></div>
   </div>
 </footer>
-<div class="footer-bottom"><p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p><p>नेपाली जलवायु — विश्वभर एकीकृत</p></div>
+<div class="footer-bottom"><p>© 2082 B.S. / 2026 A.D. Biscoon Inc. All rights reserved.</p><p class="footer-legal-links"><a href="../privacy.html">Privacy Policy</a> · <a href="../terms.html">Terms &amp; Conditions</a></p><p>नेपाली जलवायु — विश्वभर एकीकृत</p></div>
 <script src="../../assets/js/biscoon.js"></script>
 <script src="../../assets/js/discussions.js"></script>
 </body>

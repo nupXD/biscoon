@@ -6,6 +6,8 @@
 /* PhotoSwipe lightbox UI — needed on every page that can open a listing modal */
 @import url('../vendor/photoswipe/photoswipe.css');
 
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0 }
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Tiro+Devanagari+Nepali:ital@0;1&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
 
 /* ── RESET ── */
@@ -196,16 +198,16 @@ nav {
 .nav-search-btn { border: none; background: transparent; color: var(--gray-500); font-size: 14px; padding: 8px 10px; border-radius: 999px; cursor: pointer; transition: background 150ms ease-out, transform 120ms var(--ease-out) }
 .nav-search-btn:hover { background: var(--gray-200); color: var(--navy) }
 .nav-search-btn:active { transform: scale(0.9) }
-.btn-ghost { padding: 7px 16px; border: 1.5px solid var(--border); border-radius: 20px; background: var(--surface); font-size: 14px; font-family: var(--font-sans); font-weight: 600; color: var(--gray-700); cursor: pointer; transition: border-color 150ms ease-out, color 150ms ease-out, background 150ms ease-out, transform 120ms var(--ease-out) }
+.btn-ghost { padding: 7px 16px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--surface); font-size: 14px; font-family: var(--font-sans); font-weight: 600; color: var(--gray-700); cursor: pointer; text-decoration: none; transition: border-color 150ms ease-out, color 150ms ease-out, background 150ms ease-out, transform 120ms var(--ease-out) }
 .btn-ghost:hover { border-color: var(--red); color: var(--red) }
 .btn-ghost:active { transform: scale(0.97) }
 .btn-ghost.saved { border-color: #1fa463; background: #effaf4; color: #12804d }
-.btn-primary { padding: 7px 18px; border: none; border-radius: 20px; background: var(--red); color: white; font-size: 14px; font-family: var(--font-sans); font-weight: 600; cursor: pointer; transition: background 150ms ease-out, transform 120ms var(--ease-out), box-shadow 150ms ease-out; white-space: nowrap }
+.btn-primary { padding: 7px 18px; border: none; border-radius: 10px; background: var(--red); color: white; font-size: 14px; font-family: var(--font-sans); font-weight: 600; cursor: pointer; text-decoration: none; transition: background 150ms ease-out, transform 120ms var(--ease-out), box-shadow 150ms ease-out; white-space: nowrap }
 @media (hover: hover) and (pointer: fine) {
   .btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(230,57,70,.35) }
 }
 .btn-primary:active { transform: scale(0.97); box-shadow: none }
-.btn-danger { padding: 7px 16px; border: 1.5px solid rgba(230,57,70,.28); border-radius: 20px; background: var(--red-ultra); color: var(--red); font-size: 14px; font-family: var(--font-sans); font-weight: 600; cursor: pointer; transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms var(--ease-out); white-space: nowrap }
+.btn-danger { padding: 7px 16px; border: 1.5px solid rgba(230,57,70,.28); border-radius: 10px; background: var(--red-ultra); color: var(--red); font-size: 14px; font-family: var(--font-sans); font-weight: 600; cursor: pointer; transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms var(--ease-out); white-space: nowrap }
 .btn-danger:hover { background: var(--red); border-color: var(--red); color: white }
 .btn-danger:active { transform: scale(0.97) }
 nav .btn-ghost { padding: 6px 14px; border: 1px solid var(--border); background: #fff; font-size: 13px; color: var(--navy) }
@@ -481,7 +483,7 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 .post-cta-widget { background: linear-gradient(135deg, var(--red), var(--red-dark)); padding: 16px; border-radius: 10px; color: white; text-align: center }
 .post-cta-widget h4 { font-size: 16px; font-weight: 600; margin-bottom: 5px }
 .post-cta-widget p { font-size: 13px; opacity: .85; margin-bottom: 12px; line-height: 1.5 }
-.post-cta-widget button { background: white; color: var(--red); border: none; padding: 8px 20px; border-radius: 6px; font-weight: 700; font-size: 12.5px; cursor: pointer; width: 100% }
+.post-cta-widget button, .post-cta-widget a { display: inline-block; background: white; color: var(--red); border: none; padding: 8px 20px; border-radius: 6px; font-weight: 700; font-size: 12.5px; cursor: pointer; width: 100%; text-align: center; text-decoration: none; box-sizing: border-box }
 
 /* ── LISTINGS CONTROLS ── */
 .listings-controls { margin-top: 8px }
@@ -504,12 +506,12 @@ body.biscoon-logged-out .mobile-drawer.open .mobile-drawer-btns { display: flex 
 .post-cta-strip h2 { font-family: var(--font-display); font-size: clamp(26px, 4vw, 40px); font-style: normal; font-weight: 800; color: white; margin-bottom: 10px; letter-spacing: -.3px }
 .post-cta-strip p { font-size: 16px; color: rgba(255,255,255,.8); margin-bottom: 24px }
 .post-cta-strip .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap }
-.btn-white { background: white; color: var(--red); border: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; transition: transform 150ms var(--ease-out), box-shadow 150ms ease-out }
+.btn-white { display: inline-block; background: white; color: var(--red); border: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; text-decoration: none; transition: transform 150ms var(--ease-out), box-shadow 150ms ease-out }
 @media (hover: hover) and (pointer: fine) {
   .btn-white:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.2) }
 }
 .btn-white:active { transform: scale(0.97) }
-.btn-outline-white { background: transparent; color: white; border: 2px solid rgba(255,255,255,.5); padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: border-color 150ms ease-out, background 150ms ease-out, transform 120ms var(--ease-out) }
+.btn-outline-white { display: inline-block; background: transparent; color: white; border: 2px solid rgba(255,255,255,.5); padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; transition: border-color 150ms ease-out, background 150ms ease-out, transform 120ms var(--ease-out) }
 .btn-outline-white:hover { border-color: white; background: rgba(255,255,255,.08) }
 .btn-outline-white:active { transform: scale(0.97) }
 
@@ -528,8 +530,12 @@ footer { background: var(--surface2); padding: 48px 40px 0; color: var(--gray-60
 .footer-countries a { font-size: 12px; color: var(--gray-600); text-decoration: none; transition: color .15s }
 .footer-countries a:hover { color: var(--navy) }
 .footer-countries a.more { color: var(--red); font-weight: 500 }
+.footer-countries span { font-size: 12px; color: var(--gray-600) }
+.footer-countries span.more { color: var(--red); font-weight: 500 }
 .footer-bottom { background: #fff; padding: 14px 40px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border) }
 .footer-bottom p { font-size: 11px; color: var(--gray-500) }
+.footer-legal-links a { color: var(--gray-500); text-decoration: none }
+.footer-legal-links a:hover { color: var(--red); text-decoration: underline }
 
 /* ── UTILITIES ── */
 .section { padding: 40px }
@@ -661,6 +667,11 @@ a.stat-cell:hover { background: rgba(230,57,70,.06); border-radius: 8px }
 .biscoon-realtime-tray { position: fixed; right: 18px; bottom: 18px; z-index: 2600; display: grid; gap: 8px; pointer-events: none }
 .biscoon-realtime-toast { max-width: min(340px, calc(100vw - 36px)); transform: translateY(12px) scale(0.97); opacity: 0; transition: opacity 200ms ease-out, transform 200ms var(--ease-out); padding: 12px 14px; border-radius: 8px; background: var(--navy); color: white; font-size: 13px; font-weight: 700; box-shadow: 0 18px 46px rgba(15,23,42,.28) }
 .biscoon-realtime-toast.show { transform: translateY(0) scale(1); opacity: 1 }
+.biscoon-toast-host { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none }
+.biscoon-toast { pointer-events: auto; max-width: min(420px, calc(100vw - 32px)); transform: translateY(12px) scale(0.97); opacity: 0; transition: opacity 200ms ease-out, transform 200ms var(--ease-out); padding: 12px 18px; border-radius: 10px; background: var(--navy); color: white; font-size: 14px; font-weight: 600; text-align: center; box-shadow: 0 16px 40px rgba(15,23,42,.28) }
+.biscoon-toast.show { transform: translateY(0) scale(1); opacity: 1 }
+.biscoon-toast-success { background: var(--green) }
+.biscoon-toast-error { background: var(--red) }
 
 /* ── LOADING SPINNER ── */
 .loading-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; color: var(--text-muted); font-size: 13px }

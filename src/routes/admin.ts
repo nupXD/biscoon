@@ -180,7 +180,7 @@ function getBase64Bytes(value: string): number {
 
 const MAX_SPOTLIGHT_IMAGE_BYTES = 5 * 1024 * 1024;
 
-function cleanSpotlightImage(value: unknown): string | null {
+async function cleanSpotlightImage(value: unknown): Promise<string | null> {
   const image = typeof value === 'string' ? value.trim() : '';
   if (!image) return null;
   if (/^https?:\/\//i.test(image) || image.startsWith('/uploads/')) return image;
@@ -202,7 +202,7 @@ function parseNewsMediaDataUrl(dataUrl: string): { mimeType: string; base64: str
   };
 }
 
-function cleanNewsImage(value: unknown): string | null {
+async function cleanNewsImage(value: unknown): Promise<string | null> {
   const image = cleanString(value);
   if (!image) return '';
   if (/^https?:\/\//i.test(image) || image.startsWith('/uploads/')) return image;
@@ -220,7 +220,7 @@ function inferNewsMediaType(item: any = {}, parsed: any = null): string {
   return explicitType === 'video' ? 'video' : 'image';
 }
 
-function cleanNewsMediaUrl(value: unknown, type: string): string | null {
+async function cleanNewsMediaUrl(value: unknown, type: string): Promise<string | null> {
   const url = cleanString(value);
   if (!url) return null;
   if (/^https?:\/\//i.test(url) || url.startsWith('/uploads/')) return url;
@@ -234,7 +234,7 @@ function cleanNewsMediaUrl(value: unknown, type: string): string | null {
   return saveBase64Upload({ folder: 'news', mimeType: parsed.mimeType, base64: parsed.base64 });
 }
 
-function cleanNewsMedia(items: any[] = [], existingItems: any[] = []): any[] {
+async function cleanNewsMedia(items: any[] = [], existingItems: any[] = []): Promise<any[]> {
   const source = Array.isArray(items) ? items : existingItems;
   const cleaned: any[] = [];
 
@@ -243,7 +243,7 @@ function cleanNewsMedia(items: any[] = [], existingItems: any[] = []): any[] {
       ? parseNewsMediaDataUrl(item.url)
       : null;
     const type = inferNewsMediaType(item, parsed);
-    const url = cleanNewsMediaUrl(item.url, type);
+    const url = await cleanNewsMediaUrl(item.url, type);
     if (!url) continue;
 
     cleaned.push({
@@ -258,16 +258,16 @@ function cleanNewsMedia(items: any[] = [], existingItems: any[] = []): any[] {
   return cleaned;
 }
 
-function getNewsPayload(body: Record<string, any> = {}, existingArticle: any = null): { error?: string; value?: any } {
+async function getNewsPayload(body: Record<string, any> = {}, existingArticle: any = null): Promise<{ error?: string; value?: any }> {
   const title = cleanString(body.title).slice(0, 180);
   const summary = cleanString(body.summary).slice(0, 360);
   const articleBody = sanitizeNewsBody(cleanString(body.body).slice(0, 20000)).slice(0, 20000);
   const category = NEWS_CATEGORIES.includes(cleanString(body.category)) ? cleanString(body.category) : 'community';
   const status = cleanString(body.status) === 'published' ? 'published' : 'draft';
   const media = body.media === undefined && existingArticle
-    ? cleanNewsMedia(existingArticle.media || [])
-    : cleanNewsMedia(body.media || [], existingArticle?.media || []);
-  let imageUrl = body.imageUrl === undefined && existingArticle ? existingArticle.imageUrl : cleanNewsImage(body.imageUrl);
+    ? await cleanNewsMedia(existingArticle.media || [])
+    : await cleanNewsMedia(body.media || [], existingArticle?.media || []);
+  let imageUrl = body.imageUrl === undefined && existingArticle ? existingArticle.imageUrl : await cleanNewsImage(body.imageUrl);
   if (!imageUrl) {
     imageUrl = media.find((item: any) => item.type === 'image')?.url || '';
   }
@@ -396,6 +396,8 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
 
 /* -- Global search -- */
 router.get('/search', async (req: Request, res: Response): Promise<void> => {
+  const req_ = req as AuthRequest;
+  const permissions = new Set(getAdminPermissions(req_.user));
   const q = cleanString(req.query.q);
   if (!q || q.length < 2) { res.json({ results: [] }); return; }
 
@@ -404,10 +406,18 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
   const limit = 5;
 
   const [users, listings, discussions, news] = await Promise.all([
-    User.find({ $or: [{ name: opts }, { email: opts }] }, { name: 1, email: 1, role: 1 }).limit(limit),
-    Listing.find({ deleted: { $ne: true }, $or: [{ title: opts }, { location: opts }, { category: opts }] }, { title: 1, category: 1, location: 1 }).limit(limit),
-    Discussion.find({ deleted: { $ne: true }, $or: [{ title: opts }, { authorName: opts }, { category: opts }] }, { title: 1, authorName: 1, category: 1 }).limit(limit),
-    News.find({ $or: [{ title: opts }, { summary: opts }, { category: opts }, { authorName: opts }] }, { title: 1, category: 1, status: 1 }).limit(limit),
+    permissions.has('users')
+      ? User.find({ $or: [{ name: opts }, { email: opts }] }, { name: 1, email: 1, role: 1 }).limit(limit)
+      : [],
+    permissions.has('listings')
+      ? Listing.find({ deleted: { $ne: true }, $or: [{ title: opts }, { location: opts }, { category: opts }] }, { title: 1, category: 1, location: 1 }).limit(limit)
+      : [],
+    permissions.has('discussions')
+      ? Discussion.find({ deleted: { $ne: true }, $or: [{ title: opts }, { authorName: opts }, { category: opts }] }, { title: 1, authorName: 1, category: 1 }).limit(limit)
+      : [],
+    permissions.has('news')
+      ? News.find({ $or: [{ title: opts }, { summary: opts }, { category: opts }, { authorName: opts }] }, { title: 1, category: 1, status: 1 }).limit(limit)
+      : [],
   ]);
 
   res.json({
@@ -773,7 +783,7 @@ router.put('/news/:id/status', requirePermission('news'), async (req: Request, r
 
 router.post('/news', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
-  const payload = getNewsPayload(req.body);
+  const payload = await getNewsPayload(req.body);
   if (payload.error) { res.status(400).json({ error: payload.error }); return; }
 
   const article = new News({
@@ -798,7 +808,7 @@ router.put('/news/:id', requirePermission('news'), async (req: Request, res: Res
   const article = await News.findOne({ id: req.params.id });
   if (!article) { res.status(404).json({ error: 'News article not found.' }); return; }
 
-  const payload = getNewsPayload(req.body, article);
+  const payload = await getNewsPayload(req.body, article);
   if (payload.error) { res.status(400).json({ error: payload.error }); return; }
 
   Object.assign(article, payload.value);
@@ -1320,7 +1330,7 @@ router.post('/spotlights', requirePermission('announcements'), async (req: Reque
   const { title, subtitle, body, badgeText, badgeColor, imageUrl, ctaText, ctaUrl, type, order, startDate, endDate } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: 'Title is required.' }); return; }
   if (!imageUrl?.trim()) { res.status(400).json({ error: 'Image is required.' }); return; }
-  const savedImageUrl = cleanSpotlightImage(imageUrl);
+  const savedImageUrl = await cleanSpotlightImage(imageUrl);
   if (!savedImageUrl) { res.status(400).json({ error: 'Invalid image. Provide an https:// URL or upload a JPG/PNG/WebP under 5MB.' }); return; }
   const spot = new HeroSpotlight({
     id: uuidv4(),
@@ -1358,7 +1368,7 @@ router.put('/spotlights/:id', requirePermission('announcements'), async (req: Re
   if (badgeText !== undefined) spot.badgeText = badgeText.trim();
   if (badgeColor !== undefined) spot.badgeColor = badgeColor.trim();
   if (imageUrl?.trim()) {
-    const saved = cleanSpotlightImage(imageUrl);
+    const saved = await cleanSpotlightImage(imageUrl);
     if (saved) spot.imageUrl = saved;
   }
   if (ctaText !== undefined) spot.ctaText = ctaText.trim();

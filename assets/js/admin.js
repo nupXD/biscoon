@@ -1,151 +1,8 @@
-const BASE = window.location.origin.startsWith("file://") ? "http://localhost:4000" : window.location.origin;
-const ADMIN_TOKEN_KEY = "biscoonAdminToken";
-const ADMIN_SESSION_KEY = "biscoonAdminSession";
-const ADMIN_LAST_ACTIVITY_KEY = "biscoonAdminLastActivity";
-const ADMIN_SIDEBAR_COLLAPSED_KEY = "biscoonAdminSidebarCollapsed";
-let _token = "";
-let _me = null;
-let _view = "";
-let _newsMediaDraft = [];
-const _s = {
-  users: { page: 1, search: "", kind: "regular" },
-  listings: { page: 1, category: "", search: "" },
-  events: { page: 1, search: "" },
-  news: { page: 1, status: "all", category: "", search: "", featured: "all", range: "all" },
-  discussions: { page: 1, search: "" },
-  comments: { page: 1, type: "all", search: "" },
-  reports: { page: 1, status: "open" },
-  spotlight: {},
-  announcements: {},
-  audit: { page: 1, action: "all", targetType: "all", search: "" },
-  dashboard: { range: "all", updatedAt: 0 }
-};
-let _dashRefreshTimer = null;
-let _dashUpdatedTimer = null;
-document.addEventListener("DOMContentLoaded", async () => {
-  setupAdminShell();
-  _token = localStorage.getItem(ADMIN_TOKEN_KEY) || "";
-  if (!_token) {
-    goLogin();
-    return;
-  }
-  try {
-    const apiResult = await api("/api/auth/me");
-    const user = apiResult.user || apiResult;
-    if (!isAdminRole(user.role)) {
-      notify("Access denied. Admin accounts only.", "error");
-      window.location.href = "../../index.html";
-      return;
-    }
-    _me = user;
-    document.getElementById("adminName").textContent = `${_me.name} \xB7 ${roleLabel(_me.role)}`;
-    syncNavVisibility();
-    navigate(firstAccessibleView());
-  } catch {
-    goLogin();
-  }
-});
-async function api(path, opts = {}) {
-  const headers = { Authorization: `Bearer ${_token}`, ...opts.headers || {} };
-  if (opts.body) headers["Content-Type"] = "application/json";
-  const r = await fetch(BASE + path, { ...opts, headers });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || "Request failed.");
-  localStorage.setItem(ADMIN_LAST_ACTIVITY_KEY, String(Date.now()));
-  return d;
-}
-function goLogin() {
-  window.location.href = "login.html";
-}
-const VIEW_TITLES = {
-  dashboard: "Dashboard",
-  users: "Users",
-  listings: "Listings",
-  events: "Events",
-  news: "News",
-  discussions: "Discussions",
-  comments: "Comments",
-  reports: "Reports",
-  spotlight: "Homepage Spotlight",
-  announcements: "Announcements",
-  audit: "Audit Logs",
-  trash: "Trash"
-};
-const VIEW_HINTS = {
-  dashboard: "Live snapshot of users, listings, news, discussions, and recent activity.",
-  users: "Review regular accounts and manage admin users with assigned privileges.",
-  listings: "Inspect, edit, and moderate public listings across all categories.",
-  events: "Create, edit, and manage community events posted on Biscoon.",
-  news: "Draft, publish, feature, and manage newsroom stories with rich media.",
-  discussions: "Create and moderate community discussion threads.",
-  comments: "Review listing and discussion comments from one moderation queue.",
-  reports: "Track reported content and move each report through review.",
-  spotlight: "Banners that rotate in the homepage hero. Live ones appear to visitors; paused ones stay hidden.",
-  announcements: "Publish site-wide messages and control visibility.",
-  trash: "Soft-deleted content \u2014 the internet is forever. Only super-admins can restore or permanently delete.",
-  audit: "Review super-admin activity, content changes, and moderation actions."
-};
-const VIEW_PERMISSION = {
-  users: "users",
-  listings: "listings",
-  events: "listings",
-  news: "news",
-  discussions: "discussions",
-  comments: "comments",
-  reports: "reports",
-  spotlight: "announcements",
-  announcements: "announcements"
-};
-const ADMIN_PERMISSION_DEFS = [
-  { key: "users", label: "Regular Users", description: "View regular accounts, inspect their content, and remove regular users." },
-  { key: "listings", label: "Listings", description: "View, edit, and delete marketplace listings and events." },
-  { key: "news", label: "News", description: "Create, edit, publish, feature, and delete newsroom stories." },
-  { key: "discussions", label: "Discussions", description: "Create, view, edit, and delete community discussions." },
-  { key: "comments", label: "Comments", description: "Review and remove listing or discussion comments." },
-  { key: "reports", label: "Reports", description: "Review reports and update moderation status." },
-  { key: "announcements", label: "Announcements", description: "Create, pause, activate, and delete site announcements." }
-];
-function navigate(view) {
-  if (!canAccessView(view)) {
-    content('<div class="admin-error">You do not have permission to open this admin section.</div>');
-    return;
-  }
-  stopDashboardAutoRefresh();
-  _view = view;
-  document.querySelectorAll(".admin-nav-link").forEach((l) => l.classList.toggle("active", l.dataset.view === view));
-  document.getElementById("viewTitle").textContent = VIEW_TITLES[view] || view;
-  const hint = document.getElementById("viewHint");
-  if (hint) hint.textContent = VIEW_HINTS[view] || "Manage Biscoon admin operations.";
-  content(loadingState(VIEW_TITLES[view] || "Loading"));
-  ({
-    dashboard: showDashboard,
-    users: showUsers,
-    listings: showListings,
-    events: showEvents,
-    news: showNews,
-    discussions: showDiscussions,
-    comments: showComments,
-    reports: showReports,
-    spotlight: showSpotlights,
-    announcements: showAnnouncements,
-    audit: showAuditLogs,
-    trash: showTrash
-  })[view]?.();
-}
-function content(html) {
-  const el = document.getElementById("adminContent");
-  if (!el) return;
-  el.innerHTML = html;
-  el.classList.remove("admin-content-enter");
-  void el.offsetWidth;
-  el.classList.add("admin-content-enter");
-}
-function loadingState(label = "Loading") {
-  return `
+const BASE=window.location.origin.startsWith("file://")?"http://localhost:4000":window.location.origin,ADMIN_TOKEN_KEY="biscoonAdminToken",ADMIN_SESSION_KEY="biscoonAdminSession",ADMIN_LAST_ACTIVITY_KEY="biscoonAdminLastActivity",ADMIN_SIDEBAR_COLLAPSED_KEY="biscoonAdminSidebarCollapsed";let _token="",_me=null,_view="",_newsMediaDraft=[];const _s={users:{page:1,search:"",kind:"regular"},listings:{page:1,category:"",search:""},events:{page:1,search:""},news:{page:1,status:"all",category:"",search:"",featured:"all",range:"all"},discussions:{page:1,search:""},comments:{page:1,type:"all",search:""},reports:{page:1,status:"open"},spotlight:{},announcements:{},audit:{page:1,action:"all",targetType:"all",search:""},dashboard:{range:"all",updatedAt:0}};let _dashRefreshTimer=null,_dashUpdatedTimer=null;document.addEventListener("DOMContentLoaded",async()=>{if(setupAdminShell(),_token=localStorage.getItem(ADMIN_TOKEN_KEY)||"",!_token){goLogin();return}try{const e=await api("/api/auth/me"),t=e.user||e;if(!isAdminRole(t.role)){notify("Access denied. Admin accounts only.","error"),window.location.href="../../index.html";return}_me=t,document.getElementById("adminName").textContent=`${_me.name} \xB7 ${roleLabel(_me.role)}`,syncNavVisibility(),navigate(firstAccessibleView())}catch{goLogin()}});async function api(e,t={}){const i={Authorization:`Bearer ${_token}`,...t.headers||{}};t.body&&(i["Content-Type"]="application/json");const a=await fetch(BASE+e,{...t,headers:i}),n=await a.json();if(!a.ok)throw new Error(n.error||"Request failed.");return localStorage.setItem(ADMIN_LAST_ACTIVITY_KEY,String(Date.now())),n}function goLogin(){window.location.href="login.html"}const VIEW_TITLES={dashboard:"Dashboard",users:"Users",listings:"Listings",events:"Events",news:"News",discussions:"Discussions",comments:"Comments",reports:"Reports",spotlight:"Homepage Spotlight",announcements:"Announcements",audit:"Audit Logs",trash:"Trash"},VIEW_HINTS={dashboard:"Live snapshot of users, listings, news, discussions, and recent activity.",users:"Review regular accounts and manage admin users with assigned privileges.",listings:"Inspect, edit, and moderate public listings across all categories.",events:"Create, edit, and manage community events posted on Biscoon.",news:"Draft, publish, feature, and manage newsroom stories with rich media.",discussions:"Create and moderate community discussion threads.",comments:"Review listing and discussion comments from one moderation queue.",reports:"Track reported content and move each report through review.",spotlight:"Banners that rotate in the homepage hero. Live ones appear to visitors; paused ones stay hidden.",announcements:"Publish site-wide messages and control visibility.",trash:"Soft-deleted content \u2014 the internet is forever. Only super-admins can restore or permanently delete.",audit:"Review super-admin activity, content changes, and moderation actions."},VIEW_PERMISSION={users:"users",listings:"listings",events:"listings",news:"news",discussions:"discussions",comments:"comments",reports:"reports",spotlight:"announcements",announcements:"announcements"},ADMIN_PERMISSION_DEFS=[{key:"users",label:"Regular Users",description:"View regular accounts, inspect their content, and remove regular users."},{key:"listings",label:"Listings",description:"View, edit, and delete marketplace listings and events."},{key:"news",label:"News",description:"Create, edit, publish, feature, and delete newsroom stories."},{key:"discussions",label:"Discussions",description:"Create, view, edit, and delete community discussions."},{key:"comments",label:"Comments",description:"Review and remove listing or discussion comments."},{key:"reports",label:"Reports",description:"Review reports and update moderation status."},{key:"announcements",label:"Announcements",description:"Create, pause, activate, and delete site announcements."}];function navigate(e){if(!canAccessView(e)){content('<div class="admin-error">You do not have permission to open this admin section.</div>');return}stopDashboardAutoRefresh(),_view=e,document.querySelectorAll(".admin-nav-link").forEach(i=>i.classList.toggle("active",i.dataset.view===e)),document.getElementById("viewTitle").textContent=VIEW_TITLES[e]||e;const t=document.getElementById("viewHint");t&&(t.textContent=VIEW_HINTS[e]||"Manage Biscoon admin operations."),content(loadingState(VIEW_TITLES[e]||"Loading")),{dashboard:showDashboard,users:showUsers,listings:showListings,events:showEvents,news:showNews,discussions:showDiscussions,comments:showComments,reports:showReports,spotlight:showSpotlights,announcements:showAnnouncements,audit:showAuditLogs,trash:showTrash}[e]?.()}function content(e){const t=document.getElementById("adminContent");t&&(t.innerHTML=e,t.classList.remove("admin-content-enter"),t.offsetWidth,t.classList.add("admin-content-enter"))}function loadingState(e="Loading"){return`
     <div class="admin-loading-shell" aria-live="polite">
       <div class="admin-loading-head">
         <span class="admin-loading-spinner"></span>
-        <span>${esc(label)}\u2026</span>
+        <span>${esc(e)}\u2026</span>
       </div>
       <div class="admin-skeleton-grid">
         <span></span><span></span><span></span>
@@ -153,468 +10,31 @@ function loadingState(label = "Loading") {
       <div class="admin-skeleton-card">
         <span></span><span></span><span></span><span></span>
       </div>
-    </div>`;
-}
-function setupAdminShell() {
-  const layout = document.getElementById("adminLayout");
-  const sidebarToggle = document.getElementById("adminSidebarToggle");
-  const refreshBtn = document.getElementById("adminRefreshView");
-  if (!document.getElementById("adminToastHost")) {
-    const host = document.createElement("div");
-    host.id = "adminToastHost";
-    host.className = "admin-toast-host";
-    document.body.appendChild(host);
-  }
-  if (layout && localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === "true") {
-    layout.classList.add("admin-sidebar-collapsed");
-  }
-  sidebarToggle?.addEventListener("click", () => {
-    const collapsed = !layout?.classList.contains("admin-sidebar-collapsed");
-    layout?.classList.toggle("admin-sidebar-collapsed", collapsed);
-    localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(collapsed));
-  });
-  refreshBtn?.addEventListener("click", () => refreshCurrentView(true));
-  setupGlobalSearch();
-}
-function setupGlobalSearch() {
-  const overlay = document.createElement("div");
-  overlay.id = "adminGlobalSearch";
-  overlay.className = "admin-gs-overlay";
-  overlay.setAttribute("role", "dialog");
-  overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-label", "Global search");
-  const box = document.createElement("div");
-  box.className = "admin-gs-box";
-  const inputRow = document.createElement("div");
-  inputRow.className = "admin-gs-input-row";
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "admin-gs-icon");
-  svg.setAttribute("width", "18");
-  svg.setAttribute("height", "18");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("aria-hidden", "true");
-  const c = document.createElementNS(ns, "circle");
-  c.setAttribute("cx", "6.5");
-  c.setAttribute("cy", "6.5");
-  c.setAttribute("r", "4.5");
-  c.setAttribute("stroke", "currentColor");
-  c.setAttribute("stroke-width", "1.6");
-  const p = document.createElementNS(ns, "path");
-  p.setAttribute("d", "M10.5 10.5L14 14");
-  p.setAttribute("stroke", "currentColor");
-  p.setAttribute("stroke-width", "1.6");
-  p.setAttribute("stroke-linecap", "round");
-  svg.appendChild(c);
-  svg.appendChild(p);
-  const input = document.createElement("input");
-  input.id = "adminGsInput";
-  input.className = "admin-gs-input";
-  input.type = "search";
-  input.placeholder = "Search users, listings, discussions, news\u2026";
-  input.setAttribute("autocomplete", "off");
-  input.setAttribute("spellcheck", "false");
-  const escKbd = document.createElement("kbd");
-  escKbd.className = "admin-gs-esc";
-  escKbd.textContent = "Esc";
-  inputRow.appendChild(svg);
-  inputRow.appendChild(input);
-  inputRow.appendChild(escKbd);
-  const results = document.createElement("div");
-  results.id = "adminGsResults";
-  results.className = "admin-gs-results";
-  box.appendChild(inputRow);
-  box.appendChild(results);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  let timer;
-  let activeIdx = -1;
-  function openSearch() {
-    overlay.classList.add("open");
-    input.value = "";
-    results.textContent = "";
-    activeIdx = -1;
-    setTimeout(() => input.focus(), 60);
-  }
-  function closeSearch() {
-    overlay.classList.remove("open");
-    input.blur();
-  }
-  document.getElementById("adminSearchTrigger")?.addEventListener("click", openSearch);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeSearch();
-  });
-  document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-      e.preventDefault();
-      openSearch();
-      return;
-    }
-    if (e.key === "Escape" && overlay.classList.contains("open")) {
-      closeSearch();
-      return;
-    }
-    if (!overlay.classList.contains("open")) return;
-    const items = results.querySelectorAll(".admin-gs-item");
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      activeIdx = Math.min(activeIdx + 1, items.length - 1);
-      highlightItem(items);
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      activeIdx = Math.max(activeIdx - 1, 0);
-      highlightItem(items);
-    }
-    if (e.key === "Enter" && activeIdx >= 0) {
-      e.preventDefault();
-      items[activeIdx]?.click();
-    }
-  });
-  function highlightItem(items) {
-    items.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
-    items[activeIdx]?.scrollIntoView({ block: "nearest" });
-  }
-  function hint(text) {
-    results.textContent = "";
-    const d = document.createElement("div");
-    d.className = "admin-gs-hint";
-    d.textContent = text;
-    results.appendChild(d);
-  }
-  const ICONS = { user: "\u{1F464}", listing: "\u{1F4CB}", discussion: "\u{1F4AC}", news: "\u{1F4F0}" };
-  const COLORS = { user: "blue", listing: "green", discussion: "purple", news: "red" };
-  function buildItem(item) {
-    const btn = document.createElement("button");
-    btn.className = "admin-gs-item";
-    btn.dataset.gsType = String(item.type || "");
-    btn.dataset.gsId = String(item.id || "");
-    const ico = document.createElement("span");
-    ico.className = "admin-gs-item-icon";
-    ico.textContent = ICONS[item.type] || "\u{1F4C4}";
-    const body = document.createElement("span");
-    body.className = "admin-gs-item-body";
-    const lbl = document.createElement("span");
-    lbl.className = "admin-gs-item-label";
-    lbl.textContent = String(item.label || "\u2014");
-    const sub = document.createElement("span");
-    sub.className = "admin-gs-item-sub";
-    sub.textContent = String(item.sub || item.category || "");
-    body.appendChild(lbl);
-    body.appendChild(sub);
-    const bdg = document.createElement("span");
-    bdg.className = `admin-badge admin-badge-${COLORS[item.type] || "gray"}`;
-    bdg.textContent = String(item.type);
-    btn.appendChild(ico);
-    btn.appendChild(body);
-    btn.appendChild(bdg);
-    btn.addEventListener("click", () => {
-      const type = btn.dataset.gsType;
-      const id = btn.dataset.gsId;
-      closeSearch();
-      if (type === "user") {
-        navigate("users");
-        setTimeout(() => document.querySelector(`[data-view-user="${CSS.escape(id)}"]`)?.click(), 600);
-      } else if (type === "listing") {
-        navigate("listings");
-        setTimeout(() => document.querySelector(`[data-view-listing="${CSS.escape(id)}"]`)?.click(), 600);
-      } else if (type === "discussion") {
-        navigate("discussions");
-        setTimeout(() => document.querySelector(`[data-view-discussion="${CSS.escape(id)}"]`)?.click(), 600);
-      } else if (type === "news") {
-        navigate("news");
-      }
-    });
-    return btn;
-  }
-  input.addEventListener("input", () => {
-    const q = input.value.trim();
-    activeIdx = -1;
-    clearTimeout(timer);
-    if (q.length < 2) {
-      q.length ? hint("Type at least 2 characters\u2026") : results.textContent = "";
-      return;
-    }
-    hint("Searching\u2026");
-    timer = setTimeout(async () => {
-      var _a;
-      try {
-        const data = await api(`/api/admin/search?q=${encodeURIComponent(q)}`);
-        results.textContent = "";
-        if (!data.results.length) {
-          hint("No results found.");
-          return;
-        }
-        const grouped = {};
-        for (const r of data.results) {
-          (grouped[_a = r.type] ?? (grouped[_a] = [])).push(r);
-        }
-        for (const [type, items] of Object.entries(grouped)) {
-          const grp = document.createElement("div");
-          grp.className = "admin-gs-group";
-          const lbl = document.createElement("div");
-          lbl.className = "admin-gs-group-label";
-          lbl.textContent = capitalize(type === "news" ? "News" : type + "s");
-          grp.appendChild(lbl);
-          for (const item of items) grp.appendChild(buildItem(item));
-          results.appendChild(grp);
-        }
-      } catch {
-        hint("Search failed. Try again.");
-      }
-    }, 260);
-  });
-}
-function refreshCurrentView(showToast = false) {
-  const handlers = {
-    dashboard: showDashboard,
-    users: showUsers,
-    listings: showListings,
-    events: showEvents,
-    news: showNews,
-    discussions: showDiscussions,
-    comments: showComments,
-    reports: showReports,
-    spotlight: showSpotlights,
-    announcements: showAnnouncements,
-    audit: showAuditLogs,
-    trash: showTrash
-  };
-  const refresh = handlers[_view];
-  if (!refresh) return;
-  content(loadingState("Refreshing"));
-  refresh();
-  if (showToast) notify("Refreshing current view.", "info");
-}
-function notify(message, type = "info") {
-  const host = document.getElementById("adminToastHost");
-  if (!host || !message) return;
-  const toast = document.createElement("div");
-  toast.className = `admin-toast admin-toast-${type}`;
-  const icon = type === "success" ? "\u2713" : type === "error" ? "!" : type === "warning" ? "!" : "i";
-  toast.innerHTML = `<span class="admin-toast-icon">${icon}</span><span>${esc(message)}</span>`;
-  host.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add("show"));
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => toast.remove(), 180);
-  }, type === "error" ? 5200 : 3200);
-}
-function confirmAction(message, options = {}) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "admin-confirm-overlay";
-    const tone = options.tone === "danger" ? "danger" : "primary";
-    overlay.innerHTML = `
+    </div>`}function setupAdminShell(){const e=document.getElementById("adminLayout"),t=document.getElementById("adminSidebarToggle"),i=document.getElementById("adminSidebarClose"),a=document.getElementById("adminSidebarBackdrop"),n=document.getElementById("adminNav"),d=document.getElementById("adminRefreshView"),s=()=>window.matchMedia("(max-width: 768px)").matches;if(!document.getElementById("adminToastHost")){const r=document.createElement("div");r.id="adminToastHost",r.className="admin-toast-host",document.body.appendChild(r)}e&&localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY)==="true"&&e.classList.add("admin-sidebar-collapsed");const o=()=>e?.classList.remove("admin-sidebar-mobile-open");t?.addEventListener("click",()=>{if(s()){e?.classList.toggle("admin-sidebar-mobile-open");return}const r=!e?.classList.contains("admin-sidebar-collapsed");e?.classList.toggle("admin-sidebar-collapsed",r),localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY,String(r))}),i?.addEventListener("click",o),a?.addEventListener("click",o),n?.addEventListener("click",r=>{s()&&r.target.closest(".admin-nav-link")&&o()}),document.addEventListener("keydown",r=>{r.key==="Escape"&&o()}),window.addEventListener("resize",()=>{s()||o()}),d?.addEventListener("click",()=>refreshCurrentView(!0)),setupGlobalSearch()}function setupGlobalSearch(){const e=document.createElement("div");e.id="adminGlobalSearch",e.className="admin-gs-overlay",e.setAttribute("role","dialog"),e.setAttribute("aria-modal","true"),e.setAttribute("aria-label","Global search");const t=document.createElement("div");t.className="admin-gs-box";const i=document.createElement("div");i.className="admin-gs-input-row";const a="http://www.w3.org/2000/svg",n=document.createElementNS(a,"svg");n.setAttribute("class","admin-gs-icon"),n.setAttribute("width","18"),n.setAttribute("height","18"),n.setAttribute("viewBox","0 0 16 16"),n.setAttribute("fill","none"),n.setAttribute("aria-hidden","true");const d=document.createElementNS(a,"circle");d.setAttribute("cx","6.5"),d.setAttribute("cy","6.5"),d.setAttribute("r","4.5"),d.setAttribute("stroke","currentColor"),d.setAttribute("stroke-width","1.6");const s=document.createElementNS(a,"path");s.setAttribute("d","M10.5 10.5L14 14"),s.setAttribute("stroke","currentColor"),s.setAttribute("stroke-width","1.6"),s.setAttribute("stroke-linecap","round"),n.appendChild(d),n.appendChild(s);const o=document.createElement("input");o.id="adminGsInput",o.className="admin-gs-input",o.type="search",o.placeholder="Search users, listings, discussions, news\u2026",o.setAttribute("autocomplete","off"),o.setAttribute("spellcheck","false");const r=document.createElement("kbd");r.className="admin-gs-esc",r.textContent="Esc",i.appendChild(n),i.appendChild(o),i.appendChild(r);const c=document.createElement("div");c.id="adminGsResults",c.className="admin-gs-results",t.appendChild(i),t.appendChild(c),e.appendChild(t),document.body.appendChild(e);let u,l=-1;function y(){e.classList.add("open"),o.value="",c.textContent="",l=-1,setTimeout(()=>o.focus(),60)}function E(){e.classList.remove("open"),o.blur()}document.getElementById("adminSearchTrigger")?.addEventListener("click",y),e.addEventListener("click",g=>{g.target===e&&E()}),document.addEventListener("keydown",g=>{if((g.metaKey||g.ctrlKey)&&g.key==="k"){g.preventDefault(),y();return}if(g.key==="Escape"&&e.classList.contains("open")){E();return}if(!e.classList.contains("open"))return;const h=c.querySelectorAll(".admin-gs-item");g.key==="ArrowDown"&&(g.preventDefault(),l=Math.min(l+1,h.length-1),S(h)),g.key==="ArrowUp"&&(g.preventDefault(),l=Math.max(l-1,0),S(h)),g.key==="Enter"&&l>=0&&(g.preventDefault(),h[l]?.click())});function S(g){g.forEach((h,f)=>h.classList.toggle("active",f===l)),g[l]?.scrollIntoView({block:"nearest"})}function x(g){c.textContent="";const h=document.createElement("div");h.className="admin-gs-hint",h.textContent=g,c.appendChild(h)}const M={user:"\u{1F464}",listing:"\u{1F4CB}",discussion:"\u{1F4AC}",news:"\u{1F4F0}"},C={user:"blue",listing:"green",discussion:"purple",news:"red"};function A(g){const h=document.createElement("button");h.className="admin-gs-item",h.dataset.gsType=String(g.type||""),h.dataset.gsId=String(g.id||"");const f=document.createElement("span");f.className="admin-gs-item-icon",f.textContent=M[g.type]||"\u{1F4C4}";const L=document.createElement("span");L.className="admin-gs-item-body";const p=document.createElement("span");p.className="admin-gs-item-label",p.textContent=String(g.label||"\u2014");const b=document.createElement("span");b.className="admin-gs-item-sub",b.textContent=String(g.sub||g.category||""),L.appendChild(p),L.appendChild(b);const v=document.createElement("span");return v.className=`admin-badge admin-badge-${C[g.type]||"gray"}`,v.textContent=String(g.type),h.appendChild(f),h.appendChild(L),h.appendChild(v),h.addEventListener("click",()=>{const w=h.dataset.gsType,$=h.dataset.gsId;E(),w==="user"?(navigate("users"),setTimeout(()=>document.querySelector(`[data-view-user="${CSS.escape($)}"]`)?.click(),600)):w==="listing"?(navigate("listings"),setTimeout(()=>document.querySelector(`[data-view-listing="${CSS.escape($)}"]`)?.click(),600)):w==="discussion"?(navigate("discussions"),setTimeout(()=>document.querySelector(`[data-view-discussion="${CSS.escape($)}"]`)?.click(),600)):w==="news"&&navigate("news")}),h}o.addEventListener("input",()=>{const g=o.value.trim();if(l=-1,clearTimeout(u),g.length<2){g.length?x("Type at least 2 characters\u2026"):c.textContent="";return}x("Searching\u2026"),u=setTimeout(async()=>{var h;try{const f=await api(`/api/admin/search?q=${encodeURIComponent(g)}`);if(c.textContent="",!f.results.length){x("No results found.");return}const L={};for(const p of f.results)(L[h=p.type]??(L[h]=[])).push(p);for(const[p,b]of Object.entries(L)){const v=document.createElement("div");v.className="admin-gs-group";const w=document.createElement("div");w.className="admin-gs-group-label",w.textContent=capitalize(p==="news"?"News":p+"s"),v.appendChild(w);for(const $ of b)v.appendChild(A($));c.appendChild(v)}}catch{x("Search failed. Try again.")}},260)})}function refreshCurrentView(e=!1){const i={dashboard:showDashboard,users:showUsers,listings:showListings,events:showEvents,news:showNews,discussions:showDiscussions,comments:showComments,reports:showReports,spotlight:showSpotlights,announcements:showAnnouncements,audit:showAuditLogs,trash:showTrash}[_view];i&&(content(loadingState("Refreshing")),i(),e&&notify("Refreshing current view.","info"))}function notify(e,t="info"){const i=document.getElementById("adminToastHost");if(!i||!e)return;const a=document.createElement("div");a.className=`admin-toast admin-toast-${t}`;const n=t==="success"?"\u2713":t==="error"||t==="warning"?"!":"i";a.innerHTML=`<span class="admin-toast-icon">${n}</span><span>${esc(e)}</span>`,i.appendChild(a),requestAnimationFrame(()=>a.classList.add("show")),setTimeout(()=>{a.classList.remove("show"),setTimeout(()=>a.remove(),180)},t==="error"?5200:3200)}function confirmAction(e,t={}){return new Promise(i=>{const a=document.createElement("div");a.className="admin-confirm-overlay";const n=t.tone==="danger"?"danger":"primary";a.innerHTML=`
       <div class="admin-confirm" role="dialog" aria-modal="true">
-        <div class="admin-confirm-icon admin-confirm-icon-${tone}">${tone === "danger" ? "!" : "?"}</div>
+        <div class="admin-confirm-icon admin-confirm-icon-${n}">${n==="danger"?"!":"?"}</div>
         <div class="admin-confirm-body">
-          <div class="admin-confirm-title">${esc(options.title || "Confirm action")}</div>
-          <div class="admin-confirm-message">${esc(message)}</div>
+          <div class="admin-confirm-title">${esc(t.title||"Confirm action")}</div>
+          <div class="admin-confirm-message">${esc(e)}</div>
         </div>
         <div class="admin-confirm-actions">
           <button class="admin-btn admin-btn-ghost" data-confirm-cancel>Cancel</button>
-          <button class="admin-btn ${tone === "danger" ? "admin-btn-danger-solid" : "admin-btn-primary"}" data-confirm-ok>${esc(options.confirmText || "Confirm")}</button>
+          <button class="admin-btn ${n==="danger"?"admin-btn-danger-solid":"admin-btn-primary"}" data-confirm-ok>${esc(t.confirmText||"Confirm")}</button>
         </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    const finish = (value) => {
-      overlay.classList.remove("show");
-      setTimeout(() => overlay.remove(), 160);
-      resolve(value);
-    };
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay || e.target.closest("[data-confirm-cancel]")) finish(false);
-      if (e.target.closest("[data-confirm-ok]")) finish(true);
-    });
-    requestAnimationFrame(() => overlay.classList.add("show"));
-    overlay.querySelector("[data-confirm-ok]")?.focus();
-  });
-}
-function isTypingTarget(target) {
-  const tag = target?.tagName?.toLowerCase();
-  return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
-}
-function esc(v) {
-  return String(v ?? "").replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c
-  );
-}
-function fmtDate(v) {
-  if (!v) return "\u2014";
-  return new Date(v).toLocaleDateString(void 0, { month: "short", day: "numeric", year: "numeric" });
-}
-function fmtTime(v) {
-  if (!v) return "\u2014";
-  const d = new Date(v), now = /* @__PURE__ */ new Date();
-  const diff = (now.getTime() - d.getTime()) / 1e3;
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return fmtDate(v);
-}
-function badge(text, color = "gray") {
-  return `<span class="admin-badge admin-badge-${color}">${esc(text)}</span>`;
-}
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
-}
-function isSuperAdminRole(role) {
-  return role === "super-admin" || role === "admin";
-}
-function isStaffAdminRole(role) {
-  return role === "staff" || role === "sub-admin";
-}
-function isAdminRole(role) {
-  return isSuperAdminRole(role) || isStaffAdminRole(role);
-}
-function canManageStaff() {
-  return isSuperAdminRole(_me?.role ?? "");
-}
-function roleLabel(role) {
-  if (isSuperAdminRole(role)) return "Super Admin";
-  if (isStaffAdminRole(role)) return "Admin User";
-  return "Regular User";
-}
-function roleBadge(role) {
-  const cleanRole = role || "user";
-  const color = isSuperAdminRole(cleanRole) ? "red" : isStaffAdminRole(cleanRole) ? "blue" : "gray";
-  return badge(roleLabel(cleanRole), color);
-}
-function assignedPermissions(user = _me) {
-  if (isSuperAdminRole(user?.role)) return ADMIN_PERMISSION_DEFS.map((permission) => permission.key);
-  if (user?.role === "sub-admin" && (!user.permissions || user.permissions.length === 0)) {
-    return ADMIN_PERMISSION_DEFS.map((permission) => permission.key);
-  }
-  return Array.isArray(user?.permissions) ? user.permissions : [];
-}
-function hasAdminPermission(permission) {
-  return isSuperAdminRole(_me?.role) || assignedPermissions(_me).includes(permission);
-}
-function canAccessView(view) {
-  if (view === "audit") return canManageStaff();
-  return !VIEW_PERMISSION[view] || hasAdminPermission(VIEW_PERMISSION[view]);
-}
-function firstAccessibleView() {
-  return ["dashboard", "users", "listings", "news", "discussions", "comments", "reports", "announcements", "audit"].find(canAccessView) || "dashboard";
-}
-function syncNavVisibility() {
-  document.querySelectorAll(".admin-nav-link[data-view]").forEach((link) => {
-    link.hidden = !canAccessView(link.dataset.view);
-  });
-}
-function permissionSummary(permissions = []) {
-  if (!permissions.length) return '<span class="admin-muted">No privileges</span>';
-  const labels = ADMIN_PERMISSION_DEFS.filter((permission) => permissions.includes(permission.key)).map((permission) => badge(permission.label, "blue"));
-  return labels.join(" ");
-}
-function permissionCheckboxes(selected = []) {
-  const selectedSet = new Set(selected);
-  return `<div class="admin-permission-grid">
-    ${ADMIN_PERMISSION_DEFS.map((permission) => `
+      </div>`,document.body.appendChild(a);const d=s=>{a.classList.remove("show"),setTimeout(()=>a.remove(),160),i(s)};a.addEventListener("click",s=>{(s.target===a||s.target.closest("[data-confirm-cancel]"))&&d(!1),s.target.closest("[data-confirm-ok]")&&d(!0)}),requestAnimationFrame(()=>a.classList.add("show")),a.querySelector("[data-confirm-ok]")?.focus()})}function isTypingTarget(e){const t=e?.tagName?.toLowerCase();return t==="input"||t==="textarea"||t==="select"||e?.isContentEditable}function esc(e){return String(e??"").replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t]??t)}function fmtDate(e){return e?new Date(e).toLocaleDateString(void 0,{month:"short",day:"numeric",year:"numeric"}):"\u2014"}function fmtTime(e){if(!e)return"\u2014";const t=new Date(e),a=(new Date().getTime()-t.getTime())/1e3;return a<60?"just now":a<3600?`${Math.floor(a/60)}m ago`:a<86400?`${Math.floor(a/3600)}h ago`:fmtDate(e)}function badge(e,t="gray"){return`<span class="admin-badge admin-badge-${t}">${esc(e)}</span>`}function capitalize(e){return e?e.charAt(0).toUpperCase()+e.slice(1):""}function isSuperAdminRole(e){return e==="super-admin"||e==="admin"}function isStaffAdminRole(e){return e==="staff"||e==="sub-admin"}function isAdminRole(e){return isSuperAdminRole(e)||isStaffAdminRole(e)}function canManageStaff(){return isSuperAdminRole(_me?.role??"")}function roleLabel(e){return isSuperAdminRole(e)?"Super Admin":isStaffAdminRole(e)?"Admin User":"Regular User"}function roleBadge(e){const t=e||"user",i=isSuperAdminRole(t)?"red":isStaffAdminRole(t)?"blue":"gray";return badge(roleLabel(t),i)}function assignedPermissions(e=_me){return isSuperAdminRole(e?.role)?ADMIN_PERMISSION_DEFS.map(t=>t.key):e?.role==="sub-admin"&&(!e.permissions||e.permissions.length===0)?ADMIN_PERMISSION_DEFS.map(t=>t.key):Array.isArray(e?.permissions)?e.permissions:[]}function hasAdminPermission(e){return isSuperAdminRole(_me?.role)||assignedPermissions(_me).includes(e)}function canAccessView(e){return e==="audit"?canManageStaff():!VIEW_PERMISSION[e]||hasAdminPermission(VIEW_PERMISSION[e])}function firstAccessibleView(){return["dashboard","users","listings","news","discussions","comments","reports","announcements","audit"].find(canAccessView)||"dashboard"}function syncNavVisibility(){document.querySelectorAll(".admin-nav-link[data-view]").forEach(e=>{e.hidden=!canAccessView(e.dataset.view)})}function permissionSummary(e=[]){return e.length?ADMIN_PERMISSION_DEFS.filter(i=>e.includes(i.key)).map(i=>badge(i.label,"blue")).join(" "):'<span class="admin-muted">No privileges</span>'}function permissionCheckboxes(e=[]){const t=new Set(e);return`<div class="admin-permission-grid">
+    ${ADMIN_PERMISSION_DEFS.map(i=>`
       <label class="admin-check-row">
-        <input type="checkbox" value="${esc(permission.key)}" data-staff-permission${selectedSet.has(permission.key) ? " checked" : ""}>
+        <input type="checkbox" value="${esc(i.key)}" data-staff-permission${t.has(i.key)?" checked":""}>
         <span>
-          <strong>${esc(permission.label)}</strong>
-          <small>${esc(permission.description)}</small>
+          <strong>${esc(i.label)}</strong>
+          <small>${esc(i.description)}</small>
         </span>
       </label>
     `).join("")}
-  </div>`;
-}
-function table(headers, rows) {
-  if (!rows.length) return '<div class="admin-empty">No records found.</div>';
-  return `<div class="admin-table-wrap"><table class="admin-table">
-    <thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>
-  </table></div>`;
-}
-function pager(current, total, view) {
-  if (total <= 1) return "";
-  const max = Math.min(total, 9);
-  const btns = Array.from({ length: max }, (_, i) => i + 1).map(
-    (i) => `<button class="admin-page-btn${i === current ? " active" : ""}" data-page="${i}" data-pager-view="${view}">${i}</button>`
-  );
-  if (total > max) btns.push(`<span style="padding:0 6px;color:#6b7a8d;align-self:center">\u2026 ${total}</span>`);
-  return `<div class="admin-pagination">${btns.join("")}</div>`;
-}
-function tabs(options, active, attr) {
-  return `<div class="admin-tabs">${options.map(
-    (o) => `<button class="admin-tab${o.value === active ? " active" : ""}" data-${attr}="${o.value}">${o.label}</button>`
-  ).join("")}</div>`;
-}
-const DASH_RANGES = [
-  { value: "today", label: "Today" },
-  { value: "7d", label: "7d" },
-  { value: "30d", label: "30d" },
-  { value: "all", label: "All" }
-];
-function stopDashboardAutoRefresh() {
-  if (_dashRefreshTimer) {
-    clearInterval(_dashRefreshTimer);
-    _dashRefreshTimer = null;
-  }
-  if (_dashUpdatedTimer) {
-    clearInterval(_dashUpdatedTimer);
-    _dashUpdatedTimer = null;
-  }
-}
-function startDashboardAutoRefresh() {
-  stopDashboardAutoRefresh();
-  _dashRefreshTimer = setInterval(() => {
-    if (_view !== "dashboard" || document.hidden) return;
-    showDashboard(true);
-  }, 6e4);
-  _dashUpdatedTimer = setInterval(() => {
-    if (_view !== "dashboard") return;
-    const el = document.getElementById("dashUpdatedAt");
-    if (el && _s.dashboard.updatedAt) el.textContent = formatUpdatedAgo(_s.dashboard.updatedAt);
-  }, 1e3);
-}
-function formatUpdatedAgo(ts) {
-  const sec = Math.max(0, Math.floor((Date.now() - ts) / 1e3));
-  if (sec < 5) return "Updated just now";
-  if (sec < 60) return `Updated ${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  return `Updated ${min}m ago`;
-}
-function rangeTrendLabel(range) {
-  if (range === "today") return "today";
-  if (range === "7d") return "this week";
-  if (range === "30d") return "this month";
-  return "this week";
-}
-function animateStatValues(root = document) {
-  root.querySelectorAll("[data-count-to]").forEach((el) => {
-    const target = Number(el.dataset.countTo || 0);
-    const duration = 650;
-    const start = performance.now();
-    const from = 0;
-    function frame(now) {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = Math.round(from + (target - from) * eased).toLocaleString();
-      if (t < 1) requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  });
-}
-async function showDashboard(soft = false) {
-  try {
-    if (!soft) content(loadingState("Dashboard"));
-    const range = _s.dashboard.range || "all";
-    const [stats, feedData] = await Promise.all([
-      api(`/api/admin/stats?range=${encodeURIComponent(range)}`),
-      api("/api/admin/feed")
-    ]);
-    if (_view !== "dashboard") return;
-    const s = stats;
-    const maxCat = s.byCategory[0]?.count || 1;
-    _s.dashboard.updatedAt = Date.now();
-    const trendLabel = rangeTrendLabel(range);
-    content(`
+  </div>`}function table(e,t){return t.length?`<div class="admin-table-wrap"><table class="admin-table">
+    <thead><tr>${e.map(i=>`<th>${i}</th>`).join("")}</tr></thead>
+    <tbody>${t.map(i=>`<tr>${i.map(a=>`<td>${a}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table></div>`:'<div class="admin-empty">No records found.</div>'}function pager(e,t,i){if(t<=1)return"";const a=Math.min(t,9),n=Array.from({length:a},(d,s)=>s+1).map(d=>`<button class="admin-page-btn${d===e?" active":""}" data-page="${d}" data-pager-view="${i}">${d}</button>`);return t>a&&n.push(`<span style="padding:0 6px;color:#6b7a8d;align-self:center">\u2026 ${t}</span>`),`<div class="admin-pagination">${n.join("")}</div>`}function tabs(e,t,i){return`<div class="admin-tabs">${e.map(a=>`<button class="admin-tab${a.value===t?" active":""}" data-${i}="${a.value}">${a.label}</button>`).join("")}</div>`}const DASH_RANGES=[{value:"today",label:"Today"},{value:"7d",label:"7d"},{value:"30d",label:"30d"},{value:"all",label:"All"}];function stopDashboardAutoRefresh(){_dashRefreshTimer&&(clearInterval(_dashRefreshTimer),_dashRefreshTimer=null),_dashUpdatedTimer&&(clearInterval(_dashUpdatedTimer),_dashUpdatedTimer=null)}function startDashboardAutoRefresh(){stopDashboardAutoRefresh(),_dashRefreshTimer=setInterval(()=>{_view!=="dashboard"||document.hidden||showDashboard(!0)},6e4),_dashUpdatedTimer=setInterval(()=>{if(_view!=="dashboard")return;const e=document.getElementById("dashUpdatedAt");e&&_s.dashboard.updatedAt&&(e.textContent=formatUpdatedAgo(_s.dashboard.updatedAt))},1e3)}function formatUpdatedAgo(e){const t=Math.max(0,Math.floor((Date.now()-e)/1e3));return t<5?"Updated just now":t<60?`Updated ${t}s ago`:`Updated ${Math.floor(t/60)}m ago`}function rangeTrendLabel(e){return e==="today"?"today":e==="7d"?"this week":e==="30d"?"this month":"this week"}function animateStatValues(e=document){e.querySelectorAll("[data-count-to]").forEach(t=>{const i=Number(t.dataset.countTo||0),a=650,n=performance.now(),d=0;function s(o){const r=Math.min(1,(o-n)/a),c=1-Math.pow(1-r,3);t.textContent=Math.round(d+(i-d)*c).toLocaleString(),r<1&&requestAnimationFrame(s)}requestAnimationFrame(s)})}async function showDashboard(e=!1){try{e||content(loadingState("Dashboard"));const t=_s.dashboard.range||"all",[i,a]=await Promise.all([api(`/api/admin/stats?range=${encodeURIComponent(t)}`),api("/api/admin/feed")]);if(_view!=="dashboard")return;const n=i,d=n.byCategory[0]?.count||1;_s.dashboard.updatedAt=Date.now();const s=rangeTrendLabel(t);content(`
       <div class="dash-header">
         <div>
           <div class="dash-greeting">Welcome back, ${esc(_me.name.split(" ")[0])} \u{1F44B}</div>
@@ -622,8 +42,8 @@ async function showDashboard(soft = false) {
         </div>
         <div class="dash-header-actions">
           <div class="dash-range" role="tablist" aria-label="Dashboard time range">
-            ${DASH_RANGES.map((r) => `
-              <button type="button" class="dash-range-btn${r.value === range ? " active" : ""}" data-dash-range="${r.value}" role="tab" aria-selected="${r.value === range}">${r.label}</button>
+            ${DASH_RANGES.map(o=>`
+              <button type="button" class="dash-range-btn${o.value===t?" active":""}" data-dash-range="${o.value}" role="tab" aria-selected="${o.value===t}">${o.label}</button>
             `).join("")}
           </div>
           <button class="admin-btn admin-btn-ghost dash-refresh" id="dashRefresh" type="button">\u21BA Refresh</button>
@@ -631,1004 +51,391 @@ async function showDashboard(soft = false) {
       </div>
 
       <div class="dash-stat-grid">
-        ${hasAdminPermission("users") ? statCard("\u{1F465}", range === "all" ? "Total Users" : "Users", s.users.total, s.users.thisWeek, s.users.today, "blue", "users", trendLabel) : ""}
-        ${hasAdminPermission("listings") ? statCard("\u{1F4CB}", range === "all" ? "Total Listings" : "Listings", s.listings.total, s.listings.thisWeek, s.listings.today, "green", "listings", trendLabel) : ""}
-        ${hasAdminPermission("news") ? statCard("\u{1F4F0}", range === "all" ? "Published News" : "News", s.news.total, s.news.thisWeek, null, "red", "news", trendLabel) : ""}
-        ${hasAdminPermission("discussions") ? statCard("\u{1F4AC}", "Discussions", s.discussions.total, s.discussions.thisWeek, null, "purple", "discussions", trendLabel) : ""}
+        ${hasAdminPermission("users")?statCard("\u{1F465}",t==="all"?"Total Users":"Users",n.users.total,n.users.thisWeek,n.users.today,"blue","users",s):""}
+        ${hasAdminPermission("listings")?statCard("\u{1F4CB}",t==="all"?"Total Listings":"Listings",n.listings.total,n.listings.thisWeek,n.listings.today,"green","listings",s):""}
+        ${hasAdminPermission("news")?statCard("\u{1F4F0}",t==="all"?"Published News":"News",n.news.total,n.news.thisWeek,null,"red","news",s):""}
+        ${hasAdminPermission("discussions")?statCard("\u{1F4AC}","Discussions",n.discussions.total,n.discussions.thisWeek,null,"purple","discussions",s):""}
       </div>
 
       <div class="dash-quick-actions">
-        ${hasAdminPermission("users") ? '<button class="dash-action-btn" data-nav-to="users" data-user-kind="regular">\u{1F465} Regular Users</button>' : ""}
-        ${canManageStaff() ? '<button class="dash-action-btn" data-nav-to="users" data-user-kind="staff">\u{1F6E1} Admin Users</button>' : ""}
-        ${hasAdminPermission("listings") ? '<button class="dash-action-btn" data-nav-to="listings">\u{1F4CB} Manage Listings</button>' : ""}
-        ${hasAdminPermission("news") ? '<button class="dash-action-btn" data-nav-to="news">\u{1F4F0} Publish News</button>' : ""}
-        ${hasAdminPermission("discussions") ? '<button class="dash-action-btn" data-nav-to="discussions">\u{1F4AC} Start Discussion</button>' : ""}
-        ${hasAdminPermission("comments") ? '<button class="dash-action-btn" data-nav-to="comments">\u{1F5E8}\uFE0F Review Comments</button>' : ""}
-        ${hasAdminPermission("announcements") ? '<button class="dash-action-btn dash-action-primary" data-nav-to="announcements">\u{1F4E2} Create Announcement</button>' : ""}
-        ${canManageStaff() ? '<button class="dash-action-btn" data-nav-to="audit">\u{1F9FE} Audit Logs</button>' : ""}
+        ${hasAdminPermission("users")?'<button class="dash-action-btn" data-nav-to="users" data-user-kind="regular">\u{1F465} Regular Users</button>':""}
+        ${canManageStaff()?'<button class="dash-action-btn" data-nav-to="users" data-user-kind="staff">\u{1F6E1} Admin Users</button>':""}
+        ${hasAdminPermission("listings")?'<button class="dash-action-btn" data-nav-to="listings">\u{1F4CB} Manage Listings</button>':""}
+        ${hasAdminPermission("news")?'<button class="dash-action-btn" data-nav-to="news">\u{1F4F0} Publish News</button>':""}
+        ${hasAdminPermission("discussions")?'<button class="dash-action-btn" data-nav-to="discussions">\u{1F4AC} Start Discussion</button>':""}
+        ${hasAdminPermission("comments")?'<button class="dash-action-btn" data-nav-to="comments">\u{1F5E8}\uFE0F Review Comments</button>':""}
+        ${hasAdminPermission("announcements")?'<button class="dash-action-btn dash-action-primary" data-nav-to="announcements">\u{1F4E2} Create Announcement</button>':""}
+        ${canManageStaff()?'<button class="dash-action-btn" data-nav-to="audit">\u{1F9FE} Audit Logs</button>':""}
       </div>
 
       <div class="admin-two-col">
         <div class="admin-card">
           <div class="admin-card-head">
             <span>Recent Activity</span>
-            <span class="dash-card-sub">${feedData.feed.length} events</span>
+            <span class="dash-card-sub">${a.feed.length} events</span>
           </div>
           <div class="admin-feed">
-            ${feedData.feed.map((f) => `
-              <div class="admin-feed-item dash-feed-clickable" data-feed-type="${esc(f.type)}" data-feed-id="${esc(f.id || "")}" tabindex="0" role="button">
-                <div class="admin-feed-icon admin-feed-icon-${esc(f.type)}">${f.icon}</div>
+            ${a.feed.map(o=>`
+              <div class="admin-feed-item dash-feed-clickable" data-feed-type="${esc(o.type)}" data-feed-id="${esc(o.id||"")}" tabindex="0" role="button">
+                <div class="admin-feed-icon admin-feed-icon-${esc(o.type)}">${o.icon}</div>
                 <div class="admin-feed-body">
-                  <div class="admin-feed-title">${esc(f.title)}</div>
-                  <div class="admin-feed-sub"><span class="dash-feed-chip">${esc(f.type)}</span> ${esc(f.sub)}</div>
+                  <div class="admin-feed-title">${esc(o.title)}</div>
+                  <div class="admin-feed-sub"><span class="dash-feed-chip">${esc(o.type)}</span> ${esc(o.sub)}</div>
                 </div>
                 <div class="admin-feed-meta">
-                  <div class="admin-feed-time">${fmtTime(f.date)}</div>
+                  <div class="admin-feed-time">${fmtTime(o.date)}</div>
                   <div class="dash-feed-open">Open \u2192</div>
                 </div>
               </div>
-            `).join("") || '<div class="admin-empty">No activity yet.</div>'}
+            `).join("")||'<div class="admin-empty">No activity yet.</div>'}
           </div>
         </div>
 
-        ${hasAdminPermission("listings") ? `<div class="admin-card">
+        ${hasAdminPermission("listings")?`<div class="admin-card">
           <div class="admin-card-head">
             <span>Listings by Category</span>
-            <span class="dash-card-sub">${s.byCategory.length} categories \xB7 click to filter</span>
+            <span class="dash-card-sub">${n.byCategory.length} categories \xB7 click to filter</span>
           </div>
           <div class="dash-bar-chart">
-            ${s.byCategory.map((c) => `
-              <div class="dash-bar-row dash-bar-clickable" data-nav-to="listings" data-listing-category="${esc(c.category)}" tabindex="0" role="button" title="Open ${esc(capitalize(c.category))} listings">
-                <div class="dash-bar-label" title="${esc(capitalize(c.category))}">${esc(capitalize(c.category))}</div>
+            ${n.byCategory.map(o=>`
+              <div class="dash-bar-row dash-bar-clickable" data-nav-to="listings" data-listing-category="${esc(o.category)}" tabindex="0" role="button" title="Open ${esc(capitalize(o.category))} listings">
+                <div class="dash-bar-label" title="${esc(capitalize(o.category))}">${esc(capitalize(o.category))}</div>
                 <div class="dash-bar-track">
-                  <div class="dash-bar-fill" style="width:${Math.round(c.count / maxCat * 100)}%"></div>
-                  <span class="dash-bar-count">${c.count}</span>
+                  <div class="dash-bar-fill" style="width:${Math.round(o.count/d*100)}%"></div>
+                  <span class="dash-bar-count">${o.count}</span>
                 </div>
               </div>
-            `).join("") || '<div class="admin-empty">No listings yet.</div>'}
+            `).join("")||'<div class="admin-empty">No listings yet.</div>'}
           </div>
-        </div>` : ""}
+        </div>`:""}
       </div>
 
       <div class="admin-two-col">
-        ${hasAdminPermission("users") ? `<div class="admin-card">
+        ${hasAdminPermission("users")?`<div class="admin-card">
           <div class="admin-card-head">
             <span>Recent Users</span>
-            ${hasAdminPermission("users") ? '<button class="dash-see-all" data-nav-to="users" data-user-kind="regular">See all \u2192</button>' : ""}
+            ${hasAdminPermission("users")?'<button class="dash-see-all" data-nav-to="users" data-user-kind="regular">See all \u2192</button>':""}
           </div>
           <div class="dash-mini-list">
-            ${(s.recentUsers || []).map((u) => `
-              <div class="dash-mini-item dash-mini-clickable" data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="0" title="View user profile">
-                <div class="dash-mini-avatar" style="background:${userColor(u.name)}">${esc(u.name.charAt(0).toUpperCase())}</div>
+            ${(n.recentUsers||[]).map(o=>`
+              <div class="dash-mini-item dash-mini-clickable" data-view-user="${esc(o.id)}" data-view-user-name="${esc(o.name)}" data-view-user-email="${esc(o.email)}" data-view-user-role="${esc(o.role||"user")}" data-view-user-joined="${esc(o.createdAt)}" data-view-user-listings="0" title="View user profile">
+                <div class="dash-mini-avatar" style="background:${userColor(o.name)}">${esc(o.name.charAt(0).toUpperCase())}</div>
                 <div class="dash-mini-body">
-                  <div class="dash-mini-name">${esc(u.name)}</div>
-                  <div class="dash-mini-sub">${esc(u.email)}</div>
+                  <div class="dash-mini-name">${esc(o.name)}</div>
+                  <div class="dash-mini-sub">${esc(o.email)}</div>
                 </div>
                 <div class="dash-mini-meta">
-                  ${isAdminRole(u.role) ? roleBadge(u.role) : ""}
-                  <span class="dash-mini-date">${fmtTime(u.createdAt)}</span>
+                  ${isAdminRole(o.role)?roleBadge(o.role):""}
+                  <span class="dash-mini-date">${fmtTime(o.createdAt)}</span>
                 </div>
               </div>
-            `).join("") || '<div class="admin-empty">No users yet.</div>'}
+            `).join("")||'<div class="admin-empty">No users yet.</div>'}
           </div>
-        </div>` : ""}
+        </div>`:""}
 
-        ${hasAdminPermission("listings") ? `<div class="admin-card">
+        ${hasAdminPermission("listings")?`<div class="admin-card">
           <div class="admin-card-head">
             <span>Recent Listings</span>
             <button class="dash-see-all" data-nav-to="listings">See all \u2192</button>
           </div>
           <div class="dash-mini-list">
-            ${(s.recentListings || []).map((l) => `
-              <div class="dash-mini-item dash-mini-clickable" data-view-listing="${esc(l.id)}" title="View listing">
-                <div class="dash-mini-cat-icon">${catEmoji(l.category)}</div>
+            ${(n.recentListings||[]).map(o=>`
+              <div class="dash-mini-item dash-mini-clickable" data-view-listing="${esc(o.id)}" title="View listing">
+                <div class="dash-mini-cat-icon">${catEmoji(o.category)}</div>
                 <div class="dash-mini-body">
-                  <div class="dash-mini-name">${esc(l.title)}</div>
-                  <div class="dash-mini-sub">${esc(l.location || capitalize(l.category) || "\u2014")}</div>
+                  <div class="dash-mini-name">${esc(o.title)}</div>
+                  <div class="dash-mini-sub">${esc(o.location||capitalize(o.category)||"\u2014")}</div>
                 </div>
                 <div class="dash-mini-meta">
-                  ${badge(l.category, "green")}
-                  <span class="dash-mini-date">${fmtTime(l.createdAt)}</span>
+                  ${badge(o.category,"green")}
+                  <span class="dash-mini-date">${fmtTime(o.createdAt)}</span>
                 </div>
               </div>
-            `).join("") || '<div class="admin-empty">No listings yet.</div>'}
+            `).join("")||'<div class="admin-empty">No listings yet.</div>'}
           </div>
-        </div>` : ""}
+        </div>`:""}
       </div>
-    `);
-    animateStatValues();
-    startDashboardAutoRefresh();
-    document.getElementById("dashRefresh")?.addEventListener("click", () => {
-      content(loadingState("Refreshing dashboard"));
-      showDashboard();
-    });
-    document.querySelectorAll("[data-dash-range]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const next = btn.dataset.dashRange;
-        if (!next || next === _s.dashboard.range) return;
-        _s.dashboard.range = next;
-        content(loadingState("Updating dashboard"));
-        showDashboard();
-      });
-    });
-    document.querySelectorAll("[data-nav-to]").forEach((el) => {
-      const activate = () => {
-        if (el.dataset.userKind) _s.users.kind = el.dataset.userKind;
-        if (el.dataset.listingCategory !== void 0) {
-          _s.listings.category = el.dataset.listingCategory || "";
-          _s.listings.page = 1;
-        }
-        navigate(el.dataset.navTo);
-      };
-      el.addEventListener("click", activate);
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          activate();
-        }
-      });
-    });
-    document.querySelectorAll(".dash-feed-clickable").forEach((el) => {
-      const activate = () => {
-        const type = el.dataset.feedType || "";
-        const id = el.dataset.feedId || "";
-        if (type === "listing" && id) {
-          navigate("listings");
-          setTimeout(() => {
-            const btn = document.querySelector(`[data-view-listing="${CSS.escape(id)}"]`);
-            btn?.click();
-          }, 350);
-          return;
-        }
-        if (type === "discussion" && id) {
-          navigate("discussions");
-          setTimeout(() => {
-            const btn = document.querySelector(`[data-view-discussion="${CSS.escape(id)}"]`);
-            btn?.click();
-          }, 350);
-          return;
-        }
-        if (type === "user" && id) {
-          navigate("users");
-          return;
-        }
-        const map = { user: "users", listing: "listings", discussion: "discussions" };
-        if (map[type]) navigate(map[type]);
-      };
-      el.addEventListener("click", activate);
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          activate();
-        }
-      });
-    });
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-function statCard(icon, label, value, weekCount, todayCount, color, navTo, trendLabel = "this week") {
-  const clickable = navTo && canAccessView(navTo);
-  const trendHtml = weekCount > 0 ? `<span class="dash-trend-up">\u2191 ${weekCount} ${esc(trendLabel)}</span>` : `<span class="dash-trend-zero">No new ${esc(trendLabel)}</span>`;
-  const todayHtml = todayCount !== null ? ` \xB7 <span class="dash-today-val">${todayCount} today</span>` : "";
-  return `<div class="admin-stat-card admin-stat-${color}${clickable ? " dash-stat-clickable" : ""}"${clickable ? ` data-nav-to="${navTo}" tabindex="0" role="button"` : ""}>
-    <div class="admin-stat-icon">${icon}</div>
+    `),animateStatValues(),startDashboardAutoRefresh(),document.getElementById("dashRefresh")?.addEventListener("click",()=>{content(loadingState("Refreshing dashboard")),showDashboard()}),document.querySelectorAll("[data-dash-range]").forEach(o=>{o.addEventListener("click",()=>{const r=o.dataset.dashRange;!r||r===_s.dashboard.range||(_s.dashboard.range=r,content(loadingState("Updating dashboard")),showDashboard())})}),document.querySelectorAll("[data-nav-to]").forEach(o=>{const r=()=>{o.dataset.userKind&&(_s.users.kind=o.dataset.userKind),o.dataset.listingCategory!==void 0&&(_s.listings.category=o.dataset.listingCategory||"",_s.listings.page=1),navigate(o.dataset.navTo)};o.addEventListener("click",r),o.addEventListener("keydown",c=>{(c.key==="Enter"||c.key===" ")&&(c.preventDefault(),r())})}),document.querySelectorAll(".dash-feed-clickable").forEach(o=>{const r=()=>{const c=o.dataset.feedType||"",u=o.dataset.feedId||"";if(c==="listing"&&u){navigate("listings"),setTimeout(()=>{document.querySelector(`[data-view-listing="${CSS.escape(u)}"]`)?.click()},350);return}if(c==="discussion"&&u){navigate("discussions"),setTimeout(()=>{document.querySelector(`[data-view-discussion="${CSS.escape(u)}"]`)?.click()},350);return}if(c==="user"&&u){navigate("users");return}const l={user:"users",listing:"listings",discussion:"discussions"};l[c]&&navigate(l[c])};o.addEventListener("click",r),o.addEventListener("keydown",c=>{(c.key==="Enter"||c.key===" ")&&(c.preventDefault(),r())})})}catch(t){content(`<div class="admin-error">${esc(t.message)}</div>`)}}function statCard(e,t,i,a,n,d,s,o="this week"){const r=s&&canAccessView(s),c=a>0?`<span class="dash-trend-up">\u2191 ${a} ${esc(o)}</span>`:`<span class="dash-trend-zero">No new ${esc(o)}</span>`,u=n!==null?` \xB7 <span class="dash-today-val">${n} today</span>`:"";return`<div class="admin-stat-card admin-stat-${d}${r?" dash-stat-clickable":""}"${r?` data-nav-to="${s}" tabindex="0" role="button"`:""}>
+    <div class="admin-stat-icon">${e}</div>
     <div class="admin-stat-content">
-      <div class="admin-stat-value" data-count-to="${Number(value) || 0}">0</div>
-      <div class="admin-stat-label">${label}</div>
-      <div class="dash-stat-footer">${trendHtml}${todayHtml}</div>
+      <div class="admin-stat-value" data-count-to="${Number(i)||0}">0</div>
+      <div class="admin-stat-label">${t}</div>
+      <div class="dash-stat-footer">${c}${u}</div>
     </div>
     <div class="dash-stat-arr">\u203A</div>
-  </div>`;
-}
-function userColor(name) {
-  const colors = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#6366f1", "#14b8a6"];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % colors.length;
-  return colors[h];
-}
-function catEmoji(cat) {
-  const m = { jobs: "\u{1F4BC}", housing: "\u{1F3E0}", pg: "\u{1F6CF}", services: "\u{1F527}", kinbech: "\u{1F6D2}", restaurants: "\u{1F37D}", shops: "\u{1F3EA}", events: "\u{1F389}", tech: "\u{1F4BB}", healthcare: "\u{1F3E5}", education: "\u{1F4DA}", auto: "\u{1F697}", beauty: "\u{1F484}", childcare: "\u{1F476}", cleaning: "\u{1F9F9}", photography: "\u{1F4F7}", produce: "\u{1F96C}", organizations: "\u{1F3E2}", discussions: "\u{1F4AC}", student: "\u{1F393}", finance: "\u{1F4B0}", immigration: "\u2708\uFE0F" };
-  return m[cat] || "\u{1F4E6}";
-}
-const LISTING_VIEW_PROFILES = {
-  base: {
-    kindLabel: "Listing",
-    subcategoryLabel: "Specific type",
-    descriptionLabel: "Description",
-    locationLabel: "Location",
-    locationTypeLabel: "Location type",
-    priceLabel: "Price / rate",
-    availabilityLabel: "Availability"
-  },
-  photography: {
-    kindLabel: "Photography showcase",
-    subcategoryLabel: "Photo style / genre",
-    descriptionLabel: "Caption / story",
-    omitFields: ["location", "locationType", "price", "availability", "contactEmail", "contactPhone", "contactPreference", "externalLink"]
-  },
-  housing: {
-    kindLabel: "Housing listing",
-    subcategoryLabel: "Housing type",
-    descriptionLabel: "Housing details",
-    locationLabel: "Area / neighborhood",
-    locationTypeLabel: "Showing format",
-    priceLabel: "Rent / cost",
-    availabilityLabel: "Move-in / availability"
-  },
-  jobs: {
-    kindLabel: "Job listing",
-    subcategoryLabel: "Role type",
-    descriptionLabel: "Job description",
-    locationLabel: "Work location",
-    locationTypeLabel: "Work setup",
-    priceLabel: "Pay / compensation",
-    availabilityLabel: "Start date / schedule",
-    contactPreferenceLabel: "Application method",
-    externalLinkLabel: "Application link"
-  },
-  marketplace: {
-    kindLabel: "Marketplace listing",
-    subcategoryLabel: "Item / business type",
-    descriptionLabel: "Item details",
-    locationLabel: "Pickup / service area",
-    locationTypeLabel: "Pickup format",
-    priceLabel: "Asking price",
-    availabilityLabel: "Pickup / availability"
-  },
-  service: {
-    kindLabel: "Service listing",
-    subcategoryLabel: "Service type",
-    descriptionLabel: "Service details",
-    locationLabel: "Service area",
-    locationTypeLabel: "Service format",
-    priceLabel: "Rate / starting price",
-    availabilityLabel: "Booking availability"
-  },
-  professional: {
-    kindLabel: "Professional listing",
-    subcategoryLabel: "Professional type",
-    descriptionLabel: "Professional details",
-    locationLabel: "Practice / service area",
-    locationTypeLabel: "Consultation format",
-    priceLabel: "Consultation fee",
-    availabilityLabel: "Appointment availability"
-  },
-  event: {
-    kindLabel: "Event listing",
-    subcategoryLabel: "Event type",
-    descriptionLabel: "Event details",
-    locationLabel: "Venue / area",
-    locationTypeLabel: "Event format",
-    priceLabel: "Ticket / entry cost",
-    availabilityLabel: "Date / timing",
-    externalLinkLabel: "RSVP / ticket link"
-  },
-  community: {
-    kindLabel: "Community post",
-    subcategoryLabel: "Community type",
-    descriptionLabel: "Community details",
-    locationLabel: "Community area",
-    locationTypeLabel: "Participation format",
-    priceLabel: "Cost / membership",
-    availabilityLabel: "Schedule / availability"
-  }
-};
-function readableLabel(value) {
-  return String(value || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-function listingViewKind(listing = {}) {
-  const category = String(listing.category || "").trim().toLowerCase();
-  const subcategory = String(listing.subcategory || "").trim().toLowerCase();
-  const hasAny = (items) => items.includes(category) || items.includes(subcategory);
-  if (category === "photography") return "photography";
-  if (hasAny(["housing", "pg", "paying-guest", "real-estate", "room", "apartment", "roommate", "studio", "sublet", "moving"])) return "housing";
-  if (category === "jobs" || hasAny(["rojgar", "tech", "healthcare", "student", "full-time", "part-time", "contract", "internship", "remote"])) return "jobs";
-  if (hasAny(["events", "concert", "puja", "meetup", "fundraiser", "class", "festival", "networking", "music", "art", "sports"])) return "event";
-  if (hasAny(["legal", "immigration", "cpa", "finance", "insurance", "education", "tutoring", "jyotish"])) return "professional";
-  if (hasAny(["services", "cleaning", "childcare", "beauty", "translation", "handyman", "catering", "delivery"])) return "service";
-  if (hasAny(["marketplace", "kinbech", "restaurants", "shops", "produce", "auto", "business-for-sale", "furniture", "electronics", "vehicle", "appliance", "books"])) return "marketplace";
-  if (hasAny(["community", "organizations", "literature", "yoga", "matchmaker", "matrimony", "pen-pals", "travel"])) return "community";
-  return "base";
-}
-function listingViewProfile(listing = {}) {
-  return LISTING_VIEW_PROFILES[listingViewKind(listing)] || LISTING_VIEW_PROFILES.base;
-}
-function listingValue(value) {
-  return value !== void 0 && value !== null && String(value).trim() !== "";
-}
-function listingField(label, value, options = {}) {
-  if (!listingValue(value)) return "";
-  const full = options.full ? " admin-modal-full" : "";
-  const content2 = options.raw ? String(value) : esc(value);
-  return `
-    <div class="admin-modal-field${full}">
-      <label class="admin-modal-label">${esc(label)}</label>
-      <div class="admin-view-val">${content2}</div>
-    </div>`;
-}
-function safeHttpUrl(value) {
-  const url = String(value || "").trim();
-  return /^https?:\/\//i.test(url) ? url : "";
-}
-function safeMediaUrl(value) {
-  const url = String(value || "").trim();
-  if (/^https?:\/\//i.test(url) || url.startsWith("/uploads/") || /^data:image\//i.test(url)) return url;
-  return "";
-}
-function listingGallery(images = [], isPhotography = false) {
-  const safeImages = (Array.isArray(images) ? images : []).map(safeMediaUrl).filter(Boolean);
-  if (!safeImages.length) {
-    return isPhotography ? '<div class="admin-listing-gallery-empty">No photos attached to this photography post.</div>' : "";
-  }
-  return `<div class="admin-listing-gallery" data-pswp-gallery>
-    ${safeImages.map((src, index) => `
-      <a href="${esc(src)}" class="admin-listing-photo-link" data-pswp-src="${esc(src)}" data-pswp-width="1600" data-pswp-height="1200">
-        <img src="${esc(src)}" alt="Listing photo ${index + 1}" loading="lazy">
+  </div>`}function userColor(e){const t=["#3b82f6","#8b5cf6","#ec4899","#f59e0b","#10b981","#ef4444","#6366f1","#14b8a6"];let i=0;for(let a=0;a<e.length;a++)i=(i+e.charCodeAt(a))%t.length;return t[i]}function catEmoji(e){return{jobs:"\u{1F4BC}",housing:"\u{1F3E0}",pg:"\u{1F6CF}",services:"\u{1F527}",kinbech:"\u{1F6D2}",restaurants:"\u{1F37D}",shops:"\u{1F3EA}",events:"\u{1F389}",tech:"\u{1F4BB}",healthcare:"\u{1F3E5}",education:"\u{1F4DA}",auto:"\u{1F697}",beauty:"\u{1F484}",childcare:"\u{1F476}",cleaning:"\u{1F9F9}",photography:"\u{1F4F7}",produce:"\u{1F96C}",organizations:"\u{1F3E2}",discussions:"\u{1F4AC}",student:"\u{1F393}",finance:"\u{1F4B0}",immigration:"\u2708\uFE0F"}[e]||"\u{1F4E6}"}const LISTING_VIEW_PROFILES={base:{kindLabel:"Listing",subcategoryLabel:"Specific type",descriptionLabel:"Description",locationLabel:"Location",locationTypeLabel:"Location type",priceLabel:"Price / rate",availabilityLabel:"Availability"},photography:{kindLabel:"Photography showcase",subcategoryLabel:"Photo style / genre",descriptionLabel:"Caption / story",omitFields:["location","locationType","price","availability","contactEmail","contactPhone","contactPreference","externalLink"]},housing:{kindLabel:"Housing listing",subcategoryLabel:"Housing type",descriptionLabel:"Housing details",locationLabel:"Area / neighborhood",locationTypeLabel:"Showing format",priceLabel:"Rent / cost",availabilityLabel:"Move-in / availability"},jobs:{kindLabel:"Job listing",subcategoryLabel:"Role type",descriptionLabel:"Job description",locationLabel:"Work location",locationTypeLabel:"Work setup",priceLabel:"Pay / compensation",availabilityLabel:"Start date / schedule",contactPreferenceLabel:"Application method",externalLinkLabel:"Application link"},marketplace:{kindLabel:"Marketplace listing",subcategoryLabel:"Item / business type",descriptionLabel:"Item details",locationLabel:"Pickup / service area",locationTypeLabel:"Pickup format",priceLabel:"Asking price",availabilityLabel:"Pickup / availability"},service:{kindLabel:"Service listing",subcategoryLabel:"Service type",descriptionLabel:"Service details",locationLabel:"Service area",locationTypeLabel:"Service format",priceLabel:"Rate / starting price",availabilityLabel:"Booking availability"},professional:{kindLabel:"Professional listing",subcategoryLabel:"Professional type",descriptionLabel:"Professional details",locationLabel:"Practice / service area",locationTypeLabel:"Consultation format",priceLabel:"Consultation fee",availabilityLabel:"Appointment availability"},event:{kindLabel:"Event listing",subcategoryLabel:"Event type",descriptionLabel:"Event details",locationLabel:"Venue / area",locationTypeLabel:"Event format",priceLabel:"Ticket / entry cost",availabilityLabel:"Date / timing",externalLinkLabel:"RSVP / ticket link"},community:{kindLabel:"Community post",subcategoryLabel:"Community type",descriptionLabel:"Community details",locationLabel:"Community area",locationTypeLabel:"Participation format",priceLabel:"Cost / membership",availabilityLabel:"Schedule / availability"}};function readableLabel(e){return String(e||"").trim().replace(/[-_]+/g," ").replace(/\s+/g," ").replace(/\b\w/g,t=>t.toUpperCase())}function listingViewKind(e={}){const t=String(e.category||"").trim().toLowerCase(),i=String(e.subcategory||"").trim().toLowerCase(),a=n=>n.includes(t)||n.includes(i);return t==="photography"?"photography":a(["housing","pg","paying-guest","real-estate","room","apartment","roommate","studio","sublet","moving"])?"housing":t==="jobs"||a(["rojgar","tech","healthcare","student","full-time","part-time","contract","internship","remote"])?"jobs":a(["events","concert","puja","meetup","fundraiser","class","festival","networking","music","art","sports"])?"event":a(["legal","immigration","cpa","finance","insurance","education","tutoring","jyotish"])?"professional":a(["services","cleaning","childcare","beauty","translation","handyman","catering","delivery"])?"service":a(["marketplace","kinbech","restaurants","shops","produce","auto","business-for-sale","furniture","electronics","vehicle","appliance","books"])?"marketplace":a(["community","organizations","literature","yoga","matchmaker","matrimony","pen-pals","travel"])?"community":"base"}function listingViewProfile(e={}){return LISTING_VIEW_PROFILES[listingViewKind(e)]||LISTING_VIEW_PROFILES.base}function listingValue(e){return e!=null&&String(e).trim()!==""}function listingField(e,t,i={}){if(!listingValue(t))return"";const a=i.full?" admin-modal-full":"",n=i.raw?String(t):esc(t);return`
+    <div class="admin-modal-field${a}">
+      <label class="admin-modal-label">${esc(e)}</label>
+      <div class="admin-view-val">${n}</div>
+    </div>`}function safeHttpUrl(e){const t=String(e||"").trim();return/^https?:\/\//i.test(t)?t:""}function safeMediaUrl(e){const t=String(e||"").trim();return/^https?:\/\//i.test(t)||t.startsWith("/uploads/")||/^data:image\//i.test(t)?t:""}function listingGallery(e=[],t=!1){const i=(Array.isArray(e)?e:[]).map(safeMediaUrl).filter(Boolean);return i.length?`<div class="admin-listing-gallery" data-pswp-gallery>
+    ${i.map((a,n)=>`
+      <a href="${esc(a)}" class="admin-listing-photo-link" data-pswp-src="${esc(a)}" data-pswp-width="1600" data-pswp-height="1200">
+        <img src="${esc(a)}" alt="Listing photo ${n+1}" loading="lazy">
       </a>
     `).join("")}
-  </div>`;
-}
-function sectionHero(title, sub, actionsHtml = "") {
-  return `<div class="ix-hero">
+  </div>`:t?'<div class="admin-listing-gallery-empty">No photos attached to this photography post.</div>':""}function sectionHero(e,t,i=""){return`<div class="ix-hero">
     <div>
-      <div class="ix-hero-title">${esc(title)}</div>
-      <div class="ix-hero-sub">${esc(sub)}</div>
+      <div class="ix-hero-title">${esc(e)}</div>
+      <div class="ix-hero-sub">${esc(t)}</div>
     </div>
-    <div class="ix-hero-actions">${actionsHtml}</div>
-  </div>`;
-}
-function sectionStat(label, value, active = false, attrs = "") {
-  return `<button type="button" class="ix-stat${active ? " active" : ""}" ${attrs}>
-    <span class="ix-stat-value" data-count-to="${Number(value) || 0}">0</span>
-    <span class="ix-stat-label">${esc(label)}</span>
-  </button>`;
-}
-function wireInteractiveRows(selector, openFn) {
-  document.querySelectorAll(selector).forEach((row) => {
-    row.addEventListener("click", (e) => {
-      if (e.target.closest(".ix-actions, .news-row-actions, button, select, a, input")) return;
-      openFn(row);
-    });
-    row.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openFn(row);
-      }
-    });
-  });
-}
-function bindSearch(id, onChange, delay = 350) {
-  let timer;
-  document.getElementById(id)?.addEventListener("input", (e) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => onChange(e.target.value.trim()), delay);
-  });
-}
-async function showUsers(page) {
-  if (page !== void 0) _s.users.page = page;
-  if (_s.users.kind === "staff") {
-    await showStaffUsers(_s.users.page);
-    return;
-  }
-  const { page: p, search } = _s.users;
-  try {
-    const data = await api(`/api/admin/users?${new URLSearchParams({ page: String(p), limit: String(20), search })}`);
-    const withListings = (data.users || []).filter((u) => (u.listingCount || 0) > 0).length;
-    content(`
-      ${sectionHero("Users", "Review community accounts. Click a row to open the profile.", canManageStaff() ? tabs(
-      [{ label: "Regular Users", value: "regular" }, { label: "Admin Users", value: "staff" }],
-      _s.users.kind,
-      "user-kind"
-    ) : "")}
+    <div class="ix-hero-actions">${i}</div>
+  </div>`}function sectionStat(e,t,i=!1,a=""){return`<button type="button" class="ix-stat${i?" active":""}" ${a}>
+    <span class="ix-stat-value" data-count-to="${Number(t)||0}">0</span>
+    <span class="ix-stat-label">${esc(e)}</span>
+  </button>`}function wireInteractiveRows(e,t){document.querySelectorAll(e).forEach(i=>{i.addEventListener("click",a=>{a.target.closest(".ix-actions, .news-row-actions, button, select, a, input")||t(i)}),i.addEventListener("keydown",a=>{(a.key==="Enter"||a.key===" ")&&(a.preventDefault(),t(i))})})}function bindSearch(e,t,i=350){let a;document.getElementById(e)?.addEventListener("input",n=>{clearTimeout(a),a=setTimeout(()=>t(n.target.value.trim()),i)})}async function showUsers(e){if(e!==void 0&&(_s.users.page=e),_s.users.kind==="staff"){await showStaffUsers(_s.users.page);return}const{page:t,search:i}=_s.users;try{const a=await api(`/api/admin/users?${new URLSearchParams({page:String(t),limit:String(20),search:i})}`),n=(a.users||[]).filter(d=>(d.listingCount||0)>0).length;content(`
+      ${sectionHero("Users","Review community accounts. Click a row to open the profile.",canManageStaff()?tabs([{label:"Regular Users",value:"regular"},{label:"Admin Users",value:"staff"}],_s.users.kind,"user-kind"):"")}
       <div class="ix-stat-grid">
-        ${sectionStat("Total users", data.total, true)}
-        ${sectionStat("With listings", withListings)}
-        ${sectionStat("On this page", (data.users || []).length)}
+        ${sectionStat("Total users",a.total,!0)}
+        ${sectionStat("With listings",n)}
+        ${sectionStat("On this page",(a.users||[]).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="userSearch" type="search" placeholder="Search name or email\u2026" value="${esc(search)}">
-        <span class="ix-count">${data.total.toLocaleString()} regular user${data.total !== 1 ? "s" : ""}</span>
+        <input class="admin-search" id="userSearch" type="search" placeholder="Search name or email\u2026" value="${esc(i)}">
+        <span class="ix-count">${a.total.toLocaleString()} regular user${a.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.users || []).length ? `<div class="ix-list">
-          ${data.users.map((u) => `
+        ${(a.users||[]).length?`<div class="ix-list">
+          ${a.users.map(d=>`
             <article class="ix-row" tabindex="0" role="button"
-              data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="${u.listingCount}">
-              <div class="ix-avatar" style="background:${userColor(u.name)}">${esc((u.name || "?").charAt(0).toUpperCase())}</div>
+              data-view-user="${esc(d.id)}" data-view-user-name="${esc(d.name)}" data-view-user-email="${esc(d.email)}" data-view-user-role="${esc(d.role||"user")}" data-view-user-joined="${esc(d.createdAt)}" data-view-user-listings="${d.listingCount}">
+              <div class="ix-avatar" style="background:${userColor(d.name)}">${esc((d.name||"?").charAt(0).toUpperCase())}</div>
               <div class="ix-body">
-                <div class="ix-title">${esc(u.name)}</div>
-                <div class="ix-meta">${esc(u.email)}${u.phone ? ` \xB7 ${esc(u.phone)}` : ""} \xB7 \u{1F4CB} ${u.listingCount || 0} listings \xB7 Joined ${fmtDate(u.createdAt)}</div>
+                <div class="ix-title">${esc(d.name)}</div>
+                <div class="ix-meta">${esc(d.email)}${d.phone?` \xB7 ${esc(d.phone)}`:""} \xB7 \u{1F4CB} ${d.listingCount||0} listings \xB7 Joined ${fmtDate(d.createdAt)}</div>
               </div>
               <div class="ix-actions">
-                <button class="admin-btn admin-btn-ghost" type="button" data-view-user="${esc(u.id)}" data-view-user-name="${esc(u.name)}" data-view-user-email="${esc(u.email)}" data-view-user-role="${esc(u.role || "user")}" data-view-user-joined="${esc(u.createdAt)}" data-view-user-listings="${u.listingCount}">\u{1F441} View</button>
-                <button class="admin-btn admin-btn-danger" type="button" data-del-user="${esc(u.id)}" data-del-name="${esc(u.name)}">\u{1F5D1}</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-user="${esc(d.id)}" data-view-user-name="${esc(d.name)}" data-view-user-email="${esc(d.email)}" data-view-user-role="${esc(d.role||"user")}" data-view-user-joined="${esc(d.createdAt)}" data-view-user-listings="${d.listingCount}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-user="${esc(d.id)}" data-del-name="${esc(d.name)}">\u{1F5D1}</button>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No users match this search.</div>'}
-        ${pager(data.page, data.pages, "users")}
+        </div>`:'<div class="admin-empty">No users match this search.</div>'}
+        ${pager(a.page,a.pages,"users")}
       </div>
-    `);
-    animateStatValues();
-    bindSearch("userSearch", (v) => {
-      _s.users.search = v;
-      showUsers(1);
-    }, 380);
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function showStaffUsers(page) {
-  if (!canManageStaff()) {
-    _s.users.kind = "regular";
-    content('<div class="admin-error">Super admin access is required to manage admin users.</div>');
-    return;
-  }
-  if (page !== void 0) _s.users.page = page;
-  const { page: p, search } = _s.users;
-  try {
-    const data = await api(`/api/admin/staff?${new URLSearchParams({ page: String(p), limit: String(20), search })}`);
-    content(`
-      ${sectionHero("Admin Users", "Manage staff accounts and privileges.", `
-        ${tabs([{ label: "Regular Users", value: "regular" }, { label: "Admin Users", value: "staff" }], _s.users.kind, "user-kind")}
+    `),animateStatValues(),bindSearch("userSearch",d=>{_s.users.search=d,showUsers(1)},380)}catch(a){content(`<div class="admin-error">${esc(a.message)}</div>`)}}async function showStaffUsers(e){if(!canManageStaff()){_s.users.kind="regular",content('<div class="admin-error">Super admin access is required to manage admin users.</div>');return}e!==void 0&&(_s.users.page=e);const{page:t,search:i}=_s.users;try{const a=await api(`/api/admin/staff?${new URLSearchParams({page:String(t),limit:String(20),search:i})}`);content(`
+      ${sectionHero("Admin Users","Manage staff accounts and privileges.",`
+        ${tabs([{label:"Regular Users",value:"regular"},{label:"Admin Users",value:"staff"}],_s.users.kind,"user-kind")}
         <button class="admin-btn admin-btn-primary" data-create-staff type="button">+ Create Admin User</button>
       `)}
       <div class="ix-stat-grid">
-        ${sectionStat("Admin users", data.total, true)}
-        ${sectionStat("On this page", (data.staff || []).length)}
+        ${sectionStat("Admin users",a.total,!0)}
+        ${sectionStat("On this page",(a.staff||[]).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="userSearch" type="search" placeholder="Search admin users\u2026" value="${esc(search)}">
-        <span class="ix-count">${data.total.toLocaleString()} admin user${data.total !== 1 ? "s" : ""}</span>
+        <input class="admin-search" id="userSearch" type="search" placeholder="Search admin users\u2026" value="${esc(i)}">
+        <span class="ix-count">${a.total.toLocaleString()} admin user${a.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.staff || []).length ? `<div class="ix-list">
-          ${data.staff.map((staff) => `
-            <article class="ix-row" tabindex="0" role="button" data-edit-staff-row="${esc(staff.id)}" data-can-edit="${staff.canEdit ? "1" : "0"}">
-              <div class="ix-avatar" style="background:${userColor(staff.name)}">${esc((staff.name || "?").charAt(0).toUpperCase())}</div>
+        ${(a.staff||[]).length?`<div class="ix-list">
+          ${a.staff.map(n=>`
+            <article class="ix-row" tabindex="0" role="button" data-edit-staff-row="${esc(n.id)}" data-can-edit="${n.canEdit?"1":"0"}">
+              <div class="ix-avatar" style="background:${userColor(n.name)}">${esc((n.name||"?").charAt(0).toUpperCase())}</div>
               <div class="ix-body">
-                <div class="ix-title">${esc(staff.name)} ${roleBadge(staff.role)}</div>
-                <div class="ix-meta">${esc(staff.email)} \xB7 Created ${fmtDate(staff.createdAt)}</div>
-                <div class="ix-sub">${staff.canEdit ? permissionSummary(staff.permissions) : badge("All privileges", "red")}</div>
+                <div class="ix-title">${esc(n.name)} ${roleBadge(n.role)}</div>
+                <div class="ix-meta">${esc(n.email)} \xB7 Created ${fmtDate(n.createdAt)}</div>
+                <div class="ix-sub">${n.canEdit?permissionSummary(n.permissions):badge("All privileges","red")}</div>
               </div>
               <div class="ix-actions">
-                ${staff.canEdit ? `<button class="admin-btn admin-btn-ghost" type="button" data-edit-staff="${esc(staff.id)}">\u270F\uFE0F Edit</button>
-                     <button class="admin-btn admin-btn-danger" type="button" data-del-staff="${esc(staff.id)}" data-del-name="${esc(staff.name)}">\u{1F5D1}</button>` : '<span class="admin-you">Protected</span>'}
+                ${n.canEdit?`<button class="admin-btn admin-btn-ghost" type="button" data-edit-staff="${esc(n.id)}">\u270F\uFE0F Edit</button>
+                     <button class="admin-btn admin-btn-danger" type="button" data-del-staff="${esc(n.id)}" data-del-name="${esc(n.name)}">\u{1F5D1}</button>`:'<span class="admin-you">Protected</span>'}
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No admin users found.</div>'}
-        ${pager(data.page, data.pages, "users")}
+        </div>`:'<div class="admin-empty">No admin users found.</div>'}
+        ${pager(a.page,a.pages,"users")}
       </div>
-    `);
-    animateStatValues();
-    bindSearch("userSearch", (v) => {
-      _s.users.search = v;
-      showUsers(1);
-    }, 380);
-    wireInteractiveRows("[data-edit-staff-row]", (row) => {
-      if (row.dataset.canEdit === "1") openEditStaffModal(row.dataset.editStaffRow);
-    });
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function openUserDetail(userId, userName, userEmail, userRole, userJoined, listingCount) {
-  let data;
-  try {
-    data = await api(`/api/admin/users/${encodeURIComponent(userId)}/content`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  const role = userRole || "user";
-  const listingRows = data.listings.length ? data.listings.map((l) => `<tr>
-        <td><span class="admin-link" data-view-listing="${esc(l.id)}">${esc(l.title)}</span></td>
-        <td>${badge(l.category, "green")}</td>
-        <td>${esc(l.location || "\u2014")}</td>
-        <td>${fmtDate(l.createdAt)}</td>
+    `),animateStatValues(),bindSearch("userSearch",n=>{_s.users.search=n,showUsers(1)},380),wireInteractiveRows("[data-edit-staff-row]",n=>{n.dataset.canEdit==="1"&&openEditStaffModal(n.dataset.editStaffRow)})}catch(a){content(`<div class="admin-error">${esc(a.message)}</div>`)}}async function openUserDetail(e,t,i,a,n,d){let s;try{s=await api(`/api/admin/users/${encodeURIComponent(e)}/content`)}catch(u){notify(u.message,"error");return}const o=a||"user",r=s.listings.length?s.listings.map(u=>`<tr>
+        <td><span class="admin-link" data-view-listing="${esc(u.id)}">${esc(u.title)}</span></td>
+        <td>${badge(u.category,"green")}</td>
+        <td>${esc(u.location||"\u2014")}</td>
+        <td>${fmtDate(u.createdAt)}</td>
         <td>
           <div class="admin-actions">
-            <button class="admin-btn admin-btn-ghost" style="font-size:11px" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
-            <button class="admin-btn admin-btn-danger" style="font-size:11px" data-del-listing="${esc(l.id)}">\u{1F5D1}</button>
+            <button class="admin-btn admin-btn-ghost" style="font-size:11px" data-view-listing="${esc(u.id)}">\u{1F441} View</button>
+            <button class="admin-btn admin-btn-danger" style="font-size:11px" data-del-listing="${esc(u.id)}">\u{1F5D1}</button>
           </div>
         </td>
-      </tr>`).join("") : '<tr><td colspan="5" style="text-align:center;color:#6b7a8d;padding:16px">No listings yet.</td></tr>';
-  const discussionRows = data.discussions.length ? data.discussions.map((d) => `<tr>
-        <td><span class="admin-link" data-view-discussion="${esc(d.id)}">${esc(d.title)}</span></td>
-        <td>${badge(d.category)}</td>
-        <td>${d.commentCount}</td>
-        <td>${fmtDate(d.createdAt)}</td>
+      </tr>`).join(""):'<tr><td colspan="5" style="text-align:center;color:#6b7a8d;padding:16px">No listings yet.</td></tr>',c=s.discussions.length?s.discussions.map(u=>`<tr>
+        <td><span class="admin-link" data-view-discussion="${esc(u.id)}">${esc(u.title)}</span></td>
+        <td>${badge(u.category)}</td>
+        <td>${u.commentCount}</td>
+        <td>${fmtDate(u.createdAt)}</td>
         <td>
           <div class="admin-actions">
-            <button class="admin-btn admin-btn-ghost" style="font-size:11px" data-view-discussion="${esc(d.id)}">\u{1F441} View</button>
-            <button class="admin-btn admin-btn-danger" style="font-size:11px" data-del-discussion="${esc(d.id)}">\u{1F5D1}</button>
+            <button class="admin-btn admin-btn-ghost" style="font-size:11px" data-view-discussion="${esc(u.id)}">\u{1F441} View</button>
+            <button class="admin-btn admin-btn-danger" style="font-size:11px" data-del-discussion="${esc(u.id)}">\u{1F5D1}</button>
           </div>
         </td>
-      </tr>`).join("") : '<tr><td colspan="5" style="text-align:center;color:#6b7a8d;padding:16px">No discussions yet.</td></tr>';
-  openModal(`\u{1F464} ${esc(userName)}`, `
+      </tr>`).join(""):'<tr><td colspan="5" style="text-align:center;color:#6b7a8d;padding:16px">No discussions yet.</td></tr>';openModal(`\u{1F464} ${esc(t)}`,`
     <div class="admin-user-profile-head">
-      <div class="admin-user-profile-avatar" style="background:${userColor(userName)}">${esc(userName.charAt(0).toUpperCase())}</div>
+      <div class="admin-user-profile-avatar" style="background:${userColor(t)}">${esc(t.charAt(0).toUpperCase())}</div>
       <div style="flex:1;min-width:0">
-        <div class="admin-user-profile-name">${esc(userName)}</div>
-        <div class="admin-user-profile-email">${esc(userEmail || "\u2014")}</div>
+        <div class="admin-user-profile-name">${esc(t)}</div>
+        <div class="admin-user-profile-email">${esc(i||"\u2014")}</div>
         <div class="admin-user-profile-stats">
-          ${roleBadge(role)}
-          <span>\u{1F4CB} ${data.listings.length} listing${data.listings.length !== 1 ? "s" : ""}</span>
-          <span>\u{1F4AC} ${data.discussions.length} discussion${data.discussions.length !== 1 ? "s" : ""}</span>
-          ${userJoined ? `<span>\u{1F5D3} Joined ${fmtDate(userJoined)}</span>` : ""}
+          ${roleBadge(o)}
+          <span>\u{1F4CB} ${s.listings.length} listing${s.listings.length!==1?"s":""}</span>
+          <span>\u{1F4AC} ${s.discussions.length} discussion${s.discussions.length!==1?"s":""}</span>
+          ${n?`<span>\u{1F5D3} Joined ${fmtDate(n)}</span>`:""}
         </div>
       </div>
-      ${userId !== _me.id ? `
+      ${e!==_me.id?`
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-          <button class="admin-btn admin-btn-danger" style="font-size:11.5px" data-del-user="${esc(userId)}" data-del-name="${esc(userName)}">\u{1F5D1} Delete User</button>
-        </div>` : '<span class="admin-you" style="flex-shrink:0">You</span>'}
+          <button class="admin-btn admin-btn-danger" style="font-size:11.5px" data-del-user="${esc(e)}" data-del-name="${esc(t)}">\u{1F5D1} Delete User</button>
+        </div>`:'<span class="admin-you" style="flex-shrink:0">You</span>'}
     </div>
 
     <div style="margin-bottom:18px">
-      <div class="admin-section-label">Listings (${data.listings.length})</div>
+      <div class="admin-section-label">Listings (${s.listings.length})</div>
       <div class="admin-table-wrap"><table class="admin-table">
         <thead><tr><th>Title</th><th>Category</th><th>Location</th><th>Date</th><th></th></tr></thead>
-        <tbody>${listingRows}</tbody>
+        <tbody>${r}</tbody>
       </table></div>
     </div>
     <div>
-      <div class="admin-section-label">Discussions (${data.discussions.length})</div>
+      <div class="admin-section-label">Discussions (${s.discussions.length})</div>
       <div class="admin-table-wrap"><table class="admin-table">
         <thead><tr><th>Title</th><th>Category</th><th>Comments</th><th>Date</th><th></th></tr></thead>
-        <tbody>${discussionRows}</tbody>
+        <tbody>${c}</tbody>
       </table></div>
     </div>
-  `, null);
-}
-function collectStaffForm(requirePassword) {
-  const permissions = Array.from(document.querySelectorAll("[data-staff-permission]:checked")).map((input) => input.value);
-  const password = document.getElementById("staffPassword")?.value || "";
-  const payload = {
-    name: document.getElementById("staffName")?.value.trim(),
-    email: document.getElementById("staffEmail")?.value.trim(),
-    phone: document.getElementById("staffPhone")?.value.trim(),
-    permissions
-  };
-  if (password || requirePassword) payload.password = password;
-  return payload;
-}
-function staffFormHtml(staff = {}, isCreate = false) {
-  return `
+  `,null)}function collectStaffForm(e){const t=Array.from(document.querySelectorAll("[data-staff-permission]:checked")).map(n=>n.value),i=document.getElementById("staffPassword")?.value||"",a={name:document.getElementById("staffName")?.value.trim(),email:document.getElementById("staffEmail")?.value.trim(),phone:document.getElementById("staffPhone")?.value.trim(),permissions:t};return(i||e)&&(a.password=i),a}function staffFormHtml(e={},t=!1){return`
     <div class="admin-modal-grid">
       <div class="admin-modal-field">
         <label class="admin-modal-label">Name</label>
-        <input class="admin-modal-input" id="staffName" value="${esc(staff.name || "")}" autocomplete="off">
+        <input class="admin-modal-input" id="staffName" value="${esc(e.name||"")}" autocomplete="off">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Email</label>
-        <input class="admin-modal-input" id="staffEmail" type="email" value="${esc(staff.email || "")}" autocomplete="off">
+        <input class="admin-modal-input" id="staffEmail" type="email" value="${esc(e.email||"")}" autocomplete="off">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Phone</label>
-        <input class="admin-modal-input" id="staffPhone" value="${esc(staff.phone || "")}" autocomplete="off">
+        <input class="admin-modal-input" id="staffPhone" value="${esc(e.phone||"")}" autocomplete="off">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">${isCreate ? "Password" : "New Password"}</label>
-        <input class="admin-modal-input" id="staffPassword" type="password" placeholder="${isCreate ? "Minimum 8 characters" : "Leave blank to keep current password"}" autocomplete="new-password">
+        <label class="admin-modal-label">${t?"Password":"New Password"}</label>
+        <input class="admin-modal-input" id="staffPassword" type="password" placeholder="${t?"Minimum 8 characters":"Leave blank to keep current password"}" autocomplete="new-password">
       </div>
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Privileges</label>
-        ${permissionCheckboxes(staff.permissions || [])}
+        ${permissionCheckboxes(e.permissions||[])}
       </div>
     </div>
-  `;
-}
-function openCreateStaffModal() {
-  openModal("Create Admin User", staffFormHtml({}, true), async () => {
-    await api("/api/admin/staff", {
-      method: "POST",
-      body: JSON.stringify(collectStaffForm(true))
-    });
-    showUsers(1);
-  });
-}
-async function openEditStaffModal(id) {
-  let data;
-  try {
-    data = await api(`/api/admin/staff/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  openModal("Edit Admin User", staffFormHtml(data.staff, false), async () => {
-    await api(`/api/admin/staff/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify(collectStaffForm(false))
-    });
-    showUsers(1);
-  });
-}
-const CATEGORIES = [
-  "",
-  "jobs",
-  "housing",
-  "pg",
-  "services",
-  "kinbech",
-  "restaurants",
-  "shops",
-  "childcare",
-  "beauty",
-  "auto",
-  "cleaning",
-  "photography",
-  "produce",
-  "organizations",
-  "events",
-  "discussions",
-  "tech",
-  "healthcare",
-  "education",
-  "student",
-  "finance",
-  "immigration",
-  "other"
-];
-const DISCUSSION_CATEGORIES = [
-  { value: "general", label: "General" },
-  { value: "jobs", label: "Jobs" },
-  { value: "housing", label: "Housing" },
-  { value: "services", label: "Services" },
-  { value: "events", label: "Events" },
-  { value: "newcomers", label: "Newcomers" },
-  { value: "immigration", label: "Immigration" },
-  { value: "education", label: "Education" },
-  { value: "business", label: "Business" },
-  { value: "community", label: "Community" }
-];
-function discussionCategoryOptions(selected = "general") {
-  const selectedValue = selected || "general";
-  const known = DISCUSSION_CATEGORIES.some((category) => category.value === selectedValue);
-  return `${DISCUSSION_CATEGORIES.map(
-    (category) => `<option value="${esc(category.value)}"${category.value === selectedValue ? " selected" : ""}>${esc(category.label)}</option>`
-  ).join("")}${known ? "" : `<option value="${esc(selectedValue)}" selected>${esc(capitalize(selectedValue))}</option>`}`;
-}
-async function showListings(page) {
-  if (page !== void 0) _s.listings.page = page;
-  const { page: p, category, search } = _s.listings;
-  try {
-    const data = await api(`/api/admin/listings?${new URLSearchParams({ page: String(p), limit: String(20), category, search })}`);
-    const topCats = CATEGORIES.filter(Boolean).slice(0, 8);
-    content(`
-      ${sectionHero("Listings", "Inspect and moderate marketplace posts. Click a card to open details.")}
+  `}function openCreateStaffModal(){openModal("Create Admin User",staffFormHtml({},!0),async()=>{await api("/api/admin/staff",{method:"POST",body:JSON.stringify(collectStaffForm(!0))}),showUsers(1)})}async function openEditStaffModal(e){let t;try{t=await api(`/api/admin/staff/${encodeURIComponent(e)}`)}catch(i){notify(i.message,"error");return}openModal("Edit Admin User",staffFormHtml(t.staff,!1),async()=>{await api(`/api/admin/staff/${encodeURIComponent(e)}`,{method:"PUT",body:JSON.stringify(collectStaffForm(!1))}),showUsers(1)})}const CATEGORIES=["","jobs","housing","pg","services","kinbech","restaurants","shops","childcare","beauty","auto","cleaning","photography","produce","organizations","events","discussions","tech","healthcare","education","student","finance","immigration","other"],DISCUSSION_CATEGORIES=[{value:"general",label:"General"},{value:"jobs",label:"Jobs"},{value:"housing",label:"Housing"},{value:"services",label:"Services"},{value:"events",label:"Events"},{value:"newcomers",label:"Newcomers"},{value:"immigration",label:"Immigration"},{value:"education",label:"Education"},{value:"business",label:"Business"},{value:"community",label:"Community"}];function discussionCategoryOptions(e="general"){const t=e||"general",i=DISCUSSION_CATEGORIES.some(a=>a.value===t);return`${DISCUSSION_CATEGORIES.map(a=>`<option value="${esc(a.value)}"${a.value===t?" selected":""}>${esc(a.label)}</option>`).join("")}${i?"":`<option value="${esc(t)}" selected>${esc(capitalize(t))}</option>`}`}async function showListings(e){e!==void 0&&(_s.listings.page=e);const{page:t,category:i,search:a}=_s.listings;try{const n=await api(`/api/admin/listings?${new URLSearchParams({page:String(t),limit:String(20),category:i,search:a})}`),d=CATEGORIES.filter(Boolean).slice(0,8);content(`
+      ${sectionHero("Listings","Inspect and moderate marketplace posts. Click a card to open details.")}
       <div class="ix-chip-row">
-        <button type="button" class="ix-chip${!category ? " active" : ""}" data-listing-chip="">All</button>
-        ${topCats.map((c) => `<button type="button" class="ix-chip${category === c ? " active" : ""}" data-listing-chip="${esc(c)}">${esc(capitalize(c))}</button>`).join("")}
+        <button type="button" class="ix-chip${i?"":" active"}" data-listing-chip="">All</button>
+        ${d.map(s=>`<button type="button" class="ix-chip${i===s?" active":""}" data-listing-chip="${esc(s)}">${esc(capitalize(s))}</button>`).join("")}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="listingSearch" type="search" placeholder="Search listings\u2026" value="${esc(search)}">
+        <input class="admin-search" id="listingSearch" type="search" placeholder="Search listings\u2026" value="${esc(a)}">
         <select class="admin-select" id="listingCat">
-          ${CATEGORIES.map((c) => `<option value="${esc(c)}"${c === category ? " selected" : ""}>${c ? capitalize(c) : "All categories"}</option>`).join("")}
+          ${CATEGORIES.map(s=>`<option value="${esc(s)}"${s===i?" selected":""}>${s?capitalize(s):"All categories"}</option>`).join("")}
         </select>
-        <span class="ix-count">${data.total.toLocaleString()} listing${data.total !== 1 ? "s" : ""}</span>
+        <span class="ix-count">${n.total.toLocaleString()} listing${n.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.listings || []).length ? `<div class="ix-list">
-          ${data.listings.map((l) => `
-            <article class="ix-row" tabindex="0" role="button" data-open-listing="${esc(l.id)}">
-              <div class="ix-icon">${catEmoji(l.category)}</div>
+        ${(n.listings||[]).length?`<div class="ix-list">
+          ${n.listings.map(s=>`
+            <article class="ix-row" tabindex="0" role="button" data-open-listing="${esc(s.id)}">
+              <div class="ix-icon">${catEmoji(s.category)}</div>
               <div class="ix-body">
-                <div class="ix-title">${esc(l.title)}</div>
-                <div class="ix-meta">${badge(l.category)} \xB7 ${esc(l.location || "No location")} \xB7 ${fmtDate(l.createdAt)}</div>
+                <div class="ix-title">${esc(s.title)}</div>
+                <div class="ix-meta">${badge(s.category)} \xB7 ${esc(s.location||"No location")} \xB7 ${fmtDate(s.createdAt)}</div>
               </div>
               <div class="ix-actions">
-                <button class="admin-btn admin-btn-ghost" type="button" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
-                <button class="admin-btn admin-btn-ghost" type="button" data-edit-listing="${esc(l.id)}">\u270F\uFE0F Edit</button>
-                <button class="admin-btn admin-btn-danger" type="button" data-del-listing="${esc(l.id)}">\u{1F5D1}</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-listing="${esc(s.id)}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-edit-listing="${esc(s.id)}">\u270F\uFE0F Edit</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-listing="${esc(s.id)}">\u{1F5D1}</button>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No listings match these filters.</div>'}
-        ${pager(data.page, data.pages, "listings")}
+        </div>`:'<div class="admin-empty">No listings match these filters.</div>'}
+        ${pager(n.page,n.pages,"listings")}
       </div>
-    `);
-    bindSearch("listingSearch", (v) => {
-      _s.listings.search = v;
-      showListings(1);
-    }, 380);
-    document.getElementById("listingCat")?.addEventListener("change", (e) => {
-      _s.listings.category = e.target.value;
-      showListings(1);
-    });
-    document.querySelectorAll("[data-listing-chip]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        _s.listings.category = btn.dataset.listingChip || "";
-        showListings(1);
-      });
-    });
-    wireInteractiveRows("[data-open-listing]", (row) => openViewListing(row.dataset.openListing));
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function showEvents(page) {
-  if (page !== void 0) _s.events.page = page;
-  const { page: p, search } = _s.events;
-  try {
-    const data = await api(`/api/admin/listings?${new URLSearchParams({ page: String(p), limit: String(20), category: "events", search })}`);
-    content(`
-      ${sectionHero("Events", "Create and manage community events.", '<button class="admin-btn admin-btn-primary" data-create-event type="button">\uFF0B Add Event</button>')}
+    `),bindSearch("listingSearch",s=>{_s.listings.search=s,showListings(1)},380),document.getElementById("listingCat")?.addEventListener("change",s=>{_s.listings.category=s.target.value,showListings(1)}),document.querySelectorAll("[data-listing-chip]").forEach(s=>{s.addEventListener("click",()=>{_s.listings.category=s.dataset.listingChip||"",showListings(1)})}),wireInteractiveRows("[data-open-listing]",s=>openViewListing(s.dataset.openListing))}catch(n){content(`<div class="admin-error">${esc(n.message)}</div>`)}}async function showEvents(e){e!==void 0&&(_s.events.page=e);const{page:t,search:i}=_s.events;try{const a=await api(`/api/admin/listings?${new URLSearchParams({page:String(t),limit:String(20),category:"events",search:i})}`);content(`
+      ${sectionHero("Events","Create and manage community events.",'<button class="admin-btn admin-btn-primary" data-create-event type="button">\uFF0B Add Event</button>')}
       <div class="ix-stat-grid">
-        ${sectionStat("Events", data.total, true)}
-        ${sectionStat("On this page", (data.listings || []).length)}
+        ${sectionStat("Events",a.total,!0)}
+        ${sectionStat("On this page",(a.listings||[]).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="eventSearch" type="search" placeholder="Search events\u2026" value="${esc(search)}">
-        <span class="ix-count">${data.total.toLocaleString()} event${data.total !== 1 ? "s" : ""}</span>
+        <input class="admin-search" id="eventSearch" type="search" placeholder="Search events\u2026" value="${esc(i)}">
+        <span class="ix-count">${a.total.toLocaleString()} event${a.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.listings || []).length ? `<div class="ix-list">
-          ${data.listings.map((l) => `
-            <article class="ix-row" tabindex="0" role="button" data-open-listing="${esc(l.id)}">
+        ${(a.listings||[]).length?`<div class="ix-list">
+          ${a.listings.map(n=>`
+            <article class="ix-row" tabindex="0" role="button" data-open-listing="${esc(n.id)}">
               <div class="ix-icon">\u{1F389}</div>
               <div class="ix-body">
-                <div class="ix-title">${esc(l.title)}</div>
-                <div class="ix-meta">${esc(l.availability || "Date TBD")} \xB7 ${esc(l.location || "Location TBD")} \xB7 Posted ${fmtDate(l.createdAt)}</div>
+                <div class="ix-title">${esc(n.title)}</div>
+                <div class="ix-meta">${esc(n.availability||"Date TBD")} \xB7 ${esc(n.location||"Location TBD")} \xB7 Posted ${fmtDate(n.createdAt)}</div>
               </div>
               <div class="ix-actions">
-                <button class="admin-btn admin-btn-ghost" type="button" data-view-listing="${esc(l.id)}">\u{1F441} View</button>
-                <button class="admin-btn admin-btn-ghost" type="button" data-edit-event="${esc(l.id)}">\u270F\uFE0F Edit</button>
-                <button class="admin-btn admin-btn-danger" type="button" data-del-event="${esc(l.id)}" data-del-title="${esc(l.title)}">\u{1F5D1}</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-view-listing="${esc(n.id)}">\u{1F441} View</button>
+                <button class="admin-btn admin-btn-ghost" type="button" data-edit-event="${esc(n.id)}">\u270F\uFE0F Edit</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-event="${esc(n.id)}" data-del-title="${esc(n.title)}">\u{1F5D1}</button>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No events yet. Add one to get started.</div>'}
-        ${pager(data.page, data.pages, "events")}
+        </div>`:'<div class="admin-empty">No events yet. Add one to get started.</div>'}
+        ${pager(a.page,a.pages,"events")}
       </div>
-    `);
-    animateStatValues();
-    bindSearch("eventSearch", (v) => {
-      _s.events.search = v;
-      showEvents(1);
-    }, 380);
-    wireInteractiveRows("[data-open-listing]", (row) => openViewListing(row.dataset.openListing));
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-function eventFormHtml(ev = {}) {
-  return `
+    `),animateStatValues(),bindSearch("eventSearch",n=>{_s.events.search=n,showEvents(1)},380),wireInteractiveRows("[data-open-listing]",n=>openViewListing(n.dataset.openListing))}catch(a){content(`<div class="admin-error">${esc(a.message)}</div>`)}}function eventFormHtml(e={}){return`
     <div class="admin-modal-grid">
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Event title</label>
-        <input class="admin-modal-input" id="evTitle" maxlength="200" value="${esc(ev.title || "")}" placeholder="e.g. Nepali New Year Celebration 2082">
+        <input class="admin-modal-input" id="evTitle" maxlength="200" value="${esc(e.title||"")}" placeholder="e.g. Nepali New Year Celebration 2082">
       </div>
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Description</label>
-        <textarea class="admin-modal-textarea" id="evDesc" rows="5" placeholder="Event details, agenda, speakers\u2026">${esc(ev.description || "")}</textarea>
+        <textarea class="admin-modal-textarea" id="evDesc" rows="5" placeholder="Event details, agenda, speakers\u2026">${esc(e.description||"")}</textarea>
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Date &amp; Time</label>
-        <input class="admin-modal-input" id="evDate" value="${esc(ev.availability || "")}" placeholder="e.g. April 14, 2025 \xB7 5:00 PM">
+        <input class="admin-modal-input" id="evDate" value="${esc(e.availability||"")}" placeholder="e.g. April 14, 2025 \xB7 5:00 PM">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Location / Venue</label>
-        <input class="admin-modal-input" id="evLocation" value="${esc(ev.location || "")}" placeholder="e.g. Boston City Hall, MA">
+        <input class="admin-modal-input" id="evLocation" value="${esc(e.location||"")}" placeholder="e.g. Boston City Hall, MA">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Price / Admission</label>
-        <input class="admin-modal-input" id="evPrice" value="${esc(ev.price || "")}" placeholder="Free, $10, Members only\u2026">
+        <input class="admin-modal-input" id="evPrice" value="${esc(e.price||"")}" placeholder="Free, $10, Members only\u2026">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Contact Phone</label>
-        <input class="admin-modal-input" id="evPhone" value="${esc(ev.contactPhone || "")}" placeholder="+1-555-\u2026">
+        <input class="admin-modal-input" id="evPhone" value="${esc(e.contactPhone||"")}" placeholder="+1-555-\u2026">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Contact Email</label>
-        <input class="admin-modal-input" id="evEmail" value="${esc(ev.contactEmail || "")}" placeholder="events@example.com">
+        <input class="admin-modal-input" id="evEmail" value="${esc(e.contactEmail||"")}" placeholder="events@example.com">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">RSVP / Tickets link</label>
-        <input class="admin-modal-input" id="evLink" value="${esc(ev.externalLink || "")}" placeholder="https://\u2026">
+        <input class="admin-modal-input" id="evLink" value="${esc(e.externalLink||"")}" placeholder="https://\u2026">
       </div>
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Tags (comma-separated)</label>
-        <input class="admin-modal-input" id="evTags" value="${esc((ev.tags || []).join(", "))}" placeholder="puja, concert, fundraiser, networking">
+        <input class="admin-modal-input" id="evTags" value="${esc((e.tags||[]).join(", "))}" placeholder="puja, concert, fundraiser, networking">
       </div>
     </div>
-  `;
-}
-function collectEventPayload() {
-  return {
-    category: "events",
-    title: document.getElementById("evTitle").value.trim(),
-    description: document.getElementById("evDesc").value.trim(),
-    availability: document.getElementById("evDate").value.trim(),
-    location: document.getElementById("evLocation").value.trim(),
-    price: document.getElementById("evPrice").value.trim(),
-    contactPhone: document.getElementById("evPhone").value.trim(),
-    contactEmail: document.getElementById("evEmail").value.trim(),
-    externalLink: document.getElementById("evLink").value.trim(),
-    tags: document.getElementById("evTags").value.split(",").map((t) => t.trim()).filter(Boolean)
-  };
-}
-function openCreateEvent() {
-  openModal("Add Event", eventFormHtml(), async () => {
-    const payload = collectEventPayload();
-    if (!payload.title) {
-      notify("Event title is required.", "error");
-      throw new Error("validation");
-    }
-    await api("/api/listings", { method: "POST", body: JSON.stringify(payload) });
-    showEvents(1);
-    notify("Event created.", "success");
-  });
-}
-async function openEditEvent(id) {
-  let ev;
-  try {
-    ev = await api(`/api/admin/listings/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  openModal("Edit Event", `<div class="admin-modal-meta">Posted ${fmtDate(ev.createdAt)}</div>${eventFormHtml(ev)}`, async () => {
-    const payload = collectEventPayload();
-    if (!payload.title) {
-      notify("Event title is required.", "error");
-      throw new Error("validation");
-    }
-    await api(`/api/admin/listings/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
-    showEvents(1);
-    notify("Event updated.", "success");
-  });
-}
-const NEWS_CATEGORIES = ["", "community", "nepal", "usa", "business", "immigration", "culture", "opinion", "sports", "technology", "world"];
-function newsCategoryLabel(value) {
-  return value === "usa" ? "USA" : capitalize(value || "community");
-}
-function newsStatusBadge(status) {
-  return badge(status === "published" ? "Published" : "Draft", status === "published" ? "green" : "gray");
-}
-function formatNewsInline(value) {
-  return esc(value || "").replace(/\n/g, "<br>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\[font=(serif|sans|mono)\]([\s\S]*?)\[\/font\]/g, '<span class="news-font-$1">$2</span>');
-}
-function renderNewsMediaBlock(media = {}) {
-  if (!media.url) return "";
-  const caption = media.caption ? `<figcaption>${esc(media.caption)}</figcaption>` : "";
-  const mediaHtml = media.type === "video" ? `<video controls preload="metadata" src="${esc(media.url)}"></video>` : `<img src="${esc(media.url)}" alt="">`;
-  return `<figure class="admin-news-media">${mediaHtml}${caption}</figure>`;
-}
-function isNewsHtmlBody(value = "") {
-  return /<\/?[a-z][\s\S]*>/i.test(String(value || ""));
-}
-function renderHtmlNewsBody(value = "", mediaItems = []) {
-  const mediaMap = Object.fromEntries((mediaItems || []).map((item) => [item.id, item]));
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = String(value || "");
-  wrapper.querySelectorAll("p").forEach((paragraph) => {
-    const mediaMatch = /^\[\[media:([a-zA-Z0-9_-]+)\]\]$/.exec(paragraph.textContent?.trim() || "");
-    if (!mediaMatch) return;
-    const mediaHtml = renderNewsMediaBlock(mediaMap[mediaMatch[1]]);
-    if (!mediaHtml) {
-      paragraph.remove();
-      return;
-    }
-    const template = document.createElement("template");
-    template.innerHTML = mediaHtml;
-    paragraph.replaceWith(template.content.cloneNode(true));
-  });
-  return wrapper.innerHTML;
-}
-function formatNewsBody(value, mediaItems = []) {
-  if (isNewsHtmlBody(value)) return renderHtmlNewsBody(value, mediaItems);
-  const mediaMap = Object.fromEntries((mediaItems || []).map((item) => [item.id, item]));
-  const lines = String(value || "").split(/\r?\n/);
-  const html = [];
-  let paragraph = [];
-  function flushParagraph() {
-    if (!paragraph.length) return;
-    html.push(`<p>${formatNewsInline(paragraph.join("\n"))}</p>`);
-    paragraph = [];
-  }
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    const mediaMatch = /^\[\[media:([a-zA-Z0-9_-]+)\]\]$/.exec(trimmed);
-    if (mediaMatch) {
-      flushParagraph();
-      html.push(renderNewsMediaBlock(mediaMap[mediaMatch[1]]));
-      return;
-    }
-    if (!trimmed) {
-      flushParagraph();
-      return;
-    }
-    if (trimmed.startsWith("## ")) {
-      flushParagraph();
-      html.push(`<h3>${formatNewsInline(trimmed.slice(3))}</h3>`);
-      return;
-    }
-    if (trimmed.startsWith("> ")) {
-      flushParagraph();
-      html.push(`<blockquote>${formatNewsInline(trimmed.slice(2))}</blockquote>`);
-      return;
-    }
-    paragraph.push(line);
-  });
-  flushParagraph();
-  return html.join("");
-}
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Could not read selected file."));
-    reader.readAsDataURL(file);
-  });
-}
-function newsMediaTypeFromFile(file) {
-  return file?.type?.startsWith("video/") ? "video" : "image";
-}
-function newsMediaLibraryHtml() {
-  if (!_newsMediaDraft.length) {
-    return '<div class="admin-empty admin-empty-compact">No story media yet. Upload images or videos, then insert them into the article body.</div>';
-  }
-  return `<div class="admin-news-media-list">
-    ${_newsMediaDraft.map((item) => `
+  `}function collectEventPayload(){return{category:"events",title:document.getElementById("evTitle").value.trim(),description:document.getElementById("evDesc").value.trim(),availability:document.getElementById("evDate").value.trim(),location:document.getElementById("evLocation").value.trim(),price:document.getElementById("evPrice").value.trim(),contactPhone:document.getElementById("evPhone").value.trim(),contactEmail:document.getElementById("evEmail").value.trim(),externalLink:document.getElementById("evLink").value.trim(),tags:document.getElementById("evTags").value.split(",").map(e=>e.trim()).filter(Boolean)}}function openCreateEvent(){openModal("Add Event",eventFormHtml(),async()=>{const e=collectEventPayload();if(!e.title)throw notify("Event title is required.","error"),new Error("validation");await api("/api/listings",{method:"POST",body:JSON.stringify(e)}),showEvents(1),notify("Event created.","success")})}async function openEditEvent(e){let t;try{t=await api(`/api/admin/listings/${encodeURIComponent(e)}`)}catch(i){notify(i.message,"error");return}openModal("Edit Event",`<div class="admin-modal-meta">Posted ${fmtDate(t.createdAt)}</div>${eventFormHtml(t)}`,async()=>{const i=collectEventPayload();if(!i.title)throw notify("Event title is required.","error"),new Error("validation");await api(`/api/admin/listings/${encodeURIComponent(e)}`,{method:"PUT",body:JSON.stringify(i)}),showEvents(1),notify("Event updated.","success")})}const NEWS_CATEGORIES=["","community","nepal","usa","business","immigration","culture","opinion","sports","technology","world"];function newsCategoryLabel(e){return e==="usa"?"USA":capitalize(e||"community")}function newsStatusBadge(e){return badge(e==="published"?"Published":"Draft",e==="published"?"green":"gray")}function formatNewsInline(e){return esc(e||"").replace(/\n/g,"<br>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/\[font=(serif|sans|mono)\]([\s\S]*?)\[\/font\]/g,'<span class="news-font-$1">$2</span>')}function renderNewsMediaBlock(e={}){if(!e.url)return"";const t=e.caption?`<figcaption>${esc(e.caption)}</figcaption>`:"";return`<figure class="admin-news-media">${e.type==="video"?`<video controls preload="metadata" src="${esc(e.url)}"></video>`:`<img src="${esc(e.url)}" alt="${esc(e.caption||"Article image")}">`}${t}</figure>`}function isNewsHtmlBody(e=""){return/<\/?[a-z][\s\S]*>/i.test(String(e||""))}function renderHtmlNewsBody(e="",t=[]){const i=Object.fromEntries((t||[]).map(n=>[n.id,n])),a=document.createElement("div");return a.innerHTML=String(e||""),a.querySelectorAll("p").forEach(n=>{const d=/^\[\[media:([a-zA-Z0-9_-]+)\]\]$/.exec(n.textContent?.trim()||"");if(!d)return;const s=renderNewsMediaBlock(i[d[1]]);if(!s){n.remove();return}const o=document.createElement("template");o.innerHTML=s,n.replaceWith(o.content.cloneNode(!0))}),a.innerHTML}function formatNewsBody(e,t=[]){if(isNewsHtmlBody(e))return renderHtmlNewsBody(e,t);const i=Object.fromEntries((t||[]).map(o=>[o.id,o])),a=String(e||"").split(/\r?\n/),n=[];let d=[];function s(){d.length&&(n.push(`<p>${formatNewsInline(d.join(`
+`))}</p>`),d=[])}return a.forEach(o=>{const r=o.trim(),c=/^\[\[media:([a-zA-Z0-9_-]+)\]\]$/.exec(r);if(c){s(),n.push(renderNewsMediaBlock(i[c[1]]));return}if(!r){s();return}if(r.startsWith("## ")){s(),n.push(`<h3>${formatNewsInline(r.slice(3))}</h3>`);return}if(r.startsWith("> ")){s(),n.push(`<blockquote>${formatNewsInline(r.slice(2))}</blockquote>`);return}d.push(o)}),s(),n.join("")}function readFileAsDataUrl(e){return new Promise((t,i)=>{const a=new FileReader;a.onload=()=>t(a.result),a.onerror=()=>i(new Error("Could not read selected file.")),a.readAsDataURL(e)})}function newsMediaTypeFromFile(e){return e?.type?.startsWith("video/")?"video":"image"}function newsMediaLibraryHtml(){return _newsMediaDraft.length?`<div class="admin-news-media-list">
+    ${_newsMediaDraft.map(e=>`
       <div class="admin-news-media-item">
         <div class="admin-news-media-thumb">
-          ${item.type === "video" ? `<video src="${esc(item.url)}" muted></video><span>Video</span>` : `<img src="${esc(item.url)}" alt=""><span>Image</span>`}
+          ${e.type==="video"?`<video src="${esc(e.url)}" muted></video><span>Video</span>`:`<img src="${esc(e.url)}" alt="${esc(e.caption||"Media image")}"><span>Image</span>`}
         </div>
         <div class="admin-news-media-meta">
-          <input class="admin-modal-input" data-news-media-caption="${esc(item.id)}" value="${esc(item.caption || "")}" placeholder="Caption">
-          <code>[[media:${esc(item.id)}]]</code>
+          <input class="admin-modal-input" data-news-media-caption="${esc(e.id)}" value="${esc(e.caption||"")}" placeholder="Caption">
+          <code>[[media:${esc(e.id)}]]</code>
         </div>
         <div class="admin-news-media-actions">
-          <button class="admin-btn admin-btn-ghost" type="button" data-insert-news-media="${esc(item.id)}">Insert</button>
-          <button class="admin-btn admin-btn-danger" type="button" data-remove-news-media="${esc(item.id)}">Remove</button>
+          <button class="admin-btn admin-btn-ghost" type="button" data-insert-news-media="${esc(e.id)}">Insert</button>
+          <button class="admin-btn admin-btn-danger" type="button" data-remove-news-media="${esc(e.id)}">Remove</button>
         </div>
       </div>
     `).join("")}
-  </div>`;
-}
-function renderNewsMediaLibrary() {
-  const target = document.getElementById("newsMediaLibrary");
-  if (target) target.innerHTML = newsMediaLibraryHtml();
-}
-function insertIntoNewsBody(openText, closeText = "") {
-  const textarea = document.getElementById("newsBody");
-  if (!textarea) return;
-  const start = textarea.selectionStart ?? textarea.value.length;
-  const end = textarea.selectionEnd ?? textarea.value.length;
-  const selected = textarea.value.slice(start, end);
-  textarea.value = `${textarea.value.slice(0, start)}${openText}${selected || ""}${closeText}${textarea.value.slice(end)}`;
-  const caret = selected ? start + openText.length + selected.length + closeText.length : start + openText.length;
-  textarea.focus();
-  textarea.setSelectionRange(caret, caret);
-}
-async function collectNewsPayload() {
-  window.BiscoonNewsEditor?.sync?.();
-  const imageFile = document.getElementById("newsImageFile")?.files?.[0];
-  let imageUrl = document.getElementById("newsImageUrl")?.value.trim() || "";
-  if (imageFile) imageUrl = await readFileAsDataUrl(imageFile);
-  return {
-    title: document.getElementById("newsTitle")?.value.trim(),
-    category: document.getElementById("newsCategory")?.value,
-    summary: document.getElementById("newsSummary")?.value.trim(),
-    body: document.getElementById("newsBody")?.value.trim(),
-    imageUrl,
-    sourceName: document.getElementById("newsSource")?.value.trim(),
-    authorName: document.getElementById("newsAuthor")?.value.trim(),
-    status: document.getElementById("newsStatus")?.value,
-    featured: Boolean(document.getElementById("newsFeatured")?.checked),
-    media: _newsMediaDraft.map((item) => ({
-      id: item.id,
-      type: item.type,
-      url: item.url,
-      caption: item.caption || "",
-      createdAt: item.createdAt || (/* @__PURE__ */ new Date()).toISOString()
-    }))
-  };
-}
-function newsFormHtml(article = {}) {
-  const status = article.status || "draft";
-  const category = article.category || "community";
-  const title = article.title || "";
-  const summary = article.summary || "";
-  return `
+  </div>`:'<div class="admin-empty admin-empty-compact">No story media yet. Upload images or videos, then insert them into the article body.</div>'}function renderNewsMediaLibrary(){const e=document.getElementById("newsMediaLibrary");e&&(e.innerHTML=newsMediaLibraryHtml())}function insertIntoNewsBody(e,t=""){const i=document.getElementById("newsBody");if(!i)return;const a=i.selectionStart??i.value.length,n=i.selectionEnd??i.value.length,d=i.value.slice(a,n);i.value=`${i.value.slice(0,a)}${e}${d||""}${t}${i.value.slice(n)}`;const s=d?a+e.length+d.length+t.length:a+e.length;i.focus(),i.setSelectionRange(s,s)}async function collectNewsPayload(){window.BiscoonNewsEditor?.sync?.();const e=document.getElementById("newsImageFile")?.files?.[0];let t=document.getElementById("newsImageUrl")?.value.trim()||"";return e&&(t=await readFileAsDataUrl(e)),{title:document.getElementById("newsTitle")?.value.trim(),category:document.getElementById("newsCategory")?.value,summary:document.getElementById("newsSummary")?.value.trim(),body:document.getElementById("newsBody")?.value.trim(),imageUrl:t,sourceName:document.getElementById("newsSource")?.value.trim(),authorName:document.getElementById("newsAuthor")?.value.trim(),status:document.getElementById("newsStatus")?.value,featured:!!document.getElementById("newsFeatured")?.checked,media:_newsMediaDraft.map(i=>({id:i.id,type:i.type,url:i.url,caption:i.caption||"",createdAt:i.createdAt||new Date().toISOString()}))}}function newsFormHtml(e={}){const t=e.status||"draft",i=e.category||"community",a=e.title||"",n=e.summary||"";return`
     <div class="news-editor-shell">
       <div class="news-editor-main">
         <div class="news-editor-section">
@@ -1636,36 +443,36 @@ function newsFormHtml(article = {}) {
           <div class="admin-modal-field admin-modal-full">
             <div class="news-field-head">
               <label class="admin-modal-label" for="newsTitle">Headline</label>
-              <span class="news-char-count" id="newsTitleCount">${title.length}/180</span>
+              <span class="news-char-count" id="newsTitleCount">${a.length}/180</span>
             </div>
-            <input class="admin-modal-input" id="newsTitle" maxlength="180" value="${esc(title)}" placeholder="Write a clear, specific headline\u2026">
+            <input class="admin-modal-input" id="newsTitle" maxlength="180" value="${esc(a)}" placeholder="Write a clear, specific headline\u2026">
           </div>
           <div class="admin-modal-field admin-modal-full">
             <div class="news-field-head">
               <label class="admin-modal-label" for="newsSummary">Summary / Standfirst</label>
-              <span class="news-char-count" id="newsSummaryCount">${summary.length}/360</span>
+              <span class="news-char-count" id="newsSummaryCount">${n.length}/360</span>
             </div>
-            <textarea class="admin-modal-textarea" id="newsSummary" rows="3" maxlength="360" placeholder="One or two sentences that sell the story\u2026">${esc(summary)}</textarea>
+            <textarea class="admin-modal-textarea" id="newsSummary" rows="3" maxlength="360" placeholder="One or two sentences that sell the story\u2026">${esc(n)}</textarea>
           </div>
         </div>
 
         <div class="news-editor-section">
           <div class="news-editor-section-label">Publishing</div>
           <div class="news-pill-row" role="group" aria-label="Status">
-            <button type="button" class="news-pill${status === "draft" ? " active" : ""}" data-news-status-pill="draft">Draft</button>
-            <button type="button" class="news-pill${status === "published" ? " active" : ""}" data-news-status-pill="published">Published</button>
+            <button type="button" class="news-pill${t==="draft"?" active":""}" data-news-status-pill="draft">Draft</button>
+            <button type="button" class="news-pill${t==="published"?" active":""}" data-news-status-pill="published">Published</button>
           </div>
-          <input type="hidden" id="newsStatus" value="${esc(status)}">
+          <input type="hidden" id="newsStatus" value="${esc(t)}">
 
           <div class="news-chip-row" role="group" aria-label="Category">
-            ${NEWS_CATEGORIES.filter(Boolean).map((cat) => `
-              <button type="button" class="news-chip${cat === category ? " active" : ""}" data-news-category-chip="${esc(cat)}">${esc(newsCategoryLabel(cat))}</button>
+            ${NEWS_CATEGORIES.filter(Boolean).map(d=>`
+              <button type="button" class="news-chip${d===i?" active":""}" data-news-category-chip="${esc(d)}">${esc(newsCategoryLabel(d))}</button>
             `).join("")}
           </div>
-          <input type="hidden" id="newsCategory" value="${esc(category)}">
+          <input type="hidden" id="newsCategory" value="${esc(i)}">
 
           <label class="news-featured-toggle">
-            <input type="checkbox" id="newsFeatured"${article.featured ? " checked" : ""}>
+            <input type="checkbox" id="newsFeatured"${e.featured?" checked":""}>
             <span class="news-featured-ui">
               <strong>\u2605 Feature this story</strong>
               <small>Pin it at the top of the public news page</small>
@@ -1675,11 +482,11 @@ function newsFormHtml(article = {}) {
           <div class="admin-modal-grid" style="margin-top:12px">
             <div class="admin-modal-field">
               <label class="admin-modal-label">Source</label>
-              <input class="admin-modal-input" id="newsSource" value="${esc(article.sourceName || "Biscoon Newsroom")}">
+              <input class="admin-modal-input" id="newsSource" value="${esc(e.sourceName||"Biscoon Newsroom")}">
             </div>
             <div class="admin-modal-field">
               <label class="admin-modal-label">Author</label>
-              <input class="admin-modal-input" id="newsAuthor" value="${esc(article.authorName || "")}" placeholder="Optional">
+              <input class="admin-modal-input" id="newsAuthor" value="${esc(e.authorName||"")}" placeholder="Optional">
             </div>
           </div>
         </div>
@@ -1688,10 +495,10 @@ function newsFormHtml(article = {}) {
           <div class="news-editor-section-label">Cover image</div>
           <div class="news-dropzone" id="newsCoverDrop" tabindex="0">
             <div class="news-dropzone-preview" id="newsCoverPreview">
-              ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
+              ${e.imageUrl?`<img src="${esc(e.imageUrl)}" alt="${esc(e.title||"Cover image")}">`:'<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
             </div>
             <div class="news-dropzone-actions">
-              <input class="admin-modal-input" id="newsImageUrl" value="${esc(article.imageUrl || "")}" placeholder="https://\u2026 or leave blank">
+              <input class="admin-modal-input" id="newsImageUrl" value="${esc(e.imageUrl||"")}" placeholder="https://\u2026 or leave blank">
               <label class="admin-btn admin-btn-ghost news-file-btn">
                 Choose file
                 <input id="newsImageFile" type="file" accept="image/*" hidden>
@@ -1738,7 +545,7 @@ function newsFormHtml(article = {}) {
           </div>
           <div class="admin-news-rich-editor" id="newsRichEditor"></div>
           <div class="admin-news-editor-hint">Select text, then tap a toolbar button. Active formats stay highlighted.</div>
-          <textarea class="admin-modal-textarea admin-news-hidden-body" id="newsBody" rows="12">${esc(article.body || "")}</textarea>
+          <textarea class="admin-modal-textarea admin-news-hidden-body" id="newsBody" rows="12">${esc(e.body||"")}</textarea>
         </div>
       </div>
 
@@ -1746,165 +553,21 @@ function newsFormHtml(article = {}) {
         <div class="news-preview-label">Live preview</div>
         <div class="news-preview-card">
           <div class="news-preview-cover" id="newsPreviewCover">
-            ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="">` : "<span>Cover preview</span>"}
+            ${e.imageUrl?`<img src="${esc(e.imageUrl)}" alt="${esc(e.title||"Cover image")}">`:"<span>Cover preview</span>"}
           </div>
           <div class="news-preview-badges">
-            <span class="admin-badge admin-badge-blue" id="newsPreviewCategory">${esc(newsCategoryLabel(category))}</span>
-            <span class="admin-badge ${status === "published" ? "admin-badge-green" : "admin-badge-gray"}" id="newsPreviewStatus">${esc(capitalize(status))}</span>
-            <span class="admin-badge admin-badge-red" id="newsPreviewFeatured" style="display:${article.featured ? "" : "none"}">Featured</span>
+            <span class="admin-badge admin-badge-blue" id="newsPreviewCategory">${esc(newsCategoryLabel(i))}</span>
+            <span class="admin-badge ${t==="published"?"admin-badge-green":"admin-badge-gray"}" id="newsPreviewStatus">${esc(capitalize(t))}</span>
+            <span class="admin-badge admin-badge-red" id="newsPreviewFeatured" style="display:${e.featured?"":"none"}">Featured</span>
           </div>
-          <h3 class="news-preview-title" id="newsPreviewTitle">${esc(title || "Your headline appears here")}</h3>
-          <p class="news-preview-summary" id="newsPreviewSummary">${esc(summary || "The standfirst will show here as you type.")}</p>
-          <div class="news-preview-byline" id="newsPreviewByline">${esc(article.sourceName || "Biscoon Newsroom")}${article.authorName ? " \xB7 " + esc(article.authorName) : ""}</div>
+          <h3 class="news-preview-title" id="newsPreviewTitle">${esc(a||"Your headline appears here")}</h3>
+          <p class="news-preview-summary" id="newsPreviewSummary">${esc(n||"The standfirst will show here as you type.")}</p>
+          <div class="news-preview-byline" id="newsPreviewByline">${esc(e.sourceName||"Biscoon Newsroom")}${e.authorName?" \xB7 "+esc(e.authorName):""}</div>
         </div>
         <div class="news-preview-hint">Preview updates as you edit. Save when ready.</div>
       </aside>
     </div>
-  `;
-}
-function wireNewsEditorInteractivity() {
-  const title = document.getElementById("newsTitle");
-  const summary = document.getElementById("newsSummary");
-  const source = document.getElementById("newsSource");
-  const author = document.getElementById("newsAuthor");
-  const imageUrl = document.getElementById("newsImageUrl");
-  const imageFile = document.getElementById("newsImageFile");
-  const featured = document.getElementById("newsFeatured");
-  const statusInput = document.getElementById("newsStatus");
-  const categoryInput = document.getElementById("newsCategory");
-  const saveBtn = document.getElementById("adminModalSave");
-  const previewTitle = document.getElementById("newsPreviewTitle");
-  const previewSummary = document.getElementById("newsPreviewSummary");
-  const previewByline = document.getElementById("newsPreviewByline");
-  const previewCategory = document.getElementById("newsPreviewCategory");
-  const previewStatus = document.getElementById("newsPreviewStatus");
-  const previewFeatured = document.getElementById("newsPreviewFeatured");
-  const previewCover = document.getElementById("newsPreviewCover");
-  const coverPreview = document.getElementById("newsCoverPreview");
-  const titleCount = document.getElementById("newsTitleCount");
-  const summaryCount = document.getElementById("newsSummaryCount");
-  function setCover(url) {
-    const html = url ? `<img src="${esc(url)}" alt="">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>';
-    if (coverPreview) coverPreview.innerHTML = html;
-    if (previewCover) {
-      previewCover.innerHTML = url ? `<img src="${esc(url)}" alt="">` : "<span>Cover preview</span>";
-    }
-  }
-  function refreshPreview() {
-    if (previewTitle) previewTitle.textContent = title?.value.trim() || "Your headline appears here";
-    if (previewSummary) previewSummary.textContent = summary?.value.trim() || "The standfirst will show here as you type.";
-    if (titleCount) titleCount.textContent = `${title?.value.length || 0}/180`;
-    if (summaryCount) summaryCount.textContent = `${summary?.value.length || 0}/360`;
-    if (previewByline) {
-      const src = source?.value.trim() || "Biscoon Newsroom";
-      const by = author?.value.trim();
-      previewByline.textContent = by ? `${src} \xB7 ${by}` : src;
-    }
-    if (previewCategory && categoryInput) previewCategory.textContent = newsCategoryLabel(categoryInput.value);
-    if (previewStatus && statusInput) {
-      previewStatus.textContent = capitalize(statusInput.value || "draft");
-      previewStatus.className = `admin-badge ${statusInput.value === "published" ? "admin-badge-green" : "admin-badge-gray"}`;
-    }
-    if (previewFeatured) previewFeatured.style.display = featured?.checked ? "" : "none";
-    if (saveBtn && statusInput) {
-      saveBtn.textContent = statusInput.value === "published" ? saveBtn.disabled ? "Saving\u2026" : "Publish Story" : saveBtn.disabled ? "Saving\u2026" : "Save Draft";
-    }
-  }
-  title?.addEventListener("input", refreshPreview);
-  summary?.addEventListener("input", refreshPreview);
-  source?.addEventListener("input", refreshPreview);
-  author?.addEventListener("input", refreshPreview);
-  featured?.addEventListener("change", refreshPreview);
-  document.querySelectorAll("[data-news-status-pill]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const value = btn.dataset.newsStatusPill || "draft";
-      if (statusInput) statusInput.value = value;
-      document.querySelectorAll("[data-news-status-pill]").forEach((el) => el.classList.toggle("active", el === btn));
-      refreshPreview();
-    });
-  });
-  document.querySelectorAll("[data-news-category-chip]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const value = btn.dataset.newsCategoryChip || "community";
-      if (categoryInput) categoryInput.value = value;
-      document.querySelectorAll("[data-news-category-chip]").forEach((el) => el.classList.toggle("active", el === btn));
-      refreshPreview();
-    });
-  });
-  imageUrl?.addEventListener("input", () => {
-    setCover(imageUrl.value.trim());
-  });
-  imageFile?.addEventListener("change", async () => {
-    const file = imageFile.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      if (imageUrl) imageUrl.value = dataUrl;
-      setCover(dataUrl);
-    } catch (err) {
-      notify(err.message || "Could not read image.", "error");
-    }
-  });
-  function bindDropzone(zoneId, onFiles) {
-    const zone = document.getElementById(zoneId);
-    if (!zone) return;
-    ["dragenter", "dragover"].forEach((evt) => {
-      zone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        zone.classList.add("is-dragover");
-      });
-    });
-    ["dragleave", "drop"].forEach((evt) => {
-      zone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        zone.classList.remove("is-dragover");
-      });
-    });
-    zone.addEventListener("drop", (e) => {
-      const files = e.dataTransfer?.files;
-      if (files?.length) onFiles(files);
-    });
-  }
-  bindDropzone("newsCoverDrop", async (files) => {
-    const file = files[0];
-    if (!file || !file.type.startsWith("image/")) {
-      notify("Please drop an image file.", "error");
-      return;
-    }
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      if (imageUrl) imageUrl.value = dataUrl;
-      setCover(dataUrl);
-    } catch (err) {
-      notify(err.message || "Could not read image.", "error");
-    }
-  });
-  bindDropzone("newsMediaDrop", (files) => {
-    const input = document.getElementById("newsMediaFiles");
-    if (!input) return;
-    const dt = new DataTransfer();
-    Array.from(files).forEach((f) => dt.items.add(f));
-    input.files = dt.files;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  refreshPreview();
-}
-async function showNews(page) {
-  if (page !== void 0) _s.news.page = page;
-  const { page: p, status, category, search, featured, range } = _s.news;
-  try {
-    const params = new URLSearchParams({
-      page: String(p),
-      limit: String(20),
-      status,
-      category,
-      search,
-      featured,
-      range
-    });
-    const data = await api(`/api/admin/news?${params}`);
-    const summary = data.summary || { all: data.total, published: 0, draft: 0, featured: 0 };
-    content(`
+  `}function wireNewsEditorInteractivity(){const e=document.getElementById("newsTitle"),t=document.getElementById("newsSummary"),i=document.getElementById("newsSource"),a=document.getElementById("newsAuthor"),n=document.getElementById("newsImageUrl"),d=document.getElementById("newsImageFile"),s=document.getElementById("newsFeatured"),o=document.getElementById("newsStatus"),r=document.getElementById("newsCategory"),c=document.getElementById("adminModalSave"),u=document.getElementById("newsPreviewTitle"),l=document.getElementById("newsPreviewSummary"),y=document.getElementById("newsPreviewByline"),E=document.getElementById("newsPreviewCategory"),S=document.getElementById("newsPreviewStatus"),x=document.getElementById("newsPreviewFeatured"),M=document.getElementById("newsPreviewCover"),C=document.getElementById("newsCoverPreview"),A=document.getElementById("newsTitleCount"),g=document.getElementById("newsSummaryCount");function h(p){const b=esc(e?.value.trim()||"Cover image"),v=p?`<img src="${esc(p)}" alt="${b}">`:'<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>';C&&(C.innerHTML=v),M&&(M.innerHTML=p?`<img src="${esc(p)}" alt="${b}">`:"<span>Cover preview</span>")}function f(){if(u&&(u.textContent=e?.value.trim()||"Your headline appears here"),l&&(l.textContent=t?.value.trim()||"The standfirst will show here as you type."),A&&(A.textContent=`${e?.value.length||0}/180`),g&&(g.textContent=`${t?.value.length||0}/360`),y){const p=i?.value.trim()||"Biscoon Newsroom",b=a?.value.trim();y.textContent=b?`${p} \xB7 ${b}`:p}E&&r&&(E.textContent=newsCategoryLabel(r.value)),S&&o&&(S.textContent=capitalize(o.value||"draft"),S.className=`admin-badge ${o.value==="published"?"admin-badge-green":"admin-badge-gray"}`),x&&(x.style.display=s?.checked?"":"none"),c&&o&&(c.textContent=o.value==="published"?c.disabled?"Saving\u2026":"Publish Story":c.disabled?"Saving\u2026":"Save Draft")}e?.addEventListener("input",f),t?.addEventListener("input",f),i?.addEventListener("input",f),a?.addEventListener("input",f),s?.addEventListener("change",f),document.querySelectorAll("[data-news-status-pill]").forEach(p=>{p.addEventListener("click",()=>{const b=p.dataset.newsStatusPill||"draft";o&&(o.value=b),document.querySelectorAll("[data-news-status-pill]").forEach(v=>v.classList.toggle("active",v===p)),f()})}),document.querySelectorAll("[data-news-category-chip]").forEach(p=>{p.addEventListener("click",()=>{const b=p.dataset.newsCategoryChip||"community";r&&(r.value=b),document.querySelectorAll("[data-news-category-chip]").forEach(v=>v.classList.toggle("active",v===p)),f()})}),n?.addEventListener("input",()=>{h(n.value.trim())}),d?.addEventListener("change",async()=>{const p=d.files?.[0];if(p)try{const b=await readFileAsDataUrl(p);n&&(n.value=b),h(b)}catch(b){notify(b.message||"Could not read image.","error")}});function L(p,b){const v=document.getElementById(p);v&&(["dragenter","dragover"].forEach(w=>{v.addEventListener(w,$=>{$.preventDefault(),v.classList.add("is-dragover")})}),["dragleave","drop"].forEach(w=>{v.addEventListener(w,$=>{$.preventDefault(),v.classList.remove("is-dragover")})}),v.addEventListener("drop",w=>{const $=w.dataTransfer?.files;$?.length&&b($)}))}L("newsCoverDrop",async p=>{const b=p[0];if(!b||!b.type.startsWith("image/")){notify("Please drop an image file.","error");return}try{const v=await readFileAsDataUrl(b);n&&(n.value=v),h(v)}catch(v){notify(v.message||"Could not read image.","error")}}),L("newsMediaDrop",p=>{const b=document.getElementById("newsMediaFiles");if(!b)return;const v=new DataTransfer;Array.from(p).forEach(w=>v.items.add(w)),b.files=v.files,b.dispatchEvent(new Event("change",{bubbles:!0}))}),f()}async function showNews(e){e!==void 0&&(_s.news.page=e);const{page:t,status:i,category:a,search:n,featured:d,range:s}=_s.news;try{const o=new URLSearchParams({page:String(t),limit:String(20),status:i,category:a,search:n,featured:d,range:s}),r=await api(`/api/admin/news?${o}`),c=r.summary||{all:r.total,published:0,draft:0,featured:0};content(`
       <div class="news-hero">
         <div class="news-hero-copy">
           <div class="news-hero-title">Newsroom</div>
@@ -1912,8 +575,8 @@ async function showNews(page) {
         </div>
         <div class="dash-header-actions">
           <div class="dash-range" role="tablist" aria-label="News time range">
-            ${DASH_RANGES.map((r) => `
-              <button type="button" class="dash-range-btn${r.value === range ? " active" : ""}" data-news-range="${r.value}" role="tab" aria-selected="${r.value === range}">${r.label}</button>
+            ${DASH_RANGES.map(l=>`
+              <button type="button" class="dash-range-btn${l.value===s?" active":""}" data-news-range="${l.value}" role="tab" aria-selected="${l.value===s}">${l.label}</button>
             `).join("")}
           </div>
           <button class="admin-btn admin-btn-primary" data-create-news type="button">+ Publish News</button>
@@ -1921,210 +584,101 @@ async function showNews(page) {
       </div>
 
       <div class="news-stat-grid">
-        <button type="button" class="news-stat-card${status === "all" && featured === "all" ? " active" : ""}" data-news-filter-status="all" data-news-filter-featured="all">
-          <span class="news-stat-value" data-count-to="${summary.all || 0}">0</span>
+        <button type="button" class="news-stat-card${i==="all"&&d==="all"?" active":""}" data-news-filter-status="all" data-news-filter-featured="all">
+          <span class="news-stat-value" data-count-to="${c.all||0}">0</span>
           <span class="news-stat-label">All stories</span>
         </button>
-        <button type="button" class="news-stat-card${status === "published" ? " active" : ""}" data-news-filter-status="published" data-news-filter-featured="all">
-          <span class="news-stat-value" data-count-to="${summary.published || 0}">0</span>
+        <button type="button" class="news-stat-card${i==="published"?" active":""}" data-news-filter-status="published" data-news-filter-featured="all">
+          <span class="news-stat-value" data-count-to="${c.published||0}">0</span>
           <span class="news-stat-label">Published</span>
         </button>
-        <button type="button" class="news-stat-card${status === "draft" ? " active" : ""}" data-news-filter-status="draft" data-news-filter-featured="all">
-          <span class="news-stat-value" data-count-to="${summary.draft || 0}">0</span>
+        <button type="button" class="news-stat-card${i==="draft"?" active":""}" data-news-filter-status="draft" data-news-filter-featured="all">
+          <span class="news-stat-value" data-count-to="${c.draft||0}">0</span>
           <span class="news-stat-label">Drafts</span>
         </button>
-        <button type="button" class="news-stat-card${featured === "yes" ? " active" : ""}" data-news-filter-status="all" data-news-filter-featured="yes">
-          <span class="news-stat-value" data-count-to="${summary.featured || 0}">0</span>
+        <button type="button" class="news-stat-card${d==="yes"?" active":""}" data-news-filter-status="all" data-news-filter-featured="yes">
+          <span class="news-stat-value" data-count-to="${c.featured||0}">0</span>
           <span class="news-stat-label">Featured</span>
         </button>
       </div>
 
       <div class="admin-toolbar news-toolbar">
-        <input class="admin-search" id="newsSearch" type="search" placeholder="Search news\u2026" value="${esc(search)}">
+        <input class="admin-search" id="newsSearch" type="search" placeholder="Search news\u2026" value="${esc(n)}">
         <div class="admin-tabs" role="tablist">
-          ${[
-      { value: "all", label: "All" },
-      { value: "published", label: "Published" },
-      { value: "draft", label: "Draft" }
-    ].map((tab) => `<button type="button" class="admin-tab${status === tab.value ? " active" : ""}" data-news-status-tab="${tab.value}">${tab.label}</button>`).join("")}
+          ${[{value:"all",label:"All"},{value:"published",label:"Published"},{value:"draft",label:"Draft"}].map(l=>`<button type="button" class="admin-tab${i===l.value?" active":""}" data-news-status-tab="${l.value}">${l.label}</button>`).join("")}
         </div>
         <select class="admin-select" id="newsCategoryFilter">
-          ${NEWS_CATEGORIES.map((value) => `<option value="${esc(value)}"${value === category ? " selected" : ""}>${value ? newsCategoryLabel(value) : "All categories"}</option>`).join("")}
+          ${NEWS_CATEGORIES.map(l=>`<option value="${esc(l)}"${l===a?" selected":""}>${l?newsCategoryLabel(l):"All categories"}</option>`).join("")}
         </select>
-        <button type="button" class="admin-btn${featured === "yes" ? " admin-btn-primary" : " admin-btn-ghost"}" data-news-featured-toggle aria-pressed="${featured === "yes"}">\u2605 Featured only</button>
-        <span class="news-toolbar-count">${data.total.toLocaleString()} stor${data.total === 1 ? "y" : "ies"}</span>
+        <button type="button" class="admin-btn${d==="yes"?" admin-btn-primary":" admin-btn-ghost"}" data-news-featured-toggle aria-pressed="${d==="yes"}">\u2605 Featured only</button>
+        <span class="news-toolbar-count">${r.total.toLocaleString()} stor${r.total===1?"y":"ies"}</span>
       </div>
 
       <div class="admin-card news-table-card">
-        ${data.news.length ? `
+        ${r.news.length?`
           <div class="news-list">
-            ${data.news.map((article) => `
-              <article class="news-row" data-news-open="${esc(article.id)}" tabindex="0" role="button">
+            ${r.news.map(l=>`
+              <article class="news-row" data-news-open="${esc(l.id)}" tabindex="0" role="button">
                 <div class="news-row-thumb">
-                  ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="" loading="lazy">` : `<span>${esc((article.title || "N").charAt(0).toUpperCase())}</span>`}
+                  ${l.imageUrl?`<img src="${esc(l.imageUrl)}" alt="${esc(l.title||"News")}" loading="lazy">`:`<span>${esc((l.title||"N").charAt(0).toUpperCase())}</span>`}
                 </div>
                 <div class="news-row-body">
-                  <div class="news-row-title">${esc(article.title)}</div>
+                  <div class="news-row-title">${esc(l.title)}</div>
                   <div class="news-row-meta">
-                    ${badge(newsCategoryLabel(article.category), "blue")}
-                    ${newsStatusBadge(article.status)}
-                    ${article.featured ? badge("Featured", "red") : ""}
-                    <span class="admin-muted">${article.publishedAt ? fmtDate(article.publishedAt) : "Not published"}</span>
+                    ${badge(newsCategoryLabel(l.category),"blue")}
+                    ${newsStatusBadge(l.status)}
+                    ${l.featured?badge("Featured","red"):""}
+                    <span class="admin-muted">${l.publishedAt?fmtDate(l.publishedAt):"Not published"}</span>
                   </div>
-                  ${article.summary ? `<div class="news-row-summary">${esc(article.summary)}</div>` : ""}
+                  ${l.summary?`<div class="news-row-summary">${esc(l.summary)}</div>`:""}
                 </div>
                 <div class="news-row-actions">
-                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-featured="${esc(article.id)}" data-featured="${article.featured ? "1" : "0"}" title="Toggle featured">${article.featured ? "\u2605" : "\u2606"}</button>
-                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-status="${esc(article.id)}" data-status="${esc(article.status || "draft")}" title="Toggle publish">${article.status === "published" ? "Unpublish" : "Publish"}</button>
-                  <button class="admin-btn admin-btn-ghost" type="button" data-edit-news="${esc(article.id)}">\u270F\uFE0F Edit</button>
-                  <button class="admin-btn admin-btn-danger" type="button" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">\u{1F5D1}</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-featured="${esc(l.id)}" data-featured="${l.featured?"1":"0"}" title="Toggle featured">${l.featured?"\u2605":"\u2606"}</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-status="${esc(l.id)}" data-status="${esc(l.status||"draft")}" title="Toggle publish">${l.status==="published"?"Unpublish":"Publish"}</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-edit-news="${esc(l.id)}">\u270F\uFE0F Edit</button>
+                  <button class="admin-btn admin-btn-danger" type="button" data-del-news="${esc(l.id)}" data-del-title="${esc(l.title)}">\u{1F5D1}</button>
                 </div>
               </article>
             `).join("")}
           </div>
-        ` : '<div class="admin-empty">No stories match these filters.</div>'}
-        ${pager(data.page, data.pages, "news")}
+        `:'<div class="admin-empty">No stories match these filters.</div>'}
+        ${pager(r.page,r.pages,"news")}
       </div>
-    `);
-    animateStatValues();
-    let timer;
-    document.getElementById("newsSearch")?.addEventListener("input", (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        _s.news.search = e.target.value.trim();
-        showNews(1);
-      }, 350);
-    });
-    document.getElementById("newsCategoryFilter")?.addEventListener("change", (e) => {
-      _s.news.category = e.target.value;
-      showNews(1);
-    });
-    document.querySelectorAll("[data-news-range]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const next = btn.dataset.newsRange;
-        if (!next || next === _s.news.range) return;
-        _s.news.range = next;
-        showNews(1);
-      });
-    });
-    document.querySelectorAll("[data-news-filter-status]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        _s.news.status = btn.dataset.newsFilterStatus || "all";
-        _s.news.featured = btn.dataset.newsFilterFeatured || "all";
-        showNews(1);
-      });
-    });
-    document.querySelectorAll("[data-news-status-tab]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        _s.news.status = btn.dataset.newsStatusTab || "all";
-        showNews(1);
-      });
-    });
-    document.querySelectorAll("[data-news-featured-toggle]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        _s.news.featured = _s.news.featured === "yes" ? "all" : "yes";
-        showNews(1);
-      });
-    });
-    document.querySelectorAll(".news-row").forEach((row) => {
-      const open = () => openViewNews(row.dataset.newsOpen);
-      row.addEventListener("click", (e) => {
-        if (e.target.closest(".news-row-actions")) return;
-        open();
-      });
-      row.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          open();
-        }
-      });
-    });
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function openViewNews(id) {
-  let data;
-  try {
-    data = await api(`/api/admin/news/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  const article = data.article;
-  openModal(esc(article.title), `
+    `),animateStatValues();let u;document.getElementById("newsSearch")?.addEventListener("input",l=>{clearTimeout(u),u=setTimeout(()=>{_s.news.search=l.target.value.trim(),showNews(1)},350)}),document.getElementById("newsCategoryFilter")?.addEventListener("change",l=>{_s.news.category=l.target.value,showNews(1)}),document.querySelectorAll("[data-news-range]").forEach(l=>{l.addEventListener("click",()=>{const y=l.dataset.newsRange;!y||y===_s.news.range||(_s.news.range=y,showNews(1))})}),document.querySelectorAll("[data-news-filter-status]").forEach(l=>{l.addEventListener("click",()=>{_s.news.status=l.dataset.newsFilterStatus||"all",_s.news.featured=l.dataset.newsFilterFeatured||"all",showNews(1)})}),document.querySelectorAll("[data-news-status-tab]").forEach(l=>{l.addEventListener("click",()=>{_s.news.status=l.dataset.newsStatusTab||"all",showNews(1)})}),document.querySelectorAll("[data-news-featured-toggle]").forEach(l=>{l.addEventListener("click",()=>{_s.news.featured=_s.news.featured==="yes"?"all":"yes",showNews(1)})}),document.querySelectorAll(".news-row").forEach(l=>{const y=()=>openViewNews(l.dataset.newsOpen);l.addEventListener("click",E=>{E.target.closest(".news-row-actions")||y()}),l.addEventListener("keydown",E=>{(E.key==="Enter"||E.key===" ")&&(E.preventDefault(),y())})})}catch(o){content(`<div class="admin-error">${esc(o.message)}</div>`)}}async function openViewNews(e){let t;try{t=await api(`/api/admin/news/${encodeURIComponent(e)}`)}catch(a){notify(a.message,"error");return}const i=t.article;openModal(esc(i.title),`
     <div class="admin-modal-meta" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      ${badge(newsCategoryLabel(article.category), "blue")}
-      ${newsStatusBadge(article.status)}
-      ${article.featured ? badge("Featured", "red") : ""}
-      <span>${esc(article.sourceName || "Biscoon Newsroom")}</span>
-      ${article.authorName ? `<span>By ${esc(article.authorName)}</span>` : ""}
-      <span style="margin-left:auto;font-size:12px">${article.publishedAt ? `Published ${fmtDate(article.publishedAt)}` : `Updated ${fmtDate(article.updatedAt)}`}</span>
+      ${badge(newsCategoryLabel(i.category),"blue")}
+      ${newsStatusBadge(i.status)}
+      ${i.featured?badge("Featured","red"):""}
+      <span>${esc(i.sourceName||"Biscoon Newsroom")}</span>
+      ${i.authorName?`<span>By ${esc(i.authorName)}</span>`:""}
+      <span style="margin-left:auto;font-size:12px">${i.publishedAt?`Published ${fmtDate(i.publishedAt)}`:`Updated ${fmtDate(i.updatedAt)}`}</span>
     </div>
-    ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="" class="admin-news-preview">` : ""}
-    <div class="admin-view-desc" style="margin-top:12px">${esc(article.summary)}</div>
-    <div class="admin-news-body">${formatNewsBody(article.body, article.media || [])}</div>
+    ${i.imageUrl?`<img src="${esc(i.imageUrl)}" alt="${esc(i.title||"News")}" class="admin-news-preview">`:""}
+    <div class="admin-view-desc" style="margin-top:12px">${esc(i.summary)}</div>
+    <div class="admin-news-body">${formatNewsBody(i.body,i.media||[])}</div>
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-news="${esc(article.id)}">\u270F\uFE0F Edit News</button>
-      <button class="admin-btn admin-btn-danger" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">\u{1F5D1} Delete</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-news="${esc(i.id)}">\u270F\uFE0F Edit News</button>
+      <button class="admin-btn admin-btn-danger" data-del-news="${esc(i.id)}" data-del-title="${esc(i.title)}">\u{1F5D1} Delete</button>
     </div>
-  `, null);
-}
-async function openNewsEditor(id = "") {
-  let article = {};
-  if (id) {
-    try {
-      const data = await api(`/api/admin/news/${encodeURIComponent(id)}`);
-      article = data.article;
-    } catch (err) {
-      notify(err.message, "error");
-      return;
-    }
-  }
-  _newsMediaDraft = (article.media || []).map((item) => ({ ...item }));
-  openModal(id ? "Edit News Story" : "Create News Story", newsFormHtml(article), async () => {
-    await api(id ? `/api/admin/news/${encodeURIComponent(id)}` : "/api/admin/news", {
-      method: id ? "PUT" : "POST",
-      body: JSON.stringify(await collectNewsPayload())
-    });
-    showNews(1);
-  });
-  const modal = document.querySelector("#adminModalOverlay .admin-modal");
-  modal?.classList.add("admin-modal-wide");
-  requestAnimationFrame(() => {
-    window.BiscoonNewsEditor?.mount?.({
-      element: "#newsRichEditor",
-      textarea: "#newsBody",
-      media: () => _newsMediaDraft
-    });
-    wireNewsEditorInteractivity();
-  });
-}
-async function showDiscussions(page) {
-  if (page !== void 0) _s.discussions.page = page;
-  const { page: p, search } = _s.discussions;
-  try {
-    const data = await api(`/api/admin/discussions?${new URLSearchParams({ page: String(p), limit: "20", search })}`);
-    const totalComments = (data.discussions || []).reduce((sum, d) => sum + (d.commentCount || 0), 0);
-    content(`
-      ${sectionHero("Discussions", "Moderate community threads. Click a row to open.", '<button class="admin-btn admin-btn-primary" data-create-discussion type="button">+ Add Discussion</button>')}
+  `,null)}async function openNewsEditor(e=""){let t={};if(e)try{t=(await api(`/api/admin/news/${encodeURIComponent(e)}`)).article}catch(a){notify(a.message,"error");return}_newsMediaDraft=(t.media||[]).map(a=>({...a})),openModal(e?"Edit News Story":"Create News Story",newsFormHtml(t),async()=>{await api(e?`/api/admin/news/${encodeURIComponent(e)}`:"/api/admin/news",{method:e?"PUT":"POST",body:JSON.stringify(await collectNewsPayload())}),showNews(1)}),document.querySelector("#adminModalOverlay .admin-modal")?.classList.add("admin-modal-wide"),requestAnimationFrame(()=>{window.BiscoonNewsEditor?.mount?.({element:"#newsRichEditor",textarea:"#newsBody",media:()=>_newsMediaDraft}),wireNewsEditorInteractivity()})}async function showDiscussions(e){e!==void 0&&(_s.discussions.page=e);const{page:t,search:i}=_s.discussions;try{const a=await api(`/api/admin/discussions?${new URLSearchParams({page:String(t),limit:"20",search:i})}`),n=(a.discussions||[]).reduce((d,s)=>d+(s.commentCount||0),0);content(`
+      ${sectionHero("Discussions","Moderate community threads. Click a row to open.",'<button class="admin-btn admin-btn-primary" data-create-discussion type="button">+ Add Discussion</button>')}
       <div class="ix-stat-grid">
-        ${sectionStat("Discussions", data.total, true)}
-        ${sectionStat("Comments (page)", totalComments)}
-        ${sectionStat("On this page", (data.discussions || []).length)}
+        ${sectionStat("Discussions",a.total,!0)}
+        ${sectionStat("Comments (page)",n)}
+        ${sectionStat("On this page",(a.discussions||[]).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="discussionSearch" type="search" placeholder="Search discussions\u2026" value="${esc(search)}">
-        <span class="ix-count">${data.total.toLocaleString()} discussion${data.total !== 1 ? "s" : ""}</span>
+        <input class="admin-search" id="discussionSearch" type="search" placeholder="Search discussions\u2026" value="${esc(i)}">
+        <span class="ix-count">${a.total.toLocaleString()} discussion${a.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.discussions || []).length ? `<div class="ix-list">
-          ${data.discussions.map((d) => `
+        ${(a.discussions||[]).length?`<div class="ix-list">
+          ${a.discussions.map(d=>`
             <article class="ix-row" tabindex="0" role="button" data-open-discussion="${esc(d.id)}">
               <div class="ix-icon">\u{1F4AC}</div>
               <div class="ix-body">
                 <div class="ix-title">${esc(d.title)}</div>
-                <div class="ix-meta">${esc(d.authorName)} \xB7 ${badge(d.category)} \xB7 ${d.commentCount || 0} comments \xB7 ${fmtDate(d.createdAt)}</div>
+                <div class="ix-meta">${esc(d.authorName)} \xB7 ${badge(d.category)} \xB7 ${d.commentCount||0} comments \xB7 ${fmtDate(d.createdAt)}</div>
               </div>
               <div class="ix-actions">
                 <button class="admin-btn admin-btn-ghost" type="button" data-view-discussion="${esc(d.id)}">\u{1F441} View</button>
@@ -2132,576 +686,136 @@ async function showDiscussions(page) {
                 <button class="admin-btn admin-btn-danger" type="button" data-del-discussion="${esc(d.id)}">\u{1F5D1}</button>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No discussions found.</div>'}
-        ${pager(data.page, data.pages, "discussions")}
+        </div>`:'<div class="admin-empty">No discussions found.</div>'}
+        ${pager(a.page,a.pages,"discussions")}
       </div>
-    `);
-    animateStatValues();
-    bindSearch("discussionSearch", (v) => {
-      _s.discussions.search = v;
-      showDiscussions(1);
-    }, 380);
-    wireInteractiveRows("[data-open-discussion]", (row) => {
-      const btn = row.querySelector("[data-view-discussion]");
-      btn?.click();
-    });
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function showComments(page) {
-  if (page !== void 0) _s.comments.page = page;
-  const { page: p, type, search } = _s.comments;
-  try {
-    const data = await api(`/api/admin/comments?${new URLSearchParams({ page: String(p), limit: String(25), type, search })}`);
-    const listingCount = (data.comments || []).filter((c) => c.parentType === "listing").length;
-    const discussionCount = (data.comments || []).filter((c) => c.parentType === "discussion").length;
-    content(`
-      ${sectionHero("Comments", "Moderate user comments across listings and discussions.", tabs(
-      [{ label: "All", value: "all" }, { label: "Listing Comments", value: "listing" }, { label: "Discussion Comments", value: "discussion" }],
-      type,
-      "comment-type"
-    ))}
+    `),animateStatValues(),bindSearch("discussionSearch",d=>{_s.discussions.search=d,showDiscussions(1)},380),wireInteractiveRows("[data-open-discussion]",d=>{d.querySelector("[data-view-discussion]")?.click()})}catch(a){content(`<div class="admin-error">${esc(a.message)}</div>`)}}async function showComments(e){e!==void 0&&(_s.comments.page=e);const{page:t,type:i,search:a}=_s.comments;try{const n=await api(`/api/admin/comments?${new URLSearchParams({page:String(t),limit:String(25),type:i,search:a})}`),d=(n.comments||[]).filter(o=>o.parentType==="listing").length,s=(n.comments||[]).filter(o=>o.parentType==="discussion").length;content(`
+      ${sectionHero("Comments","Moderate user comments across listings and discussions.",tabs([{label:"All",value:"all"},{label:"Listing Comments",value:"listing"},{label:"Discussion Comments",value:"discussion"}],i,"comment-type"))}
       <div class="ix-stat-grid">
-        ${sectionStat("Total", data.total, type === "all")}
-        ${sectionStat("Listings (page)", listingCount, type === "listing")}
-        ${sectionStat("Discussions (page)", discussionCount, type === "discussion")}
+        ${sectionStat("Total",n.total,i==="all")}
+        ${sectionStat("Listings (page)",d,i==="listing")}
+        ${sectionStat("Discussions (page)",s,i==="discussion")}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="commentSearch" type="search" placeholder="Search comments\u2026" value="${esc(search)}">
-        <span class="ix-count">${data.total.toLocaleString()} comment${data.total !== 1 ? "s" : ""}</span>
+        <input class="admin-search" id="commentSearch" type="search" placeholder="Search comments\u2026" value="${esc(a)}">
+        <span class="ix-count">${n.total.toLocaleString()} comment${n.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.comments || []).length ? `<div class="ix-list">
-          ${data.comments.map((c) => `
+        ${(n.comments||[]).length?`<div class="ix-list">
+          ${n.comments.map(o=>`
             <article class="ix-row ix-row-static">
-              <div class="ix-icon">${c.parentType === "listing" ? "\u{1F4CB}" : "\u{1F4AC}"}</div>
+              <div class="ix-icon">${o.parentType==="listing"?"\u{1F4CB}":"\u{1F4AC}"}</div>
               <div class="ix-body">
-                <div class="ix-title">${esc((c.body || "").slice(0, 160))}${(c.body || "").length > 160 ? "\u2026" : ""}</div>
-                <div class="ix-meta">${esc(c.authorName)} \xB7 on ${esc(c.parentTitle)} \xB7 ${badge(c.parentType, c.parentType === "listing" ? "green" : "blue")} \xB7 ${fmtDate(c.createdAt)}</div>
+                <div class="ix-title">${esc((o.body||"").slice(0,160))}${(o.body||"").length>160?"\u2026":""}</div>
+                <div class="ix-meta">${esc(o.authorName)} \xB7 on ${esc(o.parentTitle)} \xB7 ${badge(o.parentType,o.parentType==="listing"?"green":"blue")} \xB7 ${fmtDate(o.createdAt)}</div>
               </div>
               <div class="ix-actions">
-                <button class="admin-btn admin-btn-danger" type="button" data-del-comment data-comment-id="${esc(c.id)}" data-parent-id="${esc(c.parentId)}" data-parent-type="${esc(c.parentType)}">\u{1F5D1} Remove</button>
+                <button class="admin-btn admin-btn-danger" type="button" data-del-comment data-comment-id="${esc(o.id)}" data-parent-id="${esc(o.parentId)}" data-parent-type="${esc(o.parentType)}">\u{1F5D1} Remove</button>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No comments match these filters.</div>'}
-        ${pager(data.page, data.pages, "comments")}
+        </div>`:'<div class="admin-empty">No comments match these filters.</div>'}
+        ${pager(n.page,n.pages,"comments")}
       </div>
-    `);
-    animateStatValues();
-    bindSearch("commentSearch", (v) => {
-      _s.comments.search = v;
-      showComments(1);
-    }, 380);
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function showReports(page) {
-  if (page !== void 0) _s.reports.page = page;
-  const { page: p, status } = _s.reports;
-  try {
-    const data = await api(`/api/admin/reports?${new URLSearchParams({ page: String(p), limit: String(25), status })}`);
-    content(`
-      ${sectionHero("Reports", "Triage abuse reports. Change status inline without leaving the list.", tabs(
-      [
-        { label: "Open", value: "open" },
-        { label: "Reviewing", value: "reviewing" },
-        { label: "Resolved", value: "resolved" },
-        { label: "Dismissed", value: "dismissed" },
-        { label: "All", value: "all" }
-      ],
-      status,
-      "report-status"
-    ))}
+    `),animateStatValues(),bindSearch("commentSearch",o=>{_s.comments.search=o,showComments(1)},380)}catch(n){content(`<div class="admin-error">${esc(n.message)}</div>`)}}async function showReports(e){e!==void 0&&(_s.reports.page=e);const{page:t,status:i}=_s.reports;try{const a=await api(`/api/admin/reports?${new URLSearchParams({page:String(t),limit:String(25),status:i})}`);content(`
+      ${sectionHero("Reports","Triage abuse reports. Change status inline without leaving the list.",tabs([{label:"Open",value:"open"},{label:"Reviewing",value:"reviewing"},{label:"Resolved",value:"resolved"},{label:"Dismissed",value:"dismissed"},{label:"All",value:"all"}],i,"report-status"))}
       <div class="ix-stat-grid">
-        ${sectionStat("In filter", data.total, true)}
-        ${sectionStat("On this page", (data.reports || []).length)}
+        ${sectionStat("In filter",a.total,!0)}
+        ${sectionStat("On this page",(a.reports||[]).length)}
       </div>
       <div class="admin-card ix-card">
-        ${(data.reports || []).length ? `<div class="ix-list">
-          ${data.reports.map((r) => `
+        ${(a.reports||[]).length?`<div class="ix-list">
+          ${a.reports.map(n=>`
             <article class="ix-row ix-row-static">
-              <div class="ix-icon">${r.reason === "scam" || r.reason === "illegal" ? "\u{1F6A8}" : "\u2691"}</div>
+              <div class="ix-icon">${n.reason==="scam"||n.reason==="illegal"?"\u{1F6A8}":"\u2691"}</div>
               <div class="ix-body">
-                <div class="ix-title">${esc(r.targetType)} \xB7 ${badge(r.reason, r.reason === "scam" || r.reason === "illegal" ? "red" : "blue")} ${badge(r.status, r.status === "open" ? "red" : r.status === "resolved" ? "green" : "gray")}</div>
-                <div class="ix-meta">Reporter ${esc(r.reporterName || r.reporterId)} \xB7 ${fmtDate(r.createdAt)} \xB7 <span class="admin-muted">${esc(r.targetId)}</span></div>
-                <div class="ix-sub">${esc(r.details || "No details provided.")}</div>
+                <div class="ix-title">${esc(n.targetType)} \xB7 ${badge(n.reason,n.reason==="scam"||n.reason==="illegal"?"red":"blue")} ${badge(n.status,n.status==="open"?"red":n.status==="resolved"?"green":"gray")}</div>
+                <div class="ix-meta">Reporter ${esc(n.reporterName||n.reporterId)} \xB7 ${fmtDate(n.createdAt)} \xB7 <span class="admin-muted">${esc(n.targetId)}</span></div>
+                <div class="ix-sub">${esc(n.details||"No details provided.")}</div>
               </div>
               <div class="ix-actions">
-                <select class="admin-select-sm" data-report-status-update="${esc(r.id)}" aria-label="Report status">
-                  ${["open", "reviewing", "resolved", "dismissed"].map((value) => `<option value="${value}"${value === r.status ? " selected" : ""}>${capitalize(value)}</option>`).join("")}
+                <select class="admin-select-sm" data-report-status-update="${esc(n.id)}" aria-label="Report status">
+                  ${["open","reviewing","resolved","dismissed"].map(d=>`<option value="${d}"${d===n.status?" selected":""}>${capitalize(d)}</option>`).join("")}
                 </select>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No reports in this status.</div>'}
-        ${pager(data.page, data.pages, "reports")}
+        </div>`:'<div class="admin-empty">No reports in this status.</div>'}
+        ${pager(a.page,a.pages,"reports")}
       </div>
-    `);
-    animateStatValues();
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-const AUDIT_ACTIONS = [
-  "all",
-  "admin_user.created",
-  "admin_user.updated",
-  "admin_user.deleted",
-  "regular_user.deleted",
-  "news.created",
-  "news.updated",
-  "news.deleted",
-  "listing.updated",
-  "listing.deleted",
-  "discussion.created",
-  "discussion.updated",
-  "discussion.deleted",
-  "report.status_updated",
-  "listing_comment.deleted",
-  "discussion_comment.deleted",
-  "announcement.created",
-  "announcement.toggled",
-  "announcement.deleted"
-];
-const AUDIT_TARGET_TYPES = [
-  "all",
-  "staff",
-  "user",
-  "news",
-  "listing",
-  "discussion",
-  "report",
-  "listing_comment",
-  "discussion_comment",
-  "announcement"
-];
-function auditLabel(value) {
-  return readableLabel(value).replace(/\bId\b/g, "ID");
-}
-function auditActionBadge(action) {
-  const color = action.includes("deleted") ? "red" : action.includes("created") ? "green" : action.includes("updated") || action.includes("toggled") ? "blue" : "gray";
-  return badge(auditLabel(action), color);
-}
-async function showAuditLogs(page) {
-  if (!canManageStaff()) {
-    content('<div class="admin-error">Super admin access is required to view audit logs.</div>');
-    return;
-  }
-  if (page !== void 0) _s.audit.page = page;
-  const { page: p, action, targetType, search } = _s.audit;
-  try {
-    const data = await api(`/api/admin/audit-logs?${new URLSearchParams({
-      page: String(p),
-      limit: "25",
-      action,
-      targetType,
-      search
-    })}`);
-    content(`
-      ${sectionHero("Audit Logs", "Trace admin actions across the platform.")}
+    `),animateStatValues()}catch(a){content(`<div class="admin-error">${esc(a.message)}</div>`)}}const AUDIT_ACTIONS=["all","admin_user.created","admin_user.updated","admin_user.deleted","regular_user.deleted","news.created","news.updated","news.deleted","listing.updated","listing.deleted","discussion.created","discussion.updated","discussion.deleted","report.status_updated","listing_comment.deleted","discussion_comment.deleted","announcement.created","announcement.toggled","announcement.deleted"],AUDIT_TARGET_TYPES=["all","staff","user","news","listing","discussion","report","listing_comment","discussion_comment","announcement"];function auditLabel(e){return readableLabel(e).replace(/\bId\b/g,"ID")}function auditActionBadge(e){const t=e.includes("deleted")?"red":e.includes("created")?"green":e.includes("updated")||e.includes("toggled")?"blue":"gray";return badge(auditLabel(e),t)}async function showAuditLogs(e){if(!canManageStaff()){content('<div class="admin-error">Super admin access is required to view audit logs.</div>');return}e!==void 0&&(_s.audit.page=e);const{page:t,action:i,targetType:a,search:n}=_s.audit;try{const d=await api(`/api/admin/audit-logs?${new URLSearchParams({page:String(t),limit:"25",action:i,targetType:a,search:n})}`);content(`
+      ${sectionHero("Audit Logs","Trace admin actions across the platform.")}
       <div class="ix-stat-grid">
-        ${sectionStat("Events", data.total, true)}
-        ${sectionStat("On this page", (data.auditLogs || []).length)}
+        ${sectionStat("Events",d.total,!0)}
+        ${sectionStat("On this page",(d.auditLogs||[]).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="auditSearch" type="search" placeholder="Search actor, target, or action\u2026" value="${esc(search)}">
+        <input class="admin-search" id="auditSearch" type="search" placeholder="Search actor, target, or action\u2026" value="${esc(n)}">
         <select class="admin-select" id="auditActionFilter">
-          ${AUDIT_ACTIONS.map((value) => `<option value="${esc(value)}"${value === action ? " selected" : ""}>${value === "all" ? "All actions" : auditLabel(value)}</option>`).join("")}
+          ${AUDIT_ACTIONS.map(s=>`<option value="${esc(s)}"${s===i?" selected":""}>${s==="all"?"All actions":auditLabel(s)}</option>`).join("")}
         </select>
         <select class="admin-select" id="auditTargetFilter">
-          ${AUDIT_TARGET_TYPES.map((value) => `<option value="${esc(value)}"${value === targetType ? " selected" : ""}>${value === "all" ? "All targets" : auditLabel(value)}</option>`).join("")}
+          ${AUDIT_TARGET_TYPES.map(s=>`<option value="${esc(s)}"${s===a?" selected":""}>${s==="all"?"All targets":auditLabel(s)}</option>`).join("")}
         </select>
-        <span class="ix-count">${data.total.toLocaleString()} audit event${data.total !== 1 ? "s" : ""}</span>
+        <span class="ix-count">${d.total.toLocaleString()} audit event${d.total!==1?"s":""}</span>
       </div>
       <div class="admin-card ix-card">
-        ${(data.auditLogs || []).length ? `<div class="ix-list">
-          ${data.auditLogs.map((log) => `
+        ${(d.auditLogs||[]).length?`<div class="ix-list">
+          ${d.auditLogs.map(s=>`
             <article class="ix-row ix-row-static">
               <div class="ix-body">
-                <div class="ix-title">${auditActionBadge(log.action || "action")}</div>
-                <div class="ix-meta"><strong>${esc(log.actorName || "Admin")}</strong> \xB7 ${esc(log.actorEmail || log.actorId || "")} \xB7 ${fmtTime(log.createdAt)} \xB7 ${fmtDate(log.createdAt)}</div>
-                <div class="ix-sub">Target: ${esc(log.targetTitle || auditLabel(log.targetType || "target"))}${log.targetType ? ` (${esc(log.targetType)}${log.targetId ? ` \xB7 ${esc(log.targetId)}` : ""})` : ""}</div>
-                <div class="ix-sub admin-muted">${esc(formatAuditMetadata(log.metadata))}</div>
+                <div class="ix-title">${auditActionBadge(s.action||"action")}</div>
+                <div class="ix-meta"><strong>${esc(s.actorName||"Admin")}</strong> \xB7 ${esc(s.actorEmail||s.actorId||"")} \xB7 ${fmtTime(s.createdAt)} \xB7 ${fmtDate(s.createdAt)}</div>
+                <div class="ix-sub">Target: ${esc(s.targetTitle||auditLabel(s.targetType||"target"))}${s.targetType?` (${esc(s.targetType)}${s.targetId?` \xB7 ${esc(s.targetId)}`:""})`:""}</div>
+                <div class="ix-sub admin-muted">${esc(formatAuditMetadata(s.metadata))}</div>
               </div>
             </article>`).join("")}
-        </div>` : '<div class="admin-empty">No audit events match these filters.</div>'}
-        ${pager(data.page, data.pages, "audit")}
+        </div>`:'<div class="admin-empty">No audit events match these filters.</div>'}
+        ${pager(d.page,d.pages,"audit")}
       </div>
-    `);
-    animateStatValues();
-    bindSearch("auditSearch", (v) => {
-      _s.audit.search = v;
-      showAuditLogs(1);
-    }, 350);
-    document.getElementById("auditActionFilter")?.addEventListener("change", (e) => {
-      _s.audit.action = e.target.value;
-      showAuditLogs(1);
-    });
-    document.getElementById("auditTargetFilter")?.addEventListener("change", (e) => {
-      _s.audit.targetType = e.target.value;
-      showAuditLogs(1);
-    });
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-function formatAuditMetadata(metadata = {}) {
-  const entries = Object.entries(metadata || {}).filter(([, value]) => value !== void 0 && value !== null && value !== "");
-  if (!entries.length) return "\u2014";
-  return entries.map(([key, value]) => `${auditLabel(key)}: ${Array.isArray(value) ? value.join(", ") : value}`).join(" \xB7 ");
-}
-async function showTrash() {
-  try {
-    const data = await api("/api/admin/trash");
-    const restoreBtn = (type, id) => `<button class="admin-btn admin-btn-ghost" style="font-size:11px" data-restore-type="${esc(type)}" data-restore-id="${esc(id)}">\u21A9 Restore</button>`;
-    const trashTotal = (data.listings?.length || 0) + (data.discussions?.length || 0) + (data.news?.length || 0) + (data.announcements?.length || 0) + (data.spotlights?.length || 0) + (data.users?.length || 0);
-    const ixSection = (label, icon, items, metaFn, type) => {
-      if (!items.length) return "";
-      return `
+    `),animateStatValues(),bindSearch("auditSearch",s=>{_s.audit.search=s,showAuditLogs(1)},350),document.getElementById("auditActionFilter")?.addEventListener("change",s=>{_s.audit.action=s.target.value,showAuditLogs(1)}),document.getElementById("auditTargetFilter")?.addEventListener("change",s=>{_s.audit.targetType=s.target.value,showAuditLogs(1)})}catch(d){content(`<div class="admin-error">${esc(d.message)}</div>`)}}function formatAuditMetadata(e={}){const t=Object.entries(e||{}).filter(([,i])=>i!=null&&i!=="");return t.length?t.map(([i,a])=>`${auditLabel(i)}: ${Array.isArray(a)?a.join(", "):a}`).join(" \xB7 "):"\u2014"}async function showTrash(){try{const e=await api("/api/admin/trash"),t=(n,d)=>`<button class="admin-btn admin-btn-ghost" style="font-size:11px" data-restore-type="${esc(n)}" data-restore-id="${esc(d)}">\u21A9 Restore</button>`,i=(e.listings?.length||0)+(e.discussions?.length||0)+(e.news?.length||0)+(e.announcements?.length||0)+(e.spotlights?.length||0)+(e.users?.length||0),a=(n,d,s,o,r)=>s.length?`
         <div class="admin-card ix-card" style="margin-bottom:20px">
           <div class="ix-section-head">
-            <span>${icon} ${label}</span>
-            <span class="ix-count">${items.length} item${items.length !== 1 ? "s" : ""}</span>
+            <span>${d} ${n}</span>
+            <span class="ix-count">${s.length} item${s.length!==1?"s":""}</span>
           </div>
           <div class="ix-list">
-            ${items.map((item) => `
+            ${s.map(c=>`
               <article class="ix-row ix-row-static">
                 <div class="ix-body">
-                  <div class="ix-title">${esc(item.title || item.name || "(untitled)")}</div>
-                  <div class="ix-meta">${metaFn(item)} \xB7 Deleted ${fmtDate(item.deletedAt)}</div>
+                  <div class="ix-title">${esc(c.title||c.name||"(untitled)")}</div>
+                  <div class="ix-meta">${o(c)} \xB7 Deleted ${fmtDate(c.deletedAt)}</div>
                 </div>
-                <div class="ix-actions">${restoreBtn(type, item.id)}</div>
+                <div class="ix-actions">${t(r,c.id)}</div>
               </article>`).join("")}
           </div>
-        </div>`;
-    };
-    content(`
-      ${sectionHero("Trash", "Soft-deleted items stay recoverable for super-admins.")}
+        </div>`:"";content(`
+      ${sectionHero("Trash","Soft-deleted items stay recoverable for super-admins.")}
       <div class="ix-stat-grid">
-        ${sectionStat("Total items", trashTotal, true)}
-        ${sectionStat("Listings", data.listings?.length || 0)}
-        ${sectionStat("News", data.news?.length || 0)}
-        ${sectionStat("Users", data.users?.length || 0)}
+        ${sectionStat("Total items",i,!0)}
+        ${sectionStat("Listings",e.listings?.length||0)}
+        ${sectionStat("News",e.news?.length||0)}
+        ${sectionStat("Users",e.users?.length||0)}
       </div>
       <div class="ix-note">\u{1F310} <strong>The internet is forever.</strong> Deleted content is preserved here and invisible to regular users.</div>
-      ${ixSection("Listings", "\u{1F4CB}", data.listings || [], (l) => badge(l.category || "", "gray"), "listing")}
-      ${ixSection("Discussions", "\u{1F4AC}", data.discussions || [], (d) => esc(d.authorName || ""), "discussion")}
-      ${ixSection("News", "\u{1F4F0}", data.news || [], (n) => badge(n.status || "draft", n.status === "published" ? "green" : "gray"), "news")}
-      ${ixSection("Announcements", "\u{1F4E2}", data.announcements || [], () => "", "announcement")}
-      ${ixSection("Spotlights", "\u{1F3AC}", data.spotlights || [], (s) => badge(s.type || "ad", "blue"), "spotlight")}
-      ${ixSection("Users", "\u{1F464}", data.users || [], (u) => `${esc(u.email || "")} \xB7 ${badge(u.role || "user", "gray")}`, "user")}
-      ${trashTotal === 0 ? '<div class="admin-empty">Trash is empty \u2014 nothing has been soft-deleted yet.</div>' : ""}
-    `);
-    animateStatValues();
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-function isHttpUrl(value) {
-  try {
-    const u = new URL(value);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-function isSpotlightImageValue(value) {
-  if (!value) return false;
-  if (value.startsWith("data:image/")) return true;
-  if (value.startsWith("/uploads/") || value.startsWith("uploads/")) return true;
-  return isHttpUrl(value);
-}
-function clearSpotlightFieldErrors(root = document) {
-  root.querySelectorAll(".is-invalid").forEach((el) => el.classList.remove("is-invalid"));
-  root.querySelectorAll("[data-spot-field-error]").forEach((el) => {
-    el.textContent = "";
-    el.hidden = true;
-  });
-}
-function setSpotlightFieldError(fieldId, message) {
-  const input = document.getElementById(fieldId);
-  input?.classList.add("is-invalid");
-  const err = document.querySelector(`[data-spot-field-error="${fieldId}"]`);
-  if (err) {
-    err.textContent = message;
-    err.hidden = false;
-  }
-}
-function validateSpotlightFields(values, ids) {
-  clearSpotlightFieldErrors();
-  const errors = [];
-  if (!values.title) {
-    errors.push({ id: ids.title, message: "Add a headline for the homepage banner." });
-  } else if (values.title.length < 3) {
-    errors.push({ id: ids.title, message: "Headline should be at least 3 characters." });
-  }
-  if (!values.imageUrl) {
-    errors.push({ id: ids.image, message: "Upload an image or paste an https:// URL." });
-  } else if (!isSpotlightImageValue(values.imageUrl)) {
-    errors.push({ id: ids.image, message: "Use a valid image URL (https://\u2026) or upload a file." });
-  }
-  if (values.ctaText && !values.ctaUrl) {
-    errors.push({ id: ids.ctaUrl, message: "Add a link so the banner can open the ad, or clear the button label." });
-  }
-  if (values.ctaUrl && !isHttpUrl(values.ctaUrl)) {
-    errors.push({ id: ids.ctaUrl, message: "Link must start with http:// or https://" });
-  }
-  if (!Number.isFinite(values.order) || values.order < 0 || !Number.isInteger(values.order)) {
-    errors.push({ id: ids.order, message: "Order must be a whole number 0 or higher." });
-  }
-  const startMs = values.startDate ? Date.parse(values.startDate) : NaN;
-  const endMs = values.endDate ? Date.parse(values.endDate) : NaN;
-  if (values.startDate && Number.isNaN(startMs)) {
-    errors.push({ id: ids.start, message: "Pick a valid start date and time." });
-  }
-  if (values.endDate && Number.isNaN(endMs)) {
-    errors.push({ id: ids.end, message: "Pick a valid end date and time." });
-  }
-  if (values.startDate && values.endDate && !Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
-    errors.push({ id: ids.end, message: "End must be after the start time." });
-  }
-  if (values.badgeText && values.badgeText.length > 40) {
-    errors.push({ id: ids.badgeText, message: "Badge text max is 40 characters." });
-  }
-  for (const err of errors) setSpotlightFieldError(err.id, err.message);
-  return errors[0]?.message || null;
-}
-function readSpotlightCreateValues() {
-  const urlInput = document.getElementById("spotImageUrl");
-  const fileData = urlInput?.getAttribute("data-file-data") || "";
-  return {
-    title: document.getElementById("spotTitle")?.value.trim() || "",
-    subtitle: document.getElementById("spotSubtitle")?.value.trim() || "",
-    body: document.getElementById("spotBody")?.value.trim() || "",
-    imageUrl: fileData || urlInput?.value.trim() || "",
-    badgeText: document.getElementById("spotBadgeText")?.value.trim() || "",
-    badgeColor: document.getElementById("spotBadgeColor")?.value.trim() || "",
-    ctaText: document.getElementById("spotCtaText")?.value.trim() || "",
-    ctaUrl: document.getElementById("spotCtaUrl")?.value.trim() || "",
-    type: document.getElementById("spotType")?.value || "ad",
-    order: Number(document.getElementById("spotOrder")?.value),
-    startDate: document.getElementById("spotStart")?.value || null,
-    endDate: document.getElementById("spotEnd")?.value || null
-  };
-}
-function readSpotlightEditValues(fallbackImage = "") {
-  const urlInput = document.getElementById("editSpotImageUrl");
-  const fileData = urlInput?.getAttribute("data-file-data") || "";
-  return {
-    title: document.getElementById("editSpotTitle")?.value.trim() || "",
-    subtitle: document.getElementById("editSpotSubtitle")?.value.trim() || "",
-    body: document.getElementById("editSpotBody")?.value.trim() || "",
-    imageUrl: fileData || urlInput?.value.trim() || fallbackImage || "",
-    badgeText: document.getElementById("editSpotBadgeText")?.value.trim() || "",
-    badgeColor: document.getElementById("editSpotBadgeColor")?.value.trim() || "",
-    ctaText: document.getElementById("editSpotCtaText")?.value.trim() || "",
-    ctaUrl: document.getElementById("editSpotCtaUrl")?.value.trim() || "",
-    type: document.getElementById("editSpotType")?.value || "ad",
-    order: Number(document.getElementById("editSpotOrder")?.value),
-    startDate: document.getElementById("editSpotStart")?.value || null,
-    endDate: document.getElementById("editSpotEnd")?.value || null
-  };
-}
-function spotlightPreviewHtml(s = {}) {
-  const typeLabels = { ad: "Ad", event: "Event", news: "News", promo: "Promo" };
-  const hasLink = Boolean((s.ctaUrl || "").trim());
-  const badge2 = s.badgeText ? `<span class="admin-spot-preview-badge" style="background:${esc(s.badgeColor || "#E63946")}">${esc(s.badgeText)}</span>` : `<span class="admin-spot-preview-badge admin-spot-preview-badge--type">${esc(typeLabels[s.type || "ad"] || "Ad")}</span>`;
-  const bg = s.imageUrl ? `background-image:url("${esc(s.imageUrl).replace(/"/g, "%22")}")` : "background:linear-gradient(135deg,#1a2332,#3d4f66)";
-  const ctaLabel = (s.ctaText || "").trim() || (hasLink ? "Learn more" : "");
-  return `
-    <div class="admin-spot-preview${hasLink ? " admin-spot-preview--linked" : ""}" style="${bg}">
+      ${a("Listings","\u{1F4CB}",e.listings||[],n=>badge(n.category||"","gray"),"listing")}
+      ${a("Discussions","\u{1F4AC}",e.discussions||[],n=>esc(n.authorName||""),"discussion")}
+      ${a("News","\u{1F4F0}",e.news||[],n=>badge(n.status||"draft",n.status==="published"?"green":"gray"),"news")}
+      ${a("Announcements","\u{1F4E2}",e.announcements||[],()=>"","announcement")}
+      ${a("Spotlights","\u{1F3AC}",e.spotlights||[],n=>badge(n.type||"ad","blue"),"spotlight")}
+      ${a("Users","\u{1F464}",e.users||[],n=>`${esc(n.email||"")} \xB7 ${badge(n.role||"user","gray")}`,"user")}
+      ${i===0?'<div class="admin-empty">Trash is empty \u2014 nothing has been soft-deleted yet.</div>':""}
+    `),animateStatValues()}catch(e){content(`<div class="admin-error">${esc(e.message)}</div>`)}}function isHttpUrl(e){try{const t=new URL(e);return t.protocol==="http:"||t.protocol==="https:"}catch{return!1}}function isSpotlightImageValue(e){return e?e.startsWith("data:image/")||e.startsWith("/uploads/")||e.startsWith("uploads/")?!0:isHttpUrl(e):!1}function clearSpotlightFieldErrors(e=document){e.querySelectorAll(".is-invalid").forEach(t=>t.classList.remove("is-invalid")),e.querySelectorAll("[data-spot-field-error]").forEach(t=>{t.textContent="",t.hidden=!0})}function setSpotlightFieldError(e,t){document.getElementById(e)?.classList.add("is-invalid");const a=document.querySelector(`[data-spot-field-error="${e}"]`);a&&(a.textContent=t,a.hidden=!1)}function validateSpotlightFields(e,t){clearSpotlightFieldErrors();const i=[];e.title?e.title.length<3&&i.push({id:t.title,message:"Headline should be at least 3 characters."}):i.push({id:t.title,message:"Add a headline for the homepage banner."}),e.imageUrl?isSpotlightImageValue(e.imageUrl)||i.push({id:t.image,message:"Use a valid image URL (https://\u2026) or upload a file."}):i.push({id:t.image,message:"Upload an image or paste an https:// URL."}),e.ctaText&&!e.ctaUrl&&i.push({id:t.ctaUrl,message:"Add a link so the banner can open the ad, or clear the button label."}),e.ctaUrl&&!isHttpUrl(e.ctaUrl)&&i.push({id:t.ctaUrl,message:"Link must start with http:// or https://"}),(!Number.isFinite(e.order)||e.order<0||!Number.isInteger(e.order))&&i.push({id:t.order,message:"Order must be a whole number 0 or higher."});const a=e.startDate?Date.parse(e.startDate):NaN,n=e.endDate?Date.parse(e.endDate):NaN;e.startDate&&Number.isNaN(a)&&i.push({id:t.start,message:"Pick a valid start date and time."}),e.endDate&&Number.isNaN(n)&&i.push({id:t.end,message:"Pick a valid end date and time."}),e.startDate&&e.endDate&&!Number.isNaN(a)&&!Number.isNaN(n)&&n<=a&&i.push({id:t.end,message:"End must be after the start time."}),e.badgeText&&e.badgeText.length>40&&i.push({id:t.badgeText,message:"Badge text max is 40 characters."});for(const d of i)setSpotlightFieldError(d.id,d.message);return i[0]?.message||null}function readSpotlightCreateValues(){const e=document.getElementById("spotImageUrl"),t=e?.getAttribute("data-file-data")||"";return{title:document.getElementById("spotTitle")?.value.trim()||"",subtitle:document.getElementById("spotSubtitle")?.value.trim()||"",body:document.getElementById("spotBody")?.value.trim()||"",imageUrl:t||e?.value.trim()||"",badgeText:document.getElementById("spotBadgeText")?.value.trim()||"",badgeColor:document.getElementById("spotBadgeColor")?.value.trim()||"",ctaText:document.getElementById("spotCtaText")?.value.trim()||"",ctaUrl:document.getElementById("spotCtaUrl")?.value.trim()||"",type:document.getElementById("spotType")?.value||"ad",order:Number(document.getElementById("spotOrder")?.value),startDate:document.getElementById("spotStart")?.value||null,endDate:document.getElementById("spotEnd")?.value||null}}function readSpotlightEditValues(e=""){const t=document.getElementById("editSpotImageUrl"),i=t?.getAttribute("data-file-data")||"";return{title:document.getElementById("editSpotTitle")?.value.trim()||"",subtitle:document.getElementById("editSpotSubtitle")?.value.trim()||"",body:document.getElementById("editSpotBody")?.value.trim()||"",imageUrl:i||t?.value.trim()||e||"",badgeText:document.getElementById("editSpotBadgeText")?.value.trim()||"",badgeColor:document.getElementById("editSpotBadgeColor")?.value.trim()||"",ctaText:document.getElementById("editSpotCtaText")?.value.trim()||"",ctaUrl:document.getElementById("editSpotCtaUrl")?.value.trim()||"",type:document.getElementById("editSpotType")?.value||"ad",order:Number(document.getElementById("editSpotOrder")?.value),startDate:document.getElementById("editSpotStart")?.value||null,endDate:document.getElementById("editSpotEnd")?.value||null}}function spotlightPreviewHtml(e={}){const t={ad:"Ad",event:"Event",news:"News",promo:"Promo"},i=!!(e.ctaUrl||"").trim(),a=e.badgeText?`<span class="admin-spot-preview-badge" style="background:${esc(e.badgeColor||"#E63946")}">${esc(e.badgeText)}</span>`:`<span class="admin-spot-preview-badge admin-spot-preview-badge--type">${esc(t[e.type||"ad"]||"Ad")}</span>`,n=e.imageUrl?`background-image:url("${esc(e.imageUrl).replace(/"/g,"%22")}")`:"background:linear-gradient(135deg,#1a2332,#3d4f66)",d=(e.ctaText||"").trim()||(i?"Learn more":"");return`
+    <div class="admin-spot-preview${i?" admin-spot-preview--linked":""}" style="${n}">
       <div class="admin-spot-preview-overlay"></div>
       <div class="admin-spot-preview-content">
-        ${badge2}
-        <h3 class="admin-spot-preview-title">${esc(s.title || "Your headline here")}</h3>
-        <p class="admin-spot-preview-sub">${esc(s.subtitle || "Optional supporting line")}</p>
-        ${s.body ? `<p class="admin-spot-preview-body">${esc(s.body)}</p>` : ""}
-        ${ctaLabel ? `<span class="admin-spot-preview-cta">${esc(ctaLabel)}</span>` : '<span class="admin-spot-preview-cta admin-spot-preview-cta--ghost">Add a link to make this clickable</span>'}
-        ${hasLink ? '<span class="admin-spot-preview-clickhint">Clicking the banner opens the ad link</span>' : ""}
+        ${a}
+        <h3 class="admin-spot-preview-title">${esc(e.title||"Your headline here")}</h3>
+        <p class="admin-spot-preview-sub">${esc(e.subtitle||"Optional supporting line")}</p>
+        ${e.body?`<p class="admin-spot-preview-body">${esc(e.body)}</p>`:""}
+        ${d?`<span class="admin-spot-preview-cta">${esc(d)}</span>`:'<span class="admin-spot-preview-cta admin-spot-preview-cta--ghost">Add a link to make this clickable</span>'}
+        ${i?'<span class="admin-spot-preview-clickhint">Clicking the banner opens the ad link</span>':""}
       </div>
-    </div>`;
-}
-function bindSpotlightComposer() {
-  const form = document.getElementById("spotComposer");
-  if (!form) return;
-  const syncPreview = () => {
-    const urlInput = document.getElementById("spotImageUrl");
-    const fileData = urlInput?.getAttribute("data-file-data") || "";
-    const imageUrl = fileData || urlInput?.value.trim() || "";
-    const previewHost = document.getElementById("spotLivePreview");
-    if (!previewHost) return;
-    previewHost.innerHTML = spotlightPreviewHtml({
-      title: document.getElementById("spotTitle")?.value.trim(),
-      subtitle: document.getElementById("spotSubtitle")?.value.trim(),
-      body: document.getElementById("spotBody")?.value.trim(),
-      badgeText: document.getElementById("spotBadgeText")?.value.trim(),
-      badgeColor: document.getElementById("spotBadgeColor")?.value.trim() || "#E63946",
-      ctaText: document.getElementById("spotCtaText")?.value.trim(),
-      ctaUrl: document.getElementById("spotCtaUrl")?.value.trim(),
-      imageUrl,
-      type: document.getElementById("spotType")?.value || "ad"
-    });
-  };
-  const clearFieldOnEdit = (el) => {
-    el.addEventListener("input", () => {
-      el.classList.remove("is-invalid");
-      const err = document.querySelector(`[data-spot-field-error="${el.id}"]`);
-      if (err) {
-        err.hidden = true;
-        err.textContent = "";
-      }
-    });
-  };
-  form.querySelectorAll("#spotTitle,#spotSubtitle,#spotBody,#spotBadgeText,#spotBadgeColor,#spotCtaText,#spotCtaUrl,#spotOrder,#spotStart,#spotEnd,#spotImageUrl").forEach((el) => {
-    el.addEventListener("input", syncPreview);
-    el.addEventListener("change", syncPreview);
-    clearFieldOnEdit(el);
-  });
-  form.querySelectorAll(".admin-spot-type[data-type]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      form.querySelectorAll(".admin-spot-type").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      const hidden = document.getElementById("spotType");
-      if (hidden) hidden.value = btn.dataset.type || "ad";
-      syncPreview();
-    });
-  });
-  document.getElementById("spotToggleComposer")?.addEventListener("click", () => {
-    const panel = document.getElementById("spotComposerPanel");
-    const btn = document.getElementById("spotToggleComposer");
-    if (!panel || !btn) return;
-    const open = panel.hasAttribute("hidden");
-    if (open) {
-      panel.removeAttribute("hidden");
-      btn.textContent = "Hide form";
-      document.getElementById("spotTitle")?.focus();
-    } else {
-      panel.setAttribute("hidden", "");
-      btn.textContent = "+ New spotlight";
-    }
-  });
-  document.getElementById("spotCancelComposer")?.addEventListener("click", () => {
-    const panel = document.getElementById("spotComposerPanel");
-    const btn = document.getElementById("spotToggleComposer");
-    if (panel) panel.setAttribute("hidden", "");
-    if (btn) btn.textContent = "+ New spotlight";
-  });
-  function showSpotImgPreview(src) {
-    const wrap = document.getElementById("spotImgPreviewWrap");
-    const img = document.getElementById("spotImgPreview");
-    if (!wrap || !img) return;
-    if (src) {
-      img.src = src;
-      wrap.hidden = false;
-    } else {
-      wrap.hidden = true;
-      img.src = "";
-    }
-    syncPreview();
-  }
-  document.getElementById("spotImageFile")?.addEventListener("change", async function() {
-    const file = this.files?.[0];
-    if (!file) return;
-    const lbl = document.getElementById("spotFileLbl");
-    if (lbl) lbl.textContent = `\u{1F4C1} ${file.name}`;
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const urlInput = document.getElementById("spotImageUrl");
-      if (urlInput) {
-        urlInput.value = "";
-        urlInput.setAttribute("data-file-data", dataUrl);
-      }
-      showSpotImgPreview(dataUrl);
-    } catch (_) {
-    }
-  });
-  document.getElementById("spotImageUrl")?.addEventListener("blur", function() {
-    if (this.value.trim()) {
-      this.removeAttribute("data-file-data");
-      showSpotImgPreview(this.value.trim());
-    }
-  });
-  document.getElementById("spotSubmit")?.addEventListener("click", async () => {
-    const values = readSpotlightCreateValues();
-    const errEl = document.getElementById("spotFormError");
-    const btn = document.getElementById("spotSubmit");
-    if (!errEl || !btn) return;
-    errEl.hidden = true;
-    const firstError = validateSpotlightFields(values, {
-      title: "spotTitle",
-      image: "spotImageUrl",
-      ctaText: "spotCtaText",
-      ctaUrl: "spotCtaUrl",
-      order: "spotOrder",
-      start: "spotStart",
-      end: "spotEnd",
-      badgeText: "spotBadgeText"
-    });
-    if (firstError) {
-      errEl.textContent = firstError;
-      errEl.hidden = false;
-      document.querySelector(".is-invalid")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = "Publishing\u2026";
-    try {
-      await api("/api/admin/spotlights", {
-        method: "POST",
-        body: JSON.stringify(values)
-      });
-      notify("Spotlight published. Add another anytime with + New spotlight.", "success");
-      showSpotlights();
-    } catch (err) {
-      errEl.textContent = err.message;
-      errEl.hidden = false;
-      btn.disabled = false;
-      btn.textContent = "Publish to homepage";
-    }
-  });
-  syncPreview();
-}
-function bindSpotlightList(spots) {
-  const list = document.getElementById("spotList");
-  const empty = document.getElementById("spotEmpty");
-  const search = document.getElementById("spotSearch");
-  const chips = Array.from(document.querySelectorAll(".admin-spot-filter[data-status]"));
-  const apply = () => {
-    const q = (search?.value || "").trim().toLowerCase();
-    const status = chips.find((c) => c.classList.contains("is-active"))?.dataset.status || "all";
-    let shown = 0;
-    list?.querySelectorAll("[data-spot-card]").forEach((card) => {
-      const hay = (card.dataset.spotSearch || "").toLowerCase();
-      const active = card.dataset.spotActive === "true";
-      const matchQ = !q || hay.includes(q);
-      const matchS = status === "all" || status === "live" && active || status === "paused" && !active;
-      const ok = matchQ && matchS;
-      card.hidden = !ok;
-      if (ok) shown += 1;
-    });
-    if (empty) empty.hidden = shown > 0 || spots.length === 0;
-  };
-  search?.addEventListener("input", apply);
-  chips.forEach((chip) => {
-    chip.addEventListener("click", () => {
-      chips.forEach((c) => c.classList.remove("is-active"));
-      chip.classList.add("is-active");
-      apply();
-    });
-  });
-  wireInteractiveRows("[data-open-spot]", (row) => openViewSpotlight(row.dataset.openSpot));
-}
-async function showSpotlights() {
-  try {
-    const data = await api("/api/admin/spotlights");
-    const spots = data.spotlights || [];
-    const typeColors = { ad: "blue", event: "green", news: "gray", promo: "red" };
-    const typeLabels = { ad: "Ad", event: "Event", news: "News", promo: "Promo" };
-    const activeCount = spots.filter((s) => s.active).length;
-    const openComposer = spots.length === 0;
-    content(`
-      ${sectionHero("Homepage Spotlight", "These banners rotate in the homepage hero. Turn Live on so visitors see them.")}
+    </div>`}function bindSpotlightComposer(){const e=document.getElementById("spotComposer");if(!e)return;const t=()=>{const n=document.getElementById("spotImageUrl"),s=n?.getAttribute("data-file-data")||""||n?.value.trim()||"",o=document.getElementById("spotLivePreview");o&&(o.innerHTML=spotlightPreviewHtml({title:document.getElementById("spotTitle")?.value.trim(),subtitle:document.getElementById("spotSubtitle")?.value.trim(),body:document.getElementById("spotBody")?.value.trim(),badgeText:document.getElementById("spotBadgeText")?.value.trim(),badgeColor:document.getElementById("spotBadgeColor")?.value.trim()||"#E63946",ctaText:document.getElementById("spotCtaText")?.value.trim(),ctaUrl:document.getElementById("spotCtaUrl")?.value.trim(),imageUrl:s,type:document.getElementById("spotType")?.value||"ad"}))},i=n=>{n.addEventListener("input",()=>{n.classList.remove("is-invalid");const d=document.querySelector(`[data-spot-field-error="${n.id}"]`);d&&(d.hidden=!0,d.textContent="")})};e.querySelectorAll("#spotTitle,#spotSubtitle,#spotBody,#spotBadgeText,#spotBadgeColor,#spotCtaText,#spotCtaUrl,#spotOrder,#spotStart,#spotEnd,#spotImageUrl").forEach(n=>{n.addEventListener("input",t),n.addEventListener("change",t),i(n)}),e.querySelectorAll(".admin-spot-type[data-type]").forEach(n=>{n.addEventListener("click",()=>{e.querySelectorAll(".admin-spot-type").forEach(s=>s.classList.remove("is-active")),n.classList.add("is-active");const d=document.getElementById("spotType");d&&(d.value=n.dataset.type||"ad"),t()})}),document.getElementById("spotToggleComposer")?.addEventListener("click",()=>{const n=document.getElementById("spotComposerPanel"),d=document.getElementById("spotToggleComposer");if(!n||!d)return;n.hasAttribute("hidden")?(n.removeAttribute("hidden"),d.textContent="Hide form",document.getElementById("spotTitle")?.focus()):(n.setAttribute("hidden",""),d.textContent="+ New spotlight")}),document.getElementById("spotCancelComposer")?.addEventListener("click",()=>{const n=document.getElementById("spotComposerPanel"),d=document.getElementById("spotToggleComposer");n&&n.setAttribute("hidden",""),d&&(d.textContent="+ New spotlight")});function a(n){const d=document.getElementById("spotImgPreviewWrap"),s=document.getElementById("spotImgPreview");!d||!s||(n?(s.src=n,d.hidden=!1):(d.hidden=!0,s.src=""),t())}document.getElementById("spotImageFile")?.addEventListener("change",async function(){const n=this.files?.[0];if(!n)return;const d=document.getElementById("spotFileLbl");d&&(d.textContent=`\u{1F4C1} ${n.name}`);try{const s=await readFileAsDataUrl(n),o=document.getElementById("spotImageUrl");o&&(o.value="",o.setAttribute("data-file-data",s)),a(s)}catch{}}),document.getElementById("spotImageUrl")?.addEventListener("blur",function(){this.value.trim()&&(this.removeAttribute("data-file-data"),a(this.value.trim()))}),document.getElementById("spotSubmit")?.addEventListener("click",async()=>{const n=readSpotlightCreateValues(),d=document.getElementById("spotFormError"),s=document.getElementById("spotSubmit");if(!d||!s)return;d.hidden=!0;const o=validateSpotlightFields(n,{title:"spotTitle",image:"spotImageUrl",ctaText:"spotCtaText",ctaUrl:"spotCtaUrl",order:"spotOrder",start:"spotStart",end:"spotEnd",badgeText:"spotBadgeText"});if(o){d.textContent=o,d.hidden=!1,document.querySelector(".is-invalid")?.scrollIntoView({behavior:"smooth",block:"center"});return}s.disabled=!0,s.textContent="Publishing\u2026";try{await api("/api/admin/spotlights",{method:"POST",body:JSON.stringify(n)}),notify("Spotlight published. Add another anytime with + New spotlight.","success"),showSpotlights()}catch(r){d.textContent=r.message,d.hidden=!1,s.disabled=!1,s.textContent="Publish to homepage"}}),t()}function bindSpotlightList(e){const t=document.getElementById("spotList"),i=document.getElementById("spotEmpty"),a=document.getElementById("spotSearch"),n=Array.from(document.querySelectorAll(".admin-spot-filter[data-status]")),d=()=>{const s=(a?.value||"").trim().toLowerCase(),o=n.find(c=>c.classList.contains("is-active"))?.dataset.status||"all";let r=0;t?.querySelectorAll("[data-spot-card]").forEach(c=>{const u=(c.dataset.spotSearch||"").toLowerCase(),l=c.dataset.spotActive==="true",S=(!s||u.includes(s))&&(o==="all"||o==="live"&&l||o==="paused"&&!l);c.hidden=!S,S&&(r+=1)}),i&&(i.hidden=r>0||e.length===0)};a?.addEventListener("input",d),n.forEach(s=>{s.addEventListener("click",()=>{n.forEach(o=>o.classList.remove("is-active")),s.classList.add("is-active"),d()})}),wireInteractiveRows("[data-open-spot]",s=>openViewSpotlight(s.dataset.openSpot))}async function showSpotlights(){try{const t=(await api("/api/admin/spotlights")).spotlights||[],i={ad:"blue",event:"green",news:"gray",promo:"red"},a={ad:"Ad",event:"Event",news:"News",promo:"Promo"},n=t.filter(s=>s.active).length,d=t.length===0;content(`
+      ${sectionHero("Homepage Spotlight","These banners rotate in the homepage hero. Turn Live on so visitors see them.")}
       <div class="admin-spot-guide">
         <div class="admin-spot-guide-steps">
           <div><strong>1</strong><span>Create a banner</span></div>
@@ -2711,9 +825,9 @@ async function showSpotlights() {
         <p>You can publish <strong>multiple</strong> spotlights \u2014 live ones rotate in the homepage carousel. Add a link so visitors open the ad when they click the banner.</p>
       </div>
       <div class="ix-stat-grid">
-        ${sectionStat("Total", spots.length, true)}
-        ${sectionStat("Live on site", activeCount)}
-        ${sectionStat("Paused", spots.length - activeCount)}
+        ${sectionStat("Total",t.length,!0)}
+        ${sectionStat("Live on site",n)}
+        ${sectionStat("Paused",t.length-n)}
       </div>
 
       <div class="admin-spot-toolbar">
@@ -2723,10 +837,10 @@ async function showSpotlights() {
           <button type="button" class="admin-spot-filter" data-status="live">Live</button>
           <button type="button" class="admin-spot-filter" data-status="paused">Paused</button>
         </div>
-        <button type="button" class="admin-btn" id="spotToggleComposer" style="background:#E63946;color:#fff;border-color:#E63946;margin-left:auto">${openComposer ? "Hide form" : "+ New spotlight"}</button>
+        <button type="button" class="admin-btn" id="spotToggleComposer" style="background:#E63946;color:#fff;border-color:#E63946;margin-left:auto">${d?"Hide form":"+ New spotlight"}</button>
       </div>
 
-      <div class="admin-spot-composer" id="spotComposerPanel" ${openComposer ? "" : "hidden"}>
+      <div class="admin-spot-composer" id="spotComposerPanel" ${d?"":"hidden"}>
         <div class="admin-spot-composer-grid" id="spotComposer">
           <div class="admin-ann-form admin-spot-form">
             <div class="admin-ann-form-title">Create a homepage banner</div>
@@ -2822,32 +936,32 @@ async function showSpotlights() {
 
       <div class="admin-spot-list-head">
         <h3>Your spotlights</h3>
-        <span>${spots.length} total \xB7 ${activeCount} live</span>
+        <span>${t.length} total \xB7 ${n} live</span>
       </div>
       <div class="admin-ann-list admin-spot-list" id="spotList">
-        ${spots.length ? spots.map((s, index) => `
+        ${t.length?t.map((s,o)=>`
           <div class="admin-spot-card ix-clickable-card" tabindex="0" role="button"
                data-open-spot="${esc(s.id)}" data-spot-card
-               data-spot-active="${s.active ? "true" : "false"}"
-               data-spot-search="${esc([s.title, s.subtitle, s.type, s.badgeText, s.ctaText].filter(Boolean).join(" "))}">
-            <div class="admin-spot-card-media" style="${s.imageUrl ? `background-image:url('${esc(s.imageUrl).replace(/'/g, "%27")}')` : ""}">
-              ${s.active ? '<span class="admin-spot-pill admin-spot-pill--live">Live</span>' : '<span class="admin-spot-pill">Paused</span>'}
+               data-spot-active="${s.active?"true":"false"}"
+               data-spot-search="${esc([s.title,s.subtitle,s.type,s.badgeText,s.ctaText].filter(Boolean).join(" "))}">
+            <div class="admin-spot-card-media" style="${s.imageUrl?`background-image:url('${esc(s.imageUrl).replace(/'/g,"%27")}')`:""}">
+              ${s.active?'<span class="admin-spot-pill admin-spot-pill--live">Live</span>':'<span class="admin-spot-pill">Paused</span>'}
             </div>
             <div class="admin-spot-card-body">
-              <div class="admin-spot-card-title">${esc(s.title || "Untitled")}</div>
-              ${s.subtitle ? `<div class="admin-spot-card-sub">${esc(s.subtitle)}</div>` : ""}
+              <div class="admin-spot-card-title">${esc(s.title||"Untitled")}</div>
+              ${s.subtitle?`<div class="admin-spot-card-sub">${esc(s.subtitle)}</div>`:""}
               <div class="admin-ann-card-meta">
-                ${badge(typeLabels[s.type || "ad"] || "Ad", typeColors[s.type || ""] || "gray")}
-                ${s.badgeText ? badge(s.badgeText, "blue") : ""}
-                <span>Order ${s.order ?? index}</span>
-                ${s.endDate ? `<span>Until ${fmtDate(s.endDate)}</span>` : ""}
-                ${s.ctaText ? `<span>Button: ${esc(s.ctaText)}</span>` : ""}
+                ${badge(a[s.type||"ad"]||"Ad",i[s.type||""]||"gray")}
+                ${s.badgeText?badge(s.badgeText,"blue"):""}
+                <span>Order ${s.order??o}</span>
+                ${s.endDate?`<span>Until ${fmtDate(s.endDate)}</span>`:""}
+                ${s.ctaText?`<span>Button: ${esc(s.ctaText)}</span>`:""}
               </div>
             </div>
             <div class="admin-spot-card-actions">
-              <button type="button" class="admin-spot-switch ${s.active ? "is-on" : ""}" data-toggle-spot="${esc(s.id)}" title="${s.active ? "Pause on homepage" : "Show on homepage"}" aria-pressed="${s.active ? "true" : "false"}">
+              <button type="button" class="admin-spot-switch ${s.active?"is-on":""}" data-toggle-spot="${esc(s.id)}" title="${s.active?"Pause on homepage":"Show on homepage"}" aria-pressed="${s.active?"true":"false"}">
                 <span class="admin-spot-switch-knob"></span>
-                <span class="admin-spot-switch-label">${s.active ? "Live" : "Paused"}</span>
+                <span class="admin-spot-switch-label">${s.active?"Live":"Paused"}</span>
               </button>
               <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="-1" title="Show earlier in carousel">\u2191</button>
               <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="1" title="Show later in carousel">\u2193</button>
@@ -2855,87 +969,41 @@ async function showSpotlights() {
               <button type="button" class="admin-btn admin-btn-danger" data-del-spot="${esc(s.id)}" title="Delete">\u{1F5D1}</button>
             </div>
           </div>
-        `).join("") : '<div class="admin-empty">No spotlights yet. Click <strong>+ New spotlight</strong> to create your first homepage banner.</div>'}
+        `).join(""):'<div class="admin-empty">No spotlights yet. Click <strong>+ New spotlight</strong> to create your first homepage banner.</div>'}
       </div>
       <div class="admin-empty" id="spotEmpty" hidden>No spotlights match this search or filter.</div>
-    `);
-    animateStatValues();
-    bindSpotlightComposer();
-    bindSpotlightList(spots);
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function openViewSpotlight(id) {
-  let s;
-  try {
-    s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  const typeColors = { ad: "blue", event: "green", news: "gray", promo: "red" };
-  const typeLabels = { ad: "Ad", event: "Event", news: "News", promo: "Promo" };
-  openModal(esc(s.title || "Untitled spotlight"), `
+    `),animateStatValues(),bindSpotlightComposer(),bindSpotlightList(t)}catch(e){content(`<div class="admin-error">${esc(e.message)}</div>`)}}async function openViewSpotlight(e){let t;try{t=await api(`/api/admin/spotlights/${encodeURIComponent(e)}`)}catch(n){notify(n.message,"error");return}const i={ad:"blue",event:"green",news:"gray",promo:"red"},a={ad:"Ad",event:"Event",news:"News",promo:"Promo"};openModal(esc(t.title||"Untitled spotlight"),`
     <div class="admin-spot-view">
-      ${spotlightPreviewHtml(s)}
+      ${spotlightPreviewHtml(t)}
       <div class="admin-spot-view-meta">
-        <div class="admin-spot-view-row"><span>Status</span>${badge(s.active ? "Live on homepage" : "Paused", s.active ? "green" : "gray")}</div>
-        <div class="admin-spot-view-row"><span>Type</span>${badge(typeLabels[s.type || "ad"] || "Ad", typeColors[s.type || ""] || "gray")}</div>
-        <div class="admin-spot-view-row"><span>Carousel order</span><strong>${s.order ?? 0}</strong></div>
-        ${s.ctaUrl ? `<div class="admin-spot-view-row"><span>Button link</span><a href="${esc(s.ctaUrl)}" target="_blank" rel="noopener">${esc(s.ctaUrl)}</a></div>` : ""}
-        ${s.startDate ? `<div class="admin-spot-view-row"><span>Shows from</span>${fmtDate(s.startDate)}</div>` : ""}
-        ${s.endDate ? `<div class="admin-spot-view-row"><span>Shows until</span>${fmtDate(s.endDate)}</div>` : ""}
-        <div class="admin-spot-view-row"><span>Created</span>${esc(s.createdBy || "admin")} \xB7 ${fmtDate(s.createdAt)}</div>
+        <div class="admin-spot-view-row"><span>Status</span>${badge(t.active?"Live on homepage":"Paused",t.active?"green":"gray")}</div>
+        <div class="admin-spot-view-row"><span>Type</span>${badge(a[t.type||"ad"]||"Ad",i[t.type||""]||"gray")}</div>
+        <div class="admin-spot-view-row"><span>Carousel order</span><strong>${t.order??0}</strong></div>
+        ${t.ctaUrl?`<div class="admin-spot-view-row"><span>Button link</span><a href="${esc(t.ctaUrl)}" target="_blank" rel="noopener">${esc(t.ctaUrl)}</a></div>`:""}
+        ${t.startDate?`<div class="admin-spot-view-row"><span>Shows from</span>${fmtDate(t.startDate)}</div>`:""}
+        ${t.endDate?`<div class="admin-spot-view-row"><span>Shows until</span>${fmtDate(t.endDate)}</div>`:""}
+        <div class="admin-spot-view-row"><span>Created</span>${esc(t.createdBy||"admin")} \xB7 ${fmtDate(t.createdAt)}</div>
       </div>
       <div class="admin-spot-view-actions">
-        <button type="button" class="admin-btn" data-spot-view-edit="${esc(s.id)}" style="background:#E63946;color:#fff;border-color:#E63946">Edit banner</button>
-        <button type="button" class="admin-btn admin-btn-ghost" data-spot-view-toggle="${esc(s.id)}">${s.active ? "Pause on homepage" : "Make live"}</button>
+        <button type="button" class="admin-btn" data-spot-view-edit="${esc(t.id)}" style="background:#E63946;color:#fff;border-color:#E63946">Edit banner</button>
+        <button type="button" class="admin-btn admin-btn-ghost" data-spot-view-toggle="${esc(t.id)}">${t.active?"Pause on homepage":"Make live"}</button>
       </div>
     </div>
-  `, null);
-  requestAnimationFrame(() => {
-    document.querySelector("[data-spot-view-edit]")?.addEventListener("click", () => {
-      closeModal();
-      openEditSpotlight(id);
-    });
-    document.querySelector("[data-spot-view-toggle]")?.addEventListener("click", async () => {
-      try {
-        await api(`/api/admin/spotlights/${encodeURIComponent(id)}/toggle`, { method: "PUT" });
-        closeModal();
-        showSpotlights();
-        notify(s.active ? "Spotlight paused." : "Spotlight is live on the homepage.", "success");
-      } catch (err) {
-        notify(err.message, "error");
-      }
-    });
-  });
-}
-function spotlightFormHtml(s = {}) {
-  const toDatetimeLocal = (d) => {
-    if (!d) return "";
-    try {
-      return new Date(d).toISOString().slice(0, 16);
-    } catch {
-      return "";
-    }
-  };
-  const type = s.type || "ad";
-  return `
+  `,null),requestAnimationFrame(()=>{document.querySelector("[data-spot-view-edit]")?.addEventListener("click",()=>{closeModal(),openEditSpotlight(e)}),document.querySelector("[data-spot-view-toggle]")?.addEventListener("click",async()=>{try{await api(`/api/admin/spotlights/${encodeURIComponent(e)}/toggle`,{method:"PUT"}),closeModal(),showSpotlights(),notify(t.active?"Spotlight paused.":"Spotlight is live on the homepage.","success")}catch(n){notify(n.message,"error")}})})}function spotlightFormHtml(e={}){const t=a=>{if(!a)return"";try{return new Date(a).toISOString().slice(0,16)}catch{return""}},i=e.type||"ad";return`
     <div class="admin-spot-edit-layout">
       <div class="admin-modal-grid">
         <div class="admin-modal-field admin-modal-full">
           <label class="admin-modal-label">Headline <span style="color:#E63946">*</span></label>
-          <input class="admin-modal-input" id="editSpotTitle" maxlength="200" value="${esc(s.title || "")}" required>
+          <input class="admin-modal-input" id="editSpotTitle" maxlength="200" value="${esc(e.title||"")}" required>
           <div class="admin-spot-field-error" data-spot-field-error="editSpotTitle" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
           <label class="admin-modal-label">Supporting line</label>
-          <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(s.subtitle || "")}">
+          <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(e.subtitle||"")}">
         </div>
         <div class="admin-modal-field admin-modal-full">
           <label class="admin-modal-label">Extra details</label>
-          <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(s.body || "")}</textarea>
+          <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(e.body||"")}</textarea>
         </div>
         <div class="admin-modal-field admin-modal-full">
           <label class="admin-modal-label">Banner image</label>
@@ -2943,45 +1011,45 @@ function spotlightFormHtml(s = {}) {
             <label class="admin-spot-file" id="editSpotFileLbl">\u{1F4C1} Choose image
               <input type="file" id="editSpotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
             </label>
-            <input class="admin-modal-input" id="editSpotImageUrl" type="url" placeholder="or paste https:// URL" value="${esc(s.imageUrl || "")}">
+            <input class="admin-modal-input" id="editSpotImageUrl" type="url" placeholder="or paste https:// URL" value="${esc(e.imageUrl||"")}">
           </div>
-          <div id="editSpotImgPreviewWrap" class="admin-spot-thumb-wrap" ${s.imageUrl ? "" : "hidden"}>
-            <img id="editSpotImgPreview" class="admin-spot-thumb" src="${esc(s.imageUrl || "")}" alt="Banner preview">
+          <div id="editSpotImgPreviewWrap" class="admin-spot-thumb-wrap" ${e.imageUrl?"":"hidden"}>
+            <img id="editSpotImgPreview" class="admin-spot-thumb" src="${esc(e.imageUrl||"")}" alt="Banner preview">
           </div>
           <div class="admin-spot-field-error" data-spot-field-error="editSpotImageUrl" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
           <label class="admin-modal-label">Type</label>
-          <input type="hidden" id="editSpotType" value="${esc(type)}">
+          <input type="hidden" id="editSpotType" value="${esc(i)}">
           <div class="admin-spot-types" id="editSpotTypes" role="group" aria-label="Spotlight type">
-            <button type="button" class="admin-spot-type ${type === "ad" ? "is-active" : ""}" data-type="ad">\u{1F4E3} Ad</button>
-            <button type="button" class="admin-spot-type ${type === "event" ? "is-active" : ""}" data-type="event">\u{1F389} Event</button>
-            <button type="button" class="admin-spot-type ${type === "news" ? "is-active" : ""}" data-type="news">\u{1F4F0} News</button>
-            <button type="button" class="admin-spot-type ${type === "promo" ? "is-active" : ""}" data-type="promo">\u{1F525} Promo</button>
+            <button type="button" class="admin-spot-type ${i==="ad"?"is-active":""}" data-type="ad">\u{1F4E3} Ad</button>
+            <button type="button" class="admin-spot-type ${i==="event"?"is-active":""}" data-type="event">\u{1F389} Event</button>
+            <button type="button" class="admin-spot-type ${i==="news"?"is-active":""}" data-type="news">\u{1F4F0} News</button>
+            <button type="button" class="admin-spot-type ${i==="promo"?"is-active":""}" data-type="promo">\u{1F525} Promo</button>
           </div>
         </div>
         <div class="admin-modal-field">
           <label class="admin-modal-label">Corner badge</label>
-          <input class="admin-modal-input" id="editSpotBadgeText" maxlength="40" value="${esc(s.badgeText || "")}">
+          <input class="admin-modal-input" id="editSpotBadgeText" maxlength="40" value="${esc(e.badgeText||"")}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotBadgeText" hidden></div>
         </div>
         <div class="admin-modal-field">
           <label class="admin-modal-label">Badge color</label>
-          <input class="admin-modal-input" id="editSpotBadgeColor" type="color" value="${esc(s.badgeColor || "#E63946")}">
+          <input class="admin-modal-input" id="editSpotBadgeColor" type="color" value="${esc(e.badgeColor||"#E63946")}">
         </div>
         <div class="admin-modal-field">
           <label class="admin-modal-label">Button label (optional)</label>
-          <input class="admin-modal-input" id="editSpotCtaText" maxlength="60" value="${esc(s.ctaText || "")}">
+          <input class="admin-modal-input" id="editSpotCtaText" maxlength="60" value="${esc(e.ctaText||"")}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaText" hidden></div>
         </div>
         <div class="admin-modal-field">
           <label class="admin-modal-label">Ad link \u2014 click banner opens this</label>
-          <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(s.ctaUrl || "")}" inputmode="url" placeholder="https://\u2026">
+          <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(e.ctaUrl||"")}" inputmode="url" placeholder="https://\u2026">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaUrl" hidden></div>
         </div>
         <div class="admin-modal-field">
           <label class="admin-modal-label">Carousel order</label>
-          <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" step="1" value="${s.order ?? 0}">
+          <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" step="1" value="${e.order??0}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotOrder" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
@@ -2989,12 +1057,12 @@ function spotlightFormHtml(s = {}) {
           <div class="admin-spot-schedule">
             <div>
               <span class="admin-spot-schedule-label">Show from</span>
-              <input class="admin-modal-input" id="editSpotStart" type="datetime-local" value="${toDatetimeLocal(s.startDate)}" aria-label="Show from">
+              <input class="admin-modal-input" id="editSpotStart" type="datetime-local" value="${t(e.startDate)}" aria-label="Show from">
               <div class="admin-spot-field-error" data-spot-field-error="editSpotStart" hidden></div>
             </div>
             <div>
               <span class="admin-spot-schedule-label">Show until</span>
-              <input class="admin-modal-input" id="editSpotEnd" type="datetime-local" value="${toDatetimeLocal(s.endDate)}" aria-label="Show until">
+              <input class="admin-modal-input" id="editSpotEnd" type="datetime-local" value="${t(e.endDate)}" aria-label="Show until">
               <div class="admin-spot-field-error" data-spot-field-error="editSpotEnd" hidden></div>
             </div>
           </div>
@@ -3002,127 +1070,14 @@ function spotlightFormHtml(s = {}) {
       </div>
       <aside class="admin-spot-preview-pane admin-spot-preview-pane--modal">
         <div class="admin-spot-preview-label">Homepage preview</div>
-        <div id="editSpotLivePreview">${spotlightPreviewHtml(s)}</div>
+        <div id="editSpotLivePreview">${spotlightPreviewHtml(e)}</div>
       </aside>
-    </div>`;
-}
-async function openEditSpotlight(id) {
-  let s;
-  try {
-    s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  openModal(`Edit homepage banner`, spotlightFormHtml(s), async () => {
-    const payload = readSpotlightEditValues(s.imageUrl || "");
-    const firstError = validateSpotlightFields(payload, {
-      title: "editSpotTitle",
-      image: "editSpotImageUrl",
-      ctaText: "editSpotCtaText",
-      ctaUrl: "editSpotCtaUrl",
-      order: "editSpotOrder",
-      start: "editSpotStart",
-      end: "editSpotEnd",
-      badgeText: "editSpotBadgeText"
-    });
-    if (firstError) {
-      document.querySelector(".is-invalid")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      throw new Error(firstError);
-    }
-    await api(`/api/admin/spotlights/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
-    showSpotlights();
-  });
-  requestAnimationFrame(() => {
-    const modal = document.querySelector("#adminModalOverlay .admin-modal");
-    modal?.classList.add("admin-modal-wide");
-    const syncPreview = () => {
-      const urlInput = document.getElementById("editSpotImageUrl");
-      const fileData = urlInput?.getAttribute("data-file-data") || "";
-      const host = document.getElementById("editSpotLivePreview");
-      if (!host) return;
-      host.innerHTML = spotlightPreviewHtml({
-        title: document.getElementById("editSpotTitle")?.value.trim(),
-        subtitle: document.getElementById("editSpotSubtitle")?.value.trim(),
-        body: document.getElementById("editSpotBody")?.value.trim(),
-        badgeText: document.getElementById("editSpotBadgeText")?.value.trim(),
-        badgeColor: document.getElementById("editSpotBadgeColor")?.value.trim() || "#E63946",
-        ctaText: document.getElementById("editSpotCtaText")?.value.trim(),
-        ctaUrl: document.getElementById("editSpotCtaUrl")?.value.trim(),
-        imageUrl: fileData || urlInput?.value.trim() || s.imageUrl || "",
-        type: document.getElementById("editSpotType")?.value || "ad"
-      });
-    };
-    document.querySelectorAll("#editSpotTitle,#editSpotSubtitle,#editSpotBody,#editSpotBadgeText,#editSpotBadgeColor,#editSpotCtaText,#editSpotCtaUrl,#editSpotOrder,#editSpotStart,#editSpotEnd,#editSpotImageUrl").forEach((el) => {
-      el.addEventListener("input", () => {
-        syncPreview();
-        el.classList.remove("is-invalid");
-        const err = document.querySelector(`[data-spot-field-error="${el.id}"]`);
-        if (err) {
-          err.hidden = true;
-          err.textContent = "";
-        }
-      });
-      el.addEventListener("change", syncPreview);
-    });
-    document.querySelectorAll("#editSpotTypes .admin-spot-type").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll("#editSpotTypes .admin-spot-type").forEach((b) => b.classList.remove("is-active"));
-        btn.classList.add("is-active");
-        const hidden = document.getElementById("editSpotType");
-        if (hidden) hidden.value = btn.dataset.type || "ad";
-        syncPreview();
-      });
-    });
-    document.getElementById("editSpotImageFile")?.addEventListener("change", async function() {
-      const file = this.files?.[0];
-      if (!file) return;
-      const lbl = document.getElementById("editSpotFileLbl");
-      if (lbl) {
-        const input = lbl.querySelector("input");
-        lbl.textContent = `\u{1F4C1} ${file.name}`;
-        if (input) lbl.appendChild(input);
-      }
-      try {
-        const dataUrl = await readFileAsDataUrl(file);
-        const urlInput2 = document.getElementById("editSpotImageUrl");
-        if (urlInput2) {
-          urlInput2.value = "";
-          urlInput2.setAttribute("data-file-data", dataUrl);
-        }
-        const wrap = document.getElementById("editSpotImgPreviewWrap");
-        const img = document.getElementById("editSpotImgPreview");
-        if (wrap && img) {
-          img.src = dataUrl;
-          wrap.hidden = false;
-        }
-        syncPreview();
-      } catch (_) {
-      }
-    });
-    document.getElementById("editSpotImageUrl")?.addEventListener("blur", function() {
-      const wrap = document.getElementById("editSpotImgPreviewWrap");
-      const img = document.getElementById("editSpotImgPreview");
-      if (wrap && img && this.value.trim()) {
-        this.removeAttribute("data-file-data");
-        img.src = this.value.trim();
-        wrap.hidden = false;
-        syncPreview();
-      }
-    });
-  });
-}
-async function showAnnouncements() {
-  try {
-    const data = await api("/api/admin/announcements");
-    const typeColors = { info: "blue", warning: "red", success: "green" };
-    const activeCount = (data.announcements || []).filter((a) => a.active).length;
-    content(`
-      ${sectionHero("Announcements", "Site-wide banners for all users. Pause or activate instantly.")}
+    </div>`}async function openEditSpotlight(e){let t;try{t=await api(`/api/admin/spotlights/${encodeURIComponent(e)}`)}catch(i){notify(i.message,"error");return}openModal("Edit homepage banner",spotlightFormHtml(t),async()=>{const i=readSpotlightEditValues(t.imageUrl||""),a=validateSpotlightFields(i,{title:"editSpotTitle",image:"editSpotImageUrl",ctaText:"editSpotCtaText",ctaUrl:"editSpotCtaUrl",order:"editSpotOrder",start:"editSpotStart",end:"editSpotEnd",badgeText:"editSpotBadgeText"});if(a)throw document.querySelector(".is-invalid")?.scrollIntoView({behavior:"smooth",block:"center"}),new Error(a);await api(`/api/admin/spotlights/${encodeURIComponent(e)}`,{method:"PUT",body:JSON.stringify(i)}),showSpotlights()}),requestAnimationFrame(()=>{document.querySelector("#adminModalOverlay .admin-modal")?.classList.add("admin-modal-wide");const a=()=>{const n=document.getElementById("editSpotImageUrl"),d=n?.getAttribute("data-file-data")||"",s=document.getElementById("editSpotLivePreview");s&&(s.innerHTML=spotlightPreviewHtml({title:document.getElementById("editSpotTitle")?.value.trim(),subtitle:document.getElementById("editSpotSubtitle")?.value.trim(),body:document.getElementById("editSpotBody")?.value.trim(),badgeText:document.getElementById("editSpotBadgeText")?.value.trim(),badgeColor:document.getElementById("editSpotBadgeColor")?.value.trim()||"#E63946",ctaText:document.getElementById("editSpotCtaText")?.value.trim(),ctaUrl:document.getElementById("editSpotCtaUrl")?.value.trim(),imageUrl:d||n?.value.trim()||t.imageUrl||"",type:document.getElementById("editSpotType")?.value||"ad"}))};document.querySelectorAll("#editSpotTitle,#editSpotSubtitle,#editSpotBody,#editSpotBadgeText,#editSpotBadgeColor,#editSpotCtaText,#editSpotCtaUrl,#editSpotOrder,#editSpotStart,#editSpotEnd,#editSpotImageUrl").forEach(n=>{n.addEventListener("input",()=>{a(),n.classList.remove("is-invalid");const d=document.querySelector(`[data-spot-field-error="${n.id}"]`);d&&(d.hidden=!0,d.textContent="")}),n.addEventListener("change",a)}),document.querySelectorAll("#editSpotTypes .admin-spot-type").forEach(n=>{n.addEventListener("click",()=>{document.querySelectorAll("#editSpotTypes .admin-spot-type").forEach(s=>s.classList.remove("is-active")),n.classList.add("is-active");const d=document.getElementById("editSpotType");d&&(d.value=n.dataset.type||"ad"),a()})}),document.getElementById("editSpotImageFile")?.addEventListener("change",async function(){const n=this.files?.[0];if(!n)return;const d=document.getElementById("editSpotFileLbl");if(d){const s=d.querySelector("input");d.textContent=`\u{1F4C1} ${n.name}`,s&&d.appendChild(s)}try{const s=await readFileAsDataUrl(n),o=document.getElementById("editSpotImageUrl");o&&(o.value="",o.setAttribute("data-file-data",s));const r=document.getElementById("editSpotImgPreviewWrap"),c=document.getElementById("editSpotImgPreview");r&&c&&(c.src=s,r.hidden=!1),a()}catch{}}),document.getElementById("editSpotImageUrl")?.addEventListener("blur",function(){const n=document.getElementById("editSpotImgPreviewWrap"),d=document.getElementById("editSpotImgPreview");n&&d&&this.value.trim()&&(this.removeAttribute("data-file-data"),d.src=this.value.trim(),n.hidden=!1,a())})})}async function showAnnouncements(){try{const e=await api("/api/admin/announcements"),t={info:"blue",warning:"red",success:"green"},i=(e.announcements||[]).filter(a=>a.active).length;content(`
+      ${sectionHero("Announcements","Site-wide banners for all users. Pause or activate instantly.")}
       <div class="ix-stat-grid">
-        ${sectionStat("Total", (data.announcements || []).length, true)}
-        ${sectionStat("Live", activeCount)}
-        ${sectionStat("Inactive", (data.announcements || []).length - activeCount)}
+        ${sectionStat("Total",(e.announcements||[]).length,!0)}
+        ${sectionStat("Live",i)}
+        ${sectionStat("Inactive",(e.announcements||[]).length-i)}
       </div>
       <div class="admin-ann-form">
         <div class="admin-ann-form-title">\u{1F4E2} Create New Announcement</div>
@@ -3155,809 +1110,187 @@ async function showAnnouncements() {
       </div>
 
       <div class="admin-ann-list" id="annList">
-        ${data.announcements.length ? data.announcements.map((a) => `
+        ${e.announcements.length?e.announcements.map(a=>`
           <div class="admin-ann-card">
             <div class="admin-ann-stripe admin-ann-stripe-${a.type}"></div>
             <div class="admin-ann-content">
               <div class="admin-ann-card-title">${esc(a.title)}</div>
               <div class="admin-ann-card-body">${esc(a.body)}</div>
               <div class="admin-ann-card-meta">
-                ${badge(a.active ? "Live" : "Inactive", a.active ? "green" : "gray")}
-                ${badge(a.type, typeColors[a.type] || "gray")}
-                <span>By ${esc(a.createdBy || "admin")}</span>
+                ${badge(a.active?"Live":"Inactive",a.active?"green":"gray")}
+                ${badge(a.type,t[a.type]||"gray")}
+                <span>By ${esc(a.createdBy||"admin")}</span>
                 <span>${fmtDate(a.createdAt)}</span>
-                ${a.expiresAt ? `<span>Expires ${fmtDate(a.expiresAt)}</span>` : ""}
+                ${a.expiresAt?`<span>Expires ${fmtDate(a.expiresAt)}</span>`:""}
               </div>
             </div>
             <div class="admin-ann-card-actions">
-              <button class="admin-btn admin-btn-ghost" data-toggle-ann="${esc(a.id)}" title="${a.active ? "Deactivate" : "Activate"}">
-                ${a.active ? "\u23F8 Pause" : "\u25B6 Activate"}
+              <button class="admin-btn admin-btn-ghost" data-toggle-ann="${esc(a.id)}" title="${a.active?"Deactivate":"Activate"}">
+                ${a.active?"\u23F8 Pause":"\u25B6 Activate"}
               </button>
               <button class="admin-btn admin-btn-danger" data-del-ann="${esc(a.id)}">\u{1F5D1}</button>
             </div>
           </div>
-        `).join("") : '<div class="admin-empty">No announcements yet. Create one above.</div>'}
+        `).join(""):'<div class="admin-empty">No announcements yet. Create one above.</div>'}
       </div>
-    `);
-    animateStatValues();
-    document.getElementById("annSubmit")?.addEventListener("click", async () => {
-      const title = document.getElementById("annTitle")?.value.trim();
-      const body = document.getElementById("annBody")?.value.trim();
-      const type = document.getElementById("annType")?.value;
-      const expiry = document.getElementById("annExpiry")?.value;
-      const errEl = document.getElementById("annFormError");
-      const btn = document.getElementById("annSubmit");
-      errEl.style.display = "none";
-      if (!title || !body) {
-        errEl.textContent = "Title and message are required.";
-        errEl.style.display = "block";
-        return;
-      }
-      btn.disabled = true;
-      btn.textContent = "Publishing\u2026";
-      try {
-        await api("/api/admin/announcements", {
-          method: "POST",
-          body: JSON.stringify({ title, body, type, expiresAt: expiry || null })
-        });
-        showAnnouncements();
-        notify("Announcement published.", "success");
-      } catch (err) {
-        errEl.textContent = err.message;
-        errEl.style.display = "block";
-        btn.disabled = false;
-        btn.textContent = "Publish Announcement";
-      }
-    });
-  } catch (err) {
-    content(`<div class="admin-error">${esc(err.message)}</div>`);
-  }
-}
-async function openViewListing(id) {
-  let l;
-  try {
-    l = await api(`/api/admin/listings/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  const comments = Array.isArray(l.comments) ? l.comments : [];
-  const tags = Array.isArray(l.tags) ? l.tags.filter(Boolean) : [];
-  const profile = listingViewProfile(l);
-  const omit = new Set(profile.omitFields || []);
-  const isPhotography = listingViewKind(l) === "photography";
-  const externalLink = safeHttpUrl(l.externalLink);
-  const priceValue = l.price ? `${esc(l.price)}${l.priceNote ? ` <span class="admin-view-note">(${esc(l.priceNote)})</span>` : ""}` : "";
-  const externalLinkValue = l.externalLink ? externalLink ? `<a href="${esc(externalLink)}" target="_blank" rel="noopener" class="admin-view-link">${esc(l.externalLink)}</a>` : esc(l.externalLink) : "";
-  const detailFields = [
-    listingField(profile.subcategoryLabel || "Specific type", readableLabel(l.subcategory)),
-    !omit.has("location") ? listingField(profile.locationLabel || "Location", l.location) : "",
-    !omit.has("locationType") ? listingField(profile.locationTypeLabel || "Location type", readableLabel(l.locationType)) : "",
-    !omit.has("price") ? listingField(profile.priceLabel || "Price / rate", priceValue, { raw: true }) : "",
-    !omit.has("availability") ? listingField(profile.availabilityLabel || "Availability", l.availability) : "",
-    !omit.has("contactEmail") ? listingField("Contact email", l.contactEmail) : "",
-    !omit.has("contactPhone") ? listingField("Contact phone", l.contactPhone) : "",
-    !omit.has("contactPreference") ? listingField(profile.contactPreferenceLabel || "Contact preference", readableLabel(l.contactPreference)) : "",
-    !omit.has("externalLink") ? listingField(profile.externalLinkLabel || "External link", externalLinkValue, { raw: true, full: true }) : "",
-    tags.length ? `
+    `),animateStatValues(),document.getElementById("annSubmit")?.addEventListener("click",async()=>{const a=document.getElementById("annTitle")?.value.trim(),n=document.getElementById("annBody")?.value.trim(),d=document.getElementById("annType")?.value,s=document.getElementById("annExpiry")?.value,o=document.getElementById("annFormError"),r=document.getElementById("annSubmit");if(o.style.display="none",!a||!n){o.textContent="Title and message are required.",o.style.display="block";return}r.disabled=!0,r.textContent="Publishing\u2026";try{await api("/api/admin/announcements",{method:"POST",body:JSON.stringify({title:a,body:n,type:d,expiresAt:s||null})}),showAnnouncements(),notify("Announcement published.","success")}catch(c){o.textContent=c.message,o.style.display="block",r.disabled=!1,r.textContent="Publish Announcement"}})}catch(e){content(`<div class="admin-error">${esc(e.message)}</div>`)}}async function openViewListing(e){let t;try{t=await api(`/api/admin/listings/${encodeURIComponent(e)}`)}catch(y){notify(y.message,"error");return}const i=Array.isArray(t.comments)?t.comments:[],a=Array.isArray(t.tags)?t.tags.filter(Boolean):[],n=listingViewProfile(t),d=new Set(n.omitFields||[]),s=listingViewKind(t)==="photography",o=safeHttpUrl(t.externalLink),r=t.price?`${esc(t.price)}${t.priceNote?` <span class="admin-view-note">(${esc(t.priceNote)})</span>`:""}`:"",c=t.externalLink?o?`<a href="${esc(o)}" target="_blank" rel="noopener" class="admin-view-link">${esc(t.externalLink)}</a>`:esc(t.externalLink):"",u=[listingField(n.subcategoryLabel||"Specific type",readableLabel(t.subcategory)),d.has("location")?"":listingField(n.locationLabel||"Location",t.location),d.has("locationType")?"":listingField(n.locationTypeLabel||"Location type",readableLabel(t.locationType)),d.has("price")?"":listingField(n.priceLabel||"Price / rate",r,{raw:!0}),d.has("availability")?"":listingField(n.availabilityLabel||"Availability",t.availability),d.has("contactEmail")?"":listingField("Contact email",t.contactEmail),d.has("contactPhone")?"":listingField("Contact phone",t.contactPhone),d.has("contactPreference")?"":listingField(n.contactPreferenceLabel||"Contact preference",readableLabel(t.contactPreference)),d.has("externalLink")?"":listingField(n.externalLinkLabel||"External link",c,{raw:!0,full:!0}),a.length?`
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Tags</label>
-        <div class="admin-view-val admin-listing-tags">${tags.map((t) => badge(t)).join("")}</div>
-      </div>` : "",
-    l.description ? `
+        <div class="admin-view-val admin-listing-tags">${a.map(y=>badge(y)).join("")}</div>
+      </div>`:"",t.description?`
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">${esc(profile.descriptionLabel || "Description")}</label>
-        <div class="admin-view-desc">${esc(l.description)}</div>
-      </div>` : "",
-    listingField("Listing ID", l.id),
-    listingField("Posted by user", l.userId),
-    l.updatedAt ? listingField("Last updated", fmtDate(l.updatedAt)) : ""
-  ].filter(Boolean).join("");
-  const commentHtml = comments.length ? comments.map((c) => `
+        <label class="admin-modal-label">${esc(n.descriptionLabel||"Description")}</label>
+        <div class="admin-view-desc">${esc(t.description)}</div>
+      </div>`:"",listingField("Listing ID",t.id),listingField("Posted by user",t.userId),t.updatedAt?listingField("Last updated",fmtDate(t.updatedAt)):""].filter(Boolean).join(""),l=i.length?i.map(y=>`
         <div class="admin-view-comment">
           <div class="admin-view-comment-head">
-            <strong>${esc(c.authorName || "\u2014")}</strong>
-            <span>${fmtTime(c.createdAt)}</span>
+            <strong>${esc(y.authorName||"\u2014")}</strong>
+            <span>${fmtTime(y.createdAt)}</span>
           </div>
-          <div class="admin-view-comment-body">${esc(c.body)}</div>
-        </div>`).join("") : '<div style="color:#9ca3af;font-size:13px;padding:6px 0">No comments yet.</div>';
-  openModal(esc(l.title), `
+          <div class="admin-view-comment-body">${esc(y.body)}</div>
+        </div>`).join(""):'<div style="color:#9ca3af;font-size:13px;padding:6px 0">No comments yet.</div>';openModal(esc(t.title),`
     <div class="admin-modal-meta" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      ${badge(readableLabel(l.category || "Listing"), "green")}
-      ${l.subcategory ? badge(readableLabel(l.subcategory), isPhotography ? "blue" : "gray") : ""}
-      <span>${esc(profile.kindLabel || "Listing")}</span>
-      ${!omit.has("location") && l.location ? `<span>\u{1F4CD} ${esc(l.location)}</span>` : ""}
-      ${!omit.has("locationType") && l.locationType ? `<span>${esc(readableLabel(l.locationType))}</span>` : ""}
-      <span style="margin-left:auto;font-size:12px">Posted ${fmtDate(l.createdAt)}</span>
+      ${badge(readableLabel(t.category||"Listing"),"green")}
+      ${t.subcategory?badge(readableLabel(t.subcategory),s?"blue":"gray"):""}
+      <span>${esc(n.kindLabel||"Listing")}</span>
+      ${!d.has("location")&&t.location?`<span>\u{1F4CD} ${esc(t.location)}</span>`:""}
+      ${!d.has("locationType")&&t.locationType?`<span>${esc(readableLabel(t.locationType))}</span>`:""}
+      <span style="margin-left:auto;font-size:12px">Posted ${fmtDate(t.createdAt)}</span>
     </div>
 
-    ${listingGallery(l.images, isPhotography)}
+    ${listingGallery(t.images,s)}
 
     <div class="admin-modal-grid" style="margin-top:12px">
-      ${detailFields}
+      ${u}
     </div>
 
     <div style="margin-top:16px">
-      <div class="admin-modal-label" style="margin-bottom:10px">Comments (${comments.length})</div>
-      <div class="admin-view-comments">${commentHtml}</div>
+      <div class="admin-modal-label" style="margin-bottom:10px">Comments (${i.length})</div>
+      <div class="admin-view-comments">${l}</div>
     </div>
 
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-listing="${esc(l.id)}">\u270F\uFE0F Edit Listing</button>
-      <button class="admin-btn admin-btn-danger" data-del-listing="${esc(l.id)}">\u{1F5D1} Delete</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-listing="${esc(t.id)}">\u270F\uFE0F Edit Listing</button>
+      <button class="admin-btn admin-btn-danger" data-del-listing="${esc(t.id)}">\u{1F5D1} Delete</button>
     </div>
-  `, null);
-}
-async function openViewDiscussion(id) {
-  let d;
-  try {
-    d = await api(`/api/admin/discussions/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  const commentHtml = (d.comments || []).length ? (d.comments || []).map((c) => `
+  `,null)}async function openViewDiscussion(e){let t;try{t=await api(`/api/admin/discussions/${encodeURIComponent(e)}`)}catch(a){notify(a.message,"error");return}const i=(t.comments||[]).length?(t.comments||[]).map(a=>`
         <div class="admin-view-comment">
           <div class="admin-view-comment-head">
-            <strong>${esc(c.authorName || "\u2014")}</strong>
-            <span>${fmtTime(c.createdAt)}</span>
+            <strong>${esc(a.authorName||"\u2014")}</strong>
+            <span>${fmtTime(a.createdAt)}</span>
           </div>
-          <div class="admin-view-comment-body">${esc(c.body)}</div>
-        </div>`).join("") : '<div style="color:#9ca3af;font-size:13px;padding:6px 0">No comments yet.</div>';
-  openModal(esc(d.title), `
+          <div class="admin-view-comment-body">${esc(a.body)}</div>
+        </div>`).join(""):'<div style="color:#9ca3af;font-size:13px;padding:6px 0">No comments yet.</div>';openModal(esc(t.title),`
     <div class="admin-modal-meta" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      ${badge(capitalize(d.category || ""), "blue")}
-      <span>by <strong>${esc(d.authorName)}</strong></span>
-      <span>\u{1F4AC} ${d.commentCount} comment${d.commentCount !== 1 ? "s" : ""}</span>
-      ${d.tags?.length ? d.tags.map((t) => badge(t)).join("") : ""}
-      <span style="margin-left:auto;font-size:12px">Posted ${fmtDate(d.createdAt)}</span>
+      ${badge(capitalize(t.category||""),"blue")}
+      <span>by <strong>${esc(t.authorName)}</strong></span>
+      <span>\u{1F4AC} ${t.commentCount} comment${t.commentCount!==1?"s":""}</span>
+      ${t.tags?.length?t.tags.map(a=>badge(a)).join(""):""}
+      <span style="margin-left:auto;font-size:12px">Posted ${fmtDate(t.createdAt)}</span>
     </div>
 
-    ${d.body ? `
+    ${t.body?`
       <div style="margin-top:14px">
         <div class="admin-modal-label" style="margin-bottom:8px">Body</div>
-        <div class="admin-view-desc">${esc(d.body)}</div>
-      </div>` : ""}
+        <div class="admin-view-desc">${esc(t.body)}</div>
+      </div>`:""}
 
     <div style="margin-top:16px">
-      <div class="admin-modal-label" style="margin-bottom:10px">Comments (${d.commentCount})</div>
-      <div class="admin-view-comments">${commentHtml}</div>
+      <div class="admin-modal-label" style="margin-bottom:10px">Comments (${t.commentCount})</div>
+      <div class="admin-view-comments">${i}</div>
     </div>
 
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-discussion="${esc(d.id)}">\u270F\uFE0F Edit Discussion</button>
-      <button class="admin-btn admin-btn-danger" data-del-discussion="${esc(d.id)}">\u{1F5D1} Delete</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-discussion="${esc(t.id)}">\u270F\uFE0F Edit Discussion</button>
+      <button class="admin-btn admin-btn-danger" data-del-discussion="${esc(t.id)}">\u{1F5D1} Delete</button>
     </div>
-  `, null);
-}
-async function openEditListing(id) {
-  let l;
-  try {
-    l = await api(`/api/admin/listings/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  openModal("Edit Listing", `
-    <div class="admin-modal-meta">Posted ${fmtDate(l.createdAt)}</div>
+  `,null)}async function openEditListing(e){let t;try{t=await api(`/api/admin/listings/${encodeURIComponent(e)}`)}catch(i){notify(i.message,"error");return}openModal("Edit Listing",`
+    <div class="admin-modal-meta">Posted ${fmtDate(t.createdAt)}</div>
     <div class="admin-modal-grid">
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Title</label>
-        <input class="admin-modal-input" id="mTitle" value="${esc(l.title || "")}">
+        <input class="admin-modal-input" id="mTitle" value="${esc(t.title||"")}">
       </div>
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Description</label>
-        <textarea class="admin-modal-textarea" id="mDesc" rows="5">${esc(l.description || "")}</textarea>
+        <textarea class="admin-modal-textarea" id="mDesc" rows="5">${esc(t.description||"")}</textarea>
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Category</label>
         <select class="admin-modal-select" id="mCat">
-          ${CATEGORIES.filter((c) => c).map((c) => `<option value="${c}"${c === l.category ? " selected" : ""}>${capitalize(c)}</option>`).join("")}
+          ${CATEGORIES.filter(i=>i).map(i=>`<option value="${i}"${i===t.category?" selected":""}>${capitalize(i)}</option>`).join("")}
         </select>
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Subcategory</label>
-        <input class="admin-modal-input" id="mSubcat" value="${esc(l.subcategory || "")}">
+        <input class="admin-modal-input" id="mSubcat" value="${esc(t.subcategory||"")}">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Location</label>
-        <input class="admin-modal-input" id="mLocation" value="${esc(l.location || "")}">
+        <input class="admin-modal-input" id="mLocation" value="${esc(t.location||"")}">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Price</label>
-        <input class="admin-modal-input" id="mPrice" value="${esc(l.price || "")}">
+        <input class="admin-modal-input" id="mPrice" value="${esc(t.price||"")}">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Price Note</label>
-        <input class="admin-modal-input" id="mPriceNote" value="${esc(l.priceNote || "")}">
+        <input class="admin-modal-input" id="mPriceNote" value="${esc(t.priceNote||"")}">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Availability</label>
-        <input class="admin-modal-input" id="mAvail" value="${esc(l.availability || "")}">
+        <input class="admin-modal-input" id="mAvail" value="${esc(t.availability||"")}">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Contact Phone</label>
-        <input class="admin-modal-input" id="mPhone" value="${esc(l.contactPhone || "")}">
+        <input class="admin-modal-input" id="mPhone" value="${esc(t.contactPhone||"")}">
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">External Link</label>
-        <input class="admin-modal-input" id="mLink" value="${esc(l.externalLink || "")}">
+        <input class="admin-modal-input" id="mLink" value="${esc(t.externalLink||"")}">
       </div>
     </div>
-  `, async () => {
-    await api(`/api/admin/listings/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        title: document.getElementById("mTitle").value.trim(),
-        description: document.getElementById("mDesc").value.trim(),
-        category: document.getElementById("mCat").value,
-        subcategory: document.getElementById("mSubcat").value.trim(),
-        location: document.getElementById("mLocation").value.trim(),
-        price: document.getElementById("mPrice").value.trim(),
-        priceNote: document.getElementById("mPriceNote").value.trim(),
-        availability: document.getElementById("mAvail").value.trim(),
-        contactPhone: document.getElementById("mPhone").value.trim(),
-        externalLink: document.getElementById("mLink").value.trim()
-      })
-    });
-    showListings(1);
-  });
-}
-function discussionFormHtml(d = {}) {
-  return `
-    ${d.id ? `<div class="admin-modal-meta">By ${esc(d.authorName)} \xB7 ${d.commentCount} comment${d.commentCount !== 1 ? "s" : ""} \xB7 ${fmtDate(d.createdAt)}</div>` : ""}
+  `,async()=>{await api(`/api/admin/listings/${encodeURIComponent(e)}`,{method:"PUT",body:JSON.stringify({title:document.getElementById("mTitle").value.trim(),description:document.getElementById("mDesc").value.trim(),category:document.getElementById("mCat").value,subcategory:document.getElementById("mSubcat").value.trim(),location:document.getElementById("mLocation").value.trim(),price:document.getElementById("mPrice").value.trim(),priceNote:document.getElementById("mPriceNote").value.trim(),availability:document.getElementById("mAvail").value.trim(),contactPhone:document.getElementById("mPhone").value.trim(),externalLink:document.getElementById("mLink").value.trim()})}),showListings(1)})}function discussionFormHtml(e={}){return`
+    ${e.id?`<div class="admin-modal-meta">By ${esc(e.authorName)} \xB7 ${e.commentCount} comment${e.commentCount!==1?"s":""} \xB7 ${fmtDate(e.createdAt)}</div>`:""}
     <div class="admin-modal-grid">
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Title</label>
-        <input class="admin-modal-input" id="dTitle" maxlength="200" value="${esc(d.title || "")}">
+        <input class="admin-modal-input" id="dTitle" maxlength="200" value="${esc(e.title||"")}">
       </div>
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Body</label>
-        <textarea class="admin-modal-textarea" id="dBody" rows="8">${esc(d.body || "")}</textarea>
+        <textarea class="admin-modal-textarea" id="dBody" rows="8">${esc(e.body||"")}</textarea>
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Category</label>
         <select class="admin-modal-select" id="dCat">
-          ${discussionCategoryOptions(d.category || "general")}
+          ${discussionCategoryOptions(e.category||"general")}
         </select>
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label">Tags (comma-separated)</label>
-        <input class="admin-modal-input" id="dTags" value="${esc((d.tags || []).join(", "))}" placeholder="visa, boston, housing">
+        <input class="admin-modal-input" id="dTags" value="${esc((e.tags||[]).join(", "))}" placeholder="visa, boston, housing">
       </div>
     </div>
-  `;
-}
-function collectDiscussionPayload() {
-  return {
-    title: document.getElementById("dTitle").value.trim(),
-    body: document.getElementById("dBody").value.trim(),
-    category: document.getElementById("dCat").value,
-    tags: document.getElementById("dTags").value.split(",").map((t) => t.trim()).filter(Boolean)
-  };
-}
-async function openCreateDiscussion() {
-  openModal("Create Discussion", discussionFormHtml(), async () => {
-    await api("/api/admin/discussions", {
-      method: "POST",
-      body: JSON.stringify(collectDiscussionPayload())
-    });
-    showDiscussions(1);
-  });
-}
-async function openEditDiscussion(id) {
-  let d;
-  try {
-    d = await api(`/api/admin/discussions/${encodeURIComponent(id)}`);
-  } catch (err) {
-    notify(err.message, "error");
-    return;
-  }
-  openModal("Edit Discussion", discussionFormHtml(d), async () => {
-    await api(`/api/admin/discussions/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify(collectDiscussionPayload())
-    });
-    showDiscussions(1);
-  });
-}
-function openModal(title, bodyHtml, onSave) {
-  closeModal();
-  const overlay = document.createElement("div");
-  overlay.id = "adminModalOverlay";
-  overlay.className = "admin-modal-overlay";
-  const hasActions = onSave !== null;
-  overlay.innerHTML = `
+  `}function collectDiscussionPayload(){return{title:document.getElementById("dTitle").value.trim(),body:document.getElementById("dBody").value.trim(),category:document.getElementById("dCat").value,tags:document.getElementById("dTags").value.split(",").map(e=>e.trim()).filter(Boolean)}}async function openCreateDiscussion(){openModal("Create Discussion",discussionFormHtml(),async()=>{await api("/api/admin/discussions",{method:"POST",body:JSON.stringify(collectDiscussionPayload())}),showDiscussions(1)})}async function openEditDiscussion(e){let t;try{t=await api(`/api/admin/discussions/${encodeURIComponent(e)}`)}catch(i){notify(i.message,"error");return}openModal("Edit Discussion",discussionFormHtml(t),async()=>{await api(`/api/admin/discussions/${encodeURIComponent(e)}`,{method:"PUT",body:JSON.stringify(collectDiscussionPayload())}),showDiscussions(1)})}function openModal(e,t,i){closeModal();const a=document.createElement("div");a.id="adminModalOverlay",a.className="admin-modal-overlay";const n=i!==null;a.innerHTML=`
     <div class="admin-modal" role="dialog" aria-modal="true">
       <div class="admin-modal-head">
-        <div class="admin-modal-title">${title}</div>
+        <div class="admin-modal-title">${e}</div>
         <button class="admin-modal-close" id="adminModalClose">\xD7</button>
       </div>
       <div class="admin-modal-error" id="adminModalError"></div>
-      ${bodyHtml}
-      ${hasActions ? `<div class="admin-modal-actions">
+      ${t}
+      ${n?`<div class="admin-modal-actions">
         <button class="admin-btn admin-btn-ghost" id="adminModalCancel">Cancel</button>
         <button class="admin-btn" id="adminModalSave" style="background:#E63946;color:#fff;border-color:#E63946;padding:8px 20px;font-size:13px">Save Changes</button>
-      </div>` : `<div class="admin-modal-actions">
+      </div>`:`<div class="admin-modal-actions">
         <button class="admin-btn admin-btn-ghost" id="adminModalCancel">Close</button>
       </div>`}
     </div>
-  `;
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => overlay.classList.add("show"));
-  document.getElementById("adminModalClose").addEventListener("click", closeModal);
-  document.getElementById("adminModalCancel").addEventListener("click", closeModal);
-  if (onSave) {
-    document.getElementById("adminModalSave").addEventListener("click", async () => {
-      const errEl = document.getElementById("adminModalError");
-      const btn = document.getElementById("adminModalSave");
-      errEl.style.display = "none";
-      btn.disabled = true;
-      btn.textContent = "Saving\u2026";
-      try {
-        await onSave();
-        closeModal();
-        notify("Changes saved successfully.", "success");
-      } catch (err) {
-        errEl.textContent = err.message;
-        errEl.style.display = "block";
-        btn.disabled = false;
-        btn.textContent = "Save Changes";
-        notify(err.message, "error");
-      }
-    });
-  }
-}
-function closeModal() {
-  document.getElementById("adminModalOverlay")?.remove();
-}
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeModal();
-  if (e.key === "/" && !isTypingTarget(e.target) && !document.getElementById("adminModalOverlay")) {
-    const search = document.querySelector(".admin-search");
-    if (search) {
-      e.preventDefault();
-      search.focus();
-      search.select?.();
-    }
-  }
-});
-document.addEventListener("click", async (e) => {
-  const navLink = e.target.closest("[data-view]");
-  if (navLink && navLink.closest(".admin-nav")) {
-    navigate(navLink.dataset.view);
-    return;
-  }
-  if (e.target.id === "adminModalOverlay") {
-    closeModal();
-    return;
-  }
-  const newsFormat = e.target.closest("[data-news-format]");
-  if (newsFormat) {
-    if (window.BiscoonNewsEditor?.runCommand?.(newsFormat.dataset.newsFormat || "")) {
-      e.preventDefault();
-      return;
-    }
-    return;
-  }
-  const insertNewsMedia = e.target.closest("[data-insert-news-media]");
-  if (insertNewsMedia) {
-    if (window.BiscoonNewsEditor?.insertMedia?.(insertNewsMedia.dataset.insertNewsMedia)) return;
-    insertIntoNewsBody(`
+  `,document.body.appendChild(a),requestAnimationFrame(()=>a.classList.add("show")),document.getElementById("adminModalClose").addEventListener("click",closeModal),document.getElementById("adminModalCancel").addEventListener("click",closeModal),i&&document.getElementById("adminModalSave").addEventListener("click",async()=>{const d=document.getElementById("adminModalError"),s=document.getElementById("adminModalSave");d.style.display="none",s.disabled=!0,s.textContent="Saving\u2026";try{await i(),closeModal(),notify("Changes saved successfully.","success")}catch(o){d.textContent=o.message,d.style.display="block",s.disabled=!1,s.textContent="Save Changes",notify(o.message,"error")}})}function closeModal(){document.getElementById("adminModalOverlay")?.remove()}document.addEventListener("keydown",e=>{if(e.key==="Escape"&&closeModal(),e.key==="/"&&!isTypingTarget(e.target)&&!document.getElementById("adminModalOverlay")){const t=document.querySelector(".admin-search");t&&(e.preventDefault(),t.focus(),t.select?.())}}),document.addEventListener("click",async e=>{const t=e.target.closest("[data-view]");if(t&&t.closest(".admin-nav")){navigate(t.dataset.view);return}if(e.target.id==="adminModalOverlay"){closeModal();return}const i=e.target.closest("[data-news-format]");if(i){if(window.BiscoonNewsEditor?.runCommand?.(i.dataset.newsFormat||"")){e.preventDefault();return}return}const a=e.target.closest("[data-insert-news-media]");if(a){if(window.BiscoonNewsEditor?.insertMedia?.(a.dataset.insertNewsMedia))return;insertIntoNewsBody(`
 
-[[media:${insertNewsMedia.dataset.insertNewsMedia}]]
+[[media:${a.dataset.insertNewsMedia}]]
 
-`);
-    return;
-  }
-  const removeNewsMedia = e.target.closest("[data-remove-news-media]");
-  if (removeNewsMedia) {
-    const id = removeNewsMedia.dataset.removeNewsMedia;
-    _newsMediaDraft = _newsMediaDraft.filter((item) => item.id !== id);
-    const body = document.getElementById("newsBody");
-    if (body) body.value = body.value.replace(new RegExp(`\\n?\\n?\\[\\[media:${id}\\]\\]\\n?\\n?`, "g"), "\n\n");
-    renderNewsMediaLibrary();
-    window.BiscoonNewsEditor?.mount?.({ element: "#newsRichEditor", textarea: "#newsBody", media: () => _newsMediaDraft });
-    return;
-  }
-  const pageBtn = e.target.closest("[data-page][data-pager-view]");
-  if (pageBtn) {
-    const v = pageBtn.dataset.pagerView;
-    _s[v] && (_s[v].page = parseInt(pageBtn.dataset.page));
-    ({
-      users: showUsers,
-      listings: showListings,
-      events: showEvents,
-      news: showNews,
-      discussions: showDiscussions,
-      comments: showComments,
-      reports: showReports,
-      audit: showAuditLogs
-    })[v]?.();
-    return;
-  }
-  const commentTab = e.target.closest("[data-comment-type]");
-  if (commentTab) {
-    _s.comments.type = commentTab.dataset.commentType;
-    showComments(1);
-    return;
-  }
-  const reportTab = e.target.closest("[data-report-status]");
-  if (reportTab) {
-    _s.reports.status = reportTab.dataset.reportStatus;
-    showReports(1);
-    return;
-  }
-  const userKindTab = e.target.closest("[data-user-kind]");
-  if (userKindTab && userKindTab.closest(".admin-tabs")) {
-    _s.users.kind = userKindTab.dataset.userKind;
-    _s.users.page = 1;
-    showUsers(1);
-    return;
-  }
-  if (e.target.closest("[data-create-staff]")) {
-    openCreateStaffModal();
-    return;
-  }
-  const editStaff = e.target.closest("[data-edit-staff]");
-  if (editStaff) {
-    openEditStaffModal(editStaff.dataset.editStaff);
-    return;
-  }
-  const delStaff = e.target.closest("[data-del-staff]");
-  if (delStaff) {
-    if (!await confirmAction(`Delete admin user "${delStaff.dataset.delName || "this user"}"?`, {
-      title: "Delete admin user",
-      confirmText: "Delete user",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/staff/${encodeURIComponent(delStaff.dataset.delStaff)}`, { method: "DELETE" });
-      closeModal();
-      showUsers(1);
-      notify("Admin user deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  if (e.target.closest("[data-create-event]")) {
-    openCreateEvent();
-    return;
-  }
-  const editEvent = e.target.closest("[data-edit-event]");
-  if (editEvent) {
-    openEditEvent(editEvent.dataset.editEvent);
-    return;
-  }
-  const delEvent = e.target.closest("[data-del-event]");
-  if (delEvent) {
-    if (!await confirmAction(`Delete "${delEvent.dataset.delTitle || "this event"}"?`, {
-      title: "Delete event",
-      confirmText: "Delete event",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/listings/${encodeURIComponent(delEvent.dataset.delEvent)}`, { method: "DELETE" });
-      closeModal();
-      showEvents(1);
-      notify("Event deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  if (e.target.closest("[data-create-news]")) {
-    openNewsEditor();
-    return;
-  }
-  if (e.target.closest("[data-create-discussion]")) {
-    openCreateDiscussion();
-    return;
-  }
-  const viewNews = e.target.closest("[data-view-news]");
-  if (viewNews) {
-    openViewNews(viewNews.dataset.viewNews);
-    return;
-  }
-  const editNews = e.target.closest("[data-edit-news]");
-  if (editNews) {
-    openNewsEditor(editNews.dataset.editNews);
-    return;
-  }
-  const toggleFeatured = e.target.closest("[data-toggle-news-featured]");
-  if (toggleFeatured) {
-    e.stopPropagation();
-    const id = toggleFeatured.dataset.toggleNewsFeatured;
-    const next = toggleFeatured.dataset.featured !== "1";
-    try {
-      await api(`/api/admin/news/${encodeURIComponent(id)}/featured`, {
-        method: "PUT",
-        body: JSON.stringify({ featured: next })
-      });
-      showNews();
-      notify(next ? "Story featured." : "Story unfeatured.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const toggleStatus = e.target.closest("[data-toggle-news-status]");
-  if (toggleStatus) {
-    e.stopPropagation();
-    const id = toggleStatus.dataset.toggleNewsStatus;
-    const next = toggleStatus.dataset.status === "published" ? "draft" : "published";
-    try {
-      await api(`/api/admin/news/${encodeURIComponent(id)}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: next })
-      });
-      showNews();
-      notify(next === "published" ? "Story published." : "Story moved to draft.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const delNews = e.target.closest("[data-del-news]");
-  if (delNews) {
-    if (!await confirmAction(`Delete "${delNews.dataset.delTitle || "this story"}"?`, {
-      title: "Delete news story",
-      confirmText: "Delete story",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/news/${encodeURIComponent(delNews.dataset.delNews)}`, { method: "DELETE" });
-      closeModal();
-      showNews(1);
-      notify("News story deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const viewUser = e.target.closest("[data-view-user]");
-  if (viewUser) {
-    const d = viewUser.dataset;
-    openUserDetail(d.viewUser, d.viewUserName, d.viewUserEmail, d.viewUserRole, d.viewUserJoined, d.viewUserListings);
-    return;
-  }
-  const viewListing = e.target.closest("[data-view-listing]");
-  if (viewListing) {
-    openViewListing(viewListing.dataset.viewListing);
-    return;
-  }
-  const editListing = e.target.closest("[data-edit-listing]");
-  if (editListing) {
-    openEditListing(editListing.dataset.editListing);
-    return;
-  }
-  const viewDiscussion = e.target.closest("[data-view-discussion]");
-  if (viewDiscussion) {
-    openViewDiscussion(viewDiscussion.dataset.viewDiscussion);
-    return;
-  }
-  const editDiscussion = e.target.closest("[data-edit-discussion]");
-  if (editDiscussion) {
-    openEditDiscussion(editDiscussion.dataset.editDiscussion);
-    return;
-  }
-  const delUser = e.target.closest("[data-del-user]");
-  if (delUser) {
-    if (!await confirmAction(`Delete "${delUser.dataset.delName || "this user"}"? Their listings will also be removed.`, {
-      title: "Delete regular user",
-      confirmText: "Delete user",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/users/${encodeURIComponent(delUser.dataset.delUser)}`, { method: "DELETE" });
-      closeModal();
-      showUsers(1);
-      notify("Regular user deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const delListing = e.target.closest("[data-del-listing]");
-  if (delListing) {
-    if (!await confirmAction("Delete this listing?", {
-      title: "Delete listing",
-      confirmText: "Delete listing",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/listings/${encodeURIComponent(delListing.dataset.delListing)}`, { method: "DELETE" });
-      closeModal();
-      showListings(1);
-      notify("Listing deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const delDiscussion = e.target.closest("[data-del-discussion]");
-  if (delDiscussion) {
-    if (!await confirmAction("Delete this discussion and all its comments?", {
-      title: "Delete discussion",
-      confirmText: "Delete discussion",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/discussions/${encodeURIComponent(delDiscussion.dataset.delDiscussion)}`, { method: "DELETE" });
-      closeModal();
-      showDiscussions(1);
-      notify("Discussion deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const delComment = e.target.closest("[data-del-comment]");
-  if (delComment) {
-    if (!await confirmAction("Remove this comment?", {
-      title: "Remove comment",
-      confirmText: "Remove comment",
-      tone: "danger"
-    })) return;
-    const { commentId, parentId, parentType } = delComment.dataset;
-    try {
-      await api(`/api/admin/${parentType}s/${encodeURIComponent(parentId)}/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" });
-      showComments(1);
-      notify("Comment removed.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const restoreBtn = e.target.closest("[data-restore-type]");
-  if (restoreBtn) {
-    const type = restoreBtn.dataset.restoreType;
-    const id = restoreBtn.dataset.restoreId;
-    if (!await confirmAction(`Restore this ${type}? It will become visible again.`, {
-      title: "Restore item",
-      confirmText: "Restore",
-      tone: "primary"
-    })) return;
-    try {
-      await api(`/api/admin/trash/${encodeURIComponent(type)}/${encodeURIComponent(id)}/restore`, { method: "PUT" });
-      showTrash();
-      notify(`${capitalize(type)} restored successfully.`, "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const viewSpot = e.target.closest("[data-view-spot]");
-  if (viewSpot) {
-    openViewSpotlight(viewSpot.dataset.viewSpot);
-    return;
-  }
-  const editSpot = e.target.closest("[data-edit-spot]");
-  if (editSpot) {
-    openEditSpotlight(editSpot.dataset.editSpot);
-    return;
-  }
-  const toggleSpot = e.target.closest("[data-toggle-spot]");
-  if (toggleSpot) {
-    try {
-      await api(`/api/admin/spotlights/${encodeURIComponent(toggleSpot.dataset.toggleSpot)}/toggle`, { method: "PUT" });
-      showSpotlights();
-      notify("Spotlight updated \u2014 Live means it shows on the homepage.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const moveSpot = e.target.closest("[data-move-spot]");
-  if (moveSpot) {
-    const id = moveSpot.dataset.moveSpot;
-    const dir = Number(moveSpot.dataset.moveDir || 0);
-    try {
-      const data = await api("/api/admin/spotlights");
-      const items = [...data.spotlights || []].sort((a2, b2) => (a2.order ?? 0) - (b2.order ?? 0));
-      const idx = items.findIndex((s) => s.id === id);
-      const swap = idx + dir;
-      if (idx < 0 || swap < 0 || swap >= items.length) return;
-      const a = items[idx];
-      const b = items[swap];
-      const orderA = a.order ?? idx;
-      const orderB = b.order ?? swap;
-      await api(`/api/admin/spotlights/${encodeURIComponent(a.id)}`, { method: "PUT", body: JSON.stringify({ order: orderB }) });
-      await api(`/api/admin/spotlights/${encodeURIComponent(b.id)}`, { method: "PUT", body: JSON.stringify({ order: orderA }) });
-      showSpotlights();
-      notify("Carousel order updated.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const delSpot = e.target.closest("[data-del-spot]");
-  if (delSpot) {
-    if (!await confirmAction("Delete this spotlight?", {
-      title: "Delete spotlight",
-      confirmText: "Delete spotlight",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/spotlights/${encodeURIComponent(delSpot.dataset.delSpot)}`, { method: "DELETE" });
-      showSpotlights();
-      notify("Spotlight deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const toggleAnn = e.target.closest("[data-toggle-ann]");
-  if (toggleAnn) {
-    try {
-      await api(`/api/admin/announcements/${encodeURIComponent(toggleAnn.dataset.toggleAnn)}/toggle`, { method: "PUT" });
-      showAnnouncements();
-      notify("Announcement status updated.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const delAnn = e.target.closest("[data-del-ann]");
-  if (delAnn) {
-    if (!await confirmAction("Delete this announcement?", {
-      title: "Delete announcement",
-      confirmText: "Delete announcement",
-      tone: "danger"
-    })) return;
-    try {
-      await api(`/api/admin/announcements/${encodeURIComponent(delAnn.dataset.delAnn)}`, { method: "DELETE" });
-      showAnnouncements();
-      notify("Announcement deleted.", "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  if (e.target.closest("#adminLogout")) {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    localStorage.removeItem(ADMIN_LAST_ACTIVITY_KEY);
-    window.location.href = "login.html";
-  }
-});
-document.addEventListener("change", async (e) => {
-  if (e.target.closest("#newsMediaFiles")) {
-    const files = Array.from(e.target.files || []);
-    try {
-      const additions = await Promise.all(files.map(async (file, index) => ({
-        id: `media-${Date.now()}-${index}`,
-        type: newsMediaTypeFromFile(file),
-        url: await readFileAsDataUrl(file),
-        caption: "",
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      })));
-      _newsMediaDraft.push(...additions);
-      renderNewsMediaLibrary();
-      e.target.value = "";
-      notify(`${additions.length} media item${additions.length !== 1 ? "s" : ""} added.`, "success");
-    } catch (err) {
-      notify(err.message, "error");
-    }
-    return;
-  }
-  const reportStatus = e.target.closest("[data-report-status-update]");
-  if (!reportStatus) return;
-  try {
-    await api(`/api/admin/reports/${encodeURIComponent(reportStatus.dataset.reportStatusUpdate)}/status`, {
-      method: "PUT",
-      body: JSON.stringify({ status: reportStatus.value })
-    });
-    showReports(1);
-    notify("Report status updated.", "success");
-  } catch (err) {
-    notify(err.message, "error");
-  }
-});
-document.addEventListener("input", (e) => {
-  const captionInput = e.target.closest("[data-news-media-caption]");
-  if (!captionInput) return;
-  const media = _newsMediaDraft.find((item) => item.id === captionInput.dataset.newsMediaCaption);
-  if (media) media.caption = captionInput.value.trim();
-});
+`);return}const n=e.target.closest("[data-remove-news-media]");if(n){const m=n.dataset.removeNewsMedia;_newsMediaDraft=_newsMediaDraft.filter(I=>I.id!==m);const T=document.getElementById("newsBody");T&&(T.value=T.value.replace(new RegExp(`\\n?\\n?\\[\\[media:${m}\\]\\]\\n?\\n?`,"g"),`
+
+`)),renderNewsMediaLibrary(),window.BiscoonNewsEditor?.mount?.({element:"#newsRichEditor",textarea:"#newsBody",media:()=>_newsMediaDraft});return}const d=e.target.closest("[data-page][data-pager-view]");if(d){const m=d.dataset.pagerView;_s[m]&&(_s[m].page=parseInt(d.dataset.page)),{users:showUsers,listings:showListings,events:showEvents,news:showNews,discussions:showDiscussions,comments:showComments,reports:showReports,audit:showAuditLogs}[m]?.();return}const s=e.target.closest("[data-comment-type]");if(s){_s.comments.type=s.dataset.commentType,showComments(1);return}const o=e.target.closest("[data-report-status]");if(o){_s.reports.status=o.dataset.reportStatus,showReports(1);return}const r=e.target.closest("[data-user-kind]");if(r&&r.closest(".admin-tabs")){_s.users.kind=r.dataset.userKind,_s.users.page=1,showUsers(1);return}if(e.target.closest("[data-create-staff]")){openCreateStaffModal();return}const c=e.target.closest("[data-edit-staff]");if(c){openEditStaffModal(c.dataset.editStaff);return}const u=e.target.closest("[data-del-staff]");if(u){if(!await confirmAction(`Delete admin user "${u.dataset.delName||"this user"}"?`,{title:"Delete admin user",confirmText:"Delete user",tone:"danger"}))return;try{await api(`/api/admin/staff/${encodeURIComponent(u.dataset.delStaff)}`,{method:"DELETE"}),closeModal(),showUsers(1),notify("Admin user deleted.","success")}catch(m){notify(m.message,"error")}return}if(e.target.closest("[data-create-event]")){openCreateEvent();return}const l=e.target.closest("[data-edit-event]");if(l){openEditEvent(l.dataset.editEvent);return}const y=e.target.closest("[data-del-event]");if(y){if(!await confirmAction(`Delete "${y.dataset.delTitle||"this event"}"?`,{title:"Delete event",confirmText:"Delete event",tone:"danger"}))return;try{await api(`/api/admin/listings/${encodeURIComponent(y.dataset.delEvent)}`,{method:"DELETE"}),closeModal(),showEvents(1),notify("Event deleted.","success")}catch(m){notify(m.message,"error")}return}if(e.target.closest("[data-create-news]")){openNewsEditor();return}if(e.target.closest("[data-create-discussion]")){openCreateDiscussion();return}const E=e.target.closest("[data-view-news]");if(E){openViewNews(E.dataset.viewNews);return}const S=e.target.closest("[data-edit-news]");if(S){openNewsEditor(S.dataset.editNews);return}const x=e.target.closest("[data-toggle-news-featured]");if(x){e.stopPropagation();const m=x.dataset.toggleNewsFeatured,T=x.dataset.featured!=="1";try{await api(`/api/admin/news/${encodeURIComponent(m)}/featured`,{method:"PUT",body:JSON.stringify({featured:T})}),showNews(),notify(T?"Story featured.":"Story unfeatured.","success")}catch(I){notify(I.message,"error")}return}const M=e.target.closest("[data-toggle-news-status]");if(M){e.stopPropagation();const m=M.dataset.toggleNewsStatus,T=M.dataset.status==="published"?"draft":"published";try{await api(`/api/admin/news/${encodeURIComponent(m)}/status`,{method:"PUT",body:JSON.stringify({status:T})}),showNews(),notify(T==="published"?"Story published.":"Story moved to draft.","success")}catch(I){notify(I.message,"error")}return}const C=e.target.closest("[data-del-news]");if(C){if(!await confirmAction(`Delete "${C.dataset.delTitle||"this story"}"?`,{title:"Delete news story",confirmText:"Delete story",tone:"danger"}))return;try{await api(`/api/admin/news/${encodeURIComponent(C.dataset.delNews)}`,{method:"DELETE"}),closeModal(),showNews(1),notify("News story deleted.","success")}catch(m){notify(m.message,"error")}return}const A=e.target.closest("[data-view-user]");if(A){const m=A.dataset;openUserDetail(m.viewUser,m.viewUserName,m.viewUserEmail,m.viewUserRole,m.viewUserJoined,m.viewUserListings);return}const g=e.target.closest("[data-view-listing]");if(g){openViewListing(g.dataset.viewListing);return}const h=e.target.closest("[data-edit-listing]");if(h){openEditListing(h.dataset.editListing);return}const f=e.target.closest("[data-view-discussion]");if(f){openViewDiscussion(f.dataset.viewDiscussion);return}const L=e.target.closest("[data-edit-discussion]");if(L){openEditDiscussion(L.dataset.editDiscussion);return}const p=e.target.closest("[data-del-user]");if(p){if(!await confirmAction(`Delete "${p.dataset.delName||"this user"}"? Their listings will also be removed.`,{title:"Delete regular user",confirmText:"Delete user",tone:"danger"}))return;try{await api(`/api/admin/users/${encodeURIComponent(p.dataset.delUser)}`,{method:"DELETE"}),closeModal(),showUsers(1),notify("Regular user deleted.","success")}catch(m){notify(m.message,"error")}return}const b=e.target.closest("[data-del-listing]");if(b){if(!await confirmAction("Delete this listing?",{title:"Delete listing",confirmText:"Delete listing",tone:"danger"}))return;try{await api(`/api/admin/listings/${encodeURIComponent(b.dataset.delListing)}`,{method:"DELETE"}),closeModal(),showListings(1),notify("Listing deleted.","success")}catch(m){notify(m.message,"error")}return}const v=e.target.closest("[data-del-discussion]");if(v){if(!await confirmAction("Delete this discussion and all its comments?",{title:"Delete discussion",confirmText:"Delete discussion",tone:"danger"}))return;try{await api(`/api/admin/discussions/${encodeURIComponent(v.dataset.delDiscussion)}`,{method:"DELETE"}),closeModal(),showDiscussions(1),notify("Discussion deleted.","success")}catch(m){notify(m.message,"error")}return}const w=e.target.closest("[data-del-comment]");if(w){if(!await confirmAction("Remove this comment?",{title:"Remove comment",confirmText:"Remove comment",tone:"danger"}))return;const{commentId:m,parentId:T,parentType:I}=w.dataset;try{await api(`/api/admin/${I}s/${encodeURIComponent(T)}/comments/${encodeURIComponent(m)}`,{method:"DELETE"}),showComments(1),notify("Comment removed.","success")}catch(H){notify(H.message,"error")}return}const $=e.target.closest("[data-restore-type]");if($){const m=$.dataset.restoreType,T=$.dataset.restoreId;if(!await confirmAction(`Restore this ${m}? It will become visible again.`,{title:"Restore item",confirmText:"Restore",tone:"primary"}))return;try{await api(`/api/admin/trash/${encodeURIComponent(m)}/${encodeURIComponent(T)}/restore`,{method:"PUT"}),showTrash(),notify(`${capitalize(m)} restored successfully.`,"success")}catch(I){notify(I.message,"error")}return}const N=e.target.closest("[data-view-spot]");if(N){openViewSpotlight(N.dataset.viewSpot);return}const D=e.target.closest("[data-edit-spot]");if(D){openEditSpotlight(D.dataset.editSpot);return}const R=e.target.closest("[data-toggle-spot]");if(R){try{await api(`/api/admin/spotlights/${encodeURIComponent(R.dataset.toggleSpot)}/toggle`,{method:"PUT"}),showSpotlights(),notify("Spotlight updated \u2014 Live means it shows on the homepage.","success")}catch(m){notify(m.message,"error")}return}const P=e.target.closest("[data-move-spot]");if(P){const m=P.dataset.moveSpot,T=Number(P.dataset.moveDir||0);try{const H=[...(await api("/api/admin/spotlights")).spotlights||[]].sort((U,W)=>(U.order??0)-(W.order??0)),B=H.findIndex(U=>U.id===m),k=B+T;if(B<0||k<0||k>=H.length)return;const q=H[B],V=H[k],_=q.order??B,z=V.order??k;await api(`/api/admin/spotlights/${encodeURIComponent(q.id)}`,{method:"PUT",body:JSON.stringify({order:z})}),await api(`/api/admin/spotlights/${encodeURIComponent(V.id)}`,{method:"PUT",body:JSON.stringify({order:_})}),showSpotlights(),notify("Carousel order updated.","success")}catch(I){notify(I.message,"error")}return}const F=e.target.closest("[data-del-spot]");if(F){if(!await confirmAction("Delete this spotlight?",{title:"Delete spotlight",confirmText:"Delete spotlight",tone:"danger"}))return;try{await api(`/api/admin/spotlights/${encodeURIComponent(F.dataset.delSpot)}`,{method:"DELETE"}),showSpotlights(),notify("Spotlight deleted.","success")}catch(m){notify(m.message,"error")}return}const O=e.target.closest("[data-toggle-ann]");if(O){try{await api(`/api/admin/announcements/${encodeURIComponent(O.dataset.toggleAnn)}/toggle`,{method:"PUT"}),showAnnouncements(),notify("Announcement status updated.","success")}catch(m){notify(m.message,"error")}return}const j=e.target.closest("[data-del-ann]");if(j){if(!await confirmAction("Delete this announcement?",{title:"Delete announcement",confirmText:"Delete announcement",tone:"danger"}))return;try{await api(`/api/admin/announcements/${encodeURIComponent(j.dataset.delAnn)}`,{method:"DELETE"}),showAnnouncements(),notify("Announcement deleted.","success")}catch(m){notify(m.message,"error")}return}e.target.closest("#adminLogout")&&(localStorage.removeItem(ADMIN_TOKEN_KEY),localStorage.removeItem(ADMIN_SESSION_KEY),localStorage.removeItem(ADMIN_LAST_ACTIVITY_KEY),window.location.href="login.html")}),document.addEventListener("change",async e=>{if(e.target.closest("#newsMediaFiles")){const i=Array.from(e.target.files||[]);try{const a=await Promise.all(i.map(async(n,d)=>({id:`media-${Date.now()}-${d}`,type:newsMediaTypeFromFile(n),url:await readFileAsDataUrl(n),caption:"",createdAt:new Date().toISOString()})));_newsMediaDraft.push(...a),renderNewsMediaLibrary(),e.target.value="",notify(`${a.length} media item${a.length!==1?"s":""} added.`,"success")}catch(a){notify(a.message,"error")}return}const t=e.target.closest("[data-report-status-update]");if(t)try{await api(`/api/admin/reports/${encodeURIComponent(t.dataset.reportStatusUpdate)}/status`,{method:"PUT",body:JSON.stringify({status:t.value})}),showReports(1),notify("Report status updated.","success")}catch(i){notify(i.message,"error")}}),document.addEventListener("input",e=>{const t=e.target.closest("[data-news-media-caption]");if(!t)return;const i=_newsMediaDraft.find(a=>a.id===t.dataset.newsMediaCaption);i&&(i.caption=t.value.trim())});

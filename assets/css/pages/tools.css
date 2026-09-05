@@ -4,6 +4,11 @@
 .tool-lead { font-size: 17px; line-height: 1.55; color: var(--gray-600); margin-bottom: 24px; max-width: 62ch; }
 .tool-label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
 .tool-note { font-size: 14px; color: var(--gray-500); margin-top: 12px; line-height: 1.5; }
+.tool-page h2 { font-size: 20px; font-weight: 700; color: var(--navy); margin: 28px 0 10px; }
+.tool-page p { font-size: 15px; line-height: 1.65; color: var(--gray-700); margin-bottom: 14px; }
+.tool-page ul { margin: 0 0 14px 20px; }
+.tool-page li { font-size: 15px; line-height: 1.65; color: var(--gray-700); margin-bottom: 6px; }
+.tool-page p a, .tool-page li a { color: var(--red); }
 .donate-card, .convert-card, .conn-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .donate-amounts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .donate-amounts label { border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer; }

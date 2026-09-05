@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import authMiddleware from '../middleware/auth';
 import Report from '../models/Report';
+import { reportCreateLimiter } from '../middleware/rateLimit';
 import { validate } from '../utils/validate';
 import { getPagination, pagedResponse } from '../utils/pagination';
 import type { AuthRequest } from '../types';
@@ -24,7 +25,7 @@ function normalizeReport(report: any): any {
   return item;
 }
 
-router.post('/reports', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.post('/reports', authMiddleware, reportCreateLimiter, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
   const parsedPayload = validate(reportCreateSchema, req.body);
   if (parsedPayload.error) { res.status(400).json({ error: parsedPayload.error }); return; }
