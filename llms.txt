@@ -27,6 +27,7 @@ Biscoon is free to use. Listings are user-submitted and not verified by Biscoon;
 - [Contact](https://biscoon.com/pages/contact.html): Support, feedback, and partnership contact.
 - [Privacy Policy](https://biscoon.com/pages/privacy.html)
 - [Terms & Conditions](https://biscoon.com/pages/terms.html)
+- [Cookie Policy](https://biscoon.com/pages/cookies.html)
 
 ## Optional
 

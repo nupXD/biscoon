@@ -1624,13 +1624,14 @@ function updateListingProgress() {
   const profile = getActiveListingFormProfile(category, subcategory);
   const isPhotographyPost = category === 'photography';
   const fields = ['category', 'subcategory', 'title', 'description'];
-  if (profile.required.location && profile.visible.location) fields.push('area', 'state');
+  if (profile.required.location && profile.visible.location) fields.push('area');
   if (profile.required.availability && profile.visible.availability) fields.push('availability');
   if (profile.required.price && profile.visible.price) fields.push('price');
   if (profile.required.contactEmail && profile.visible.contact) fields.push('contactEmail');
   const filled = fields.filter(id => document.getElementById(id)?.value.trim()).length;
-  const photoScore = profile.required.photos ? Math.min(editingListingImages.length, 1) : Math.min(editingListingImages.length, 1);
-  const score = Math.min(100, Math.round(((filled + photoScore) / (fields.length + 1)) * 100));
+  const requiredScore = fields.length ? (filled / fields.length) * 85 : 85;
+  const photoScore = editingListingImages.length ? 15 : 0;
+  const score = Math.min(100, Math.round(requiredScore + photoScore));
   progress.style.width = `${score}%`;
   const status = score < 45
     ? (isPhotographyPost ? 'Needs photo basics' : 'Needs basics')
@@ -1641,6 +1642,7 @@ function updateListingProgress() {
   label.dataset.strength = score < 45 ? 'low' : score < 85 ? 'mid' : 'high';
   const wrap = document.getElementById('listingProgress');
   if (wrap) wrap.dataset.strength = label.dataset.strength;
+  progress.parentElement?.setAttribute('aria-valuenow', String(score));
 }
 
 function ensureListingProgress() {
