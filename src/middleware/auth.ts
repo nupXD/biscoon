@@ -1,7 +1,6 @@
-import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { JWT_SECRET } from '../config/env';
-import { findUserById, sanitizeUser } from '../utils/users';
+import { sanitizeUser } from '../utils/users';
+import { authenticateSession } from '../utils/sessions';
 import type { AuthRequest } from '../types';
 
 async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -13,12 +12,7 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction): 
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { id: string };
-    const user = await findUserById(payload.id);
-    if (!user) {
-      res.status(401).json({ error: 'Invalid token.' });
-      return;
-    }
+    const { user } = await authenticateSession(token);
     (req as AuthRequest).user = sanitizeUser(user);
     next();
   } catch {

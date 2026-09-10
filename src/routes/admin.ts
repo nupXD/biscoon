@@ -17,6 +17,7 @@ import { listingCategoryFilter, normalizeCategory } from '../utils/categories';
 import { saveBase64Upload } from '../utils/uploads';
 import { createUniqueNewsSlug, normalizeNewsArticle } from '../utils/news';
 import * as es from '../services/elasticsearch';
+import { disconnectUserSessions } from '../services/realtime';
 import {
   ADMIN_ACCOUNT_ROLES,
   ASSIGNABLE_ADMIN_PERMISSIONS,
@@ -525,7 +526,9 @@ router.delete('/users/:id', requirePermission('users'), async (req: Request, res
   ]);
   user.deleted = true;
   user.deletedAt = now;
+  user.sessionVersion = (user.sessionVersion ?? 0) + 1;
   await user.save();
+  disconnectUserSessions(user.id);
   await recordAdminAudit(req, {
     action: 'regular_user.deleted',
     targetType: 'user',
@@ -641,8 +644,14 @@ router.put('/staff/:id', requireSuperAdmin, async (req: Request, res: Response):
   staff.role = 'staff';
   staff.permissions = permissions;
   staff.updatedAt = new Date();
-  if (password) staff.password = await bcrypt.hash(password, 10);
+  if (password) {
+    staff.password = await bcrypt.hash(password, 10);
+    staff.sessionVersion = (staff.sessionVersion ?? 0) + 1;
+    staff.passwordResetTokenHash = undefined;
+    staff.passwordResetExpiresAt = undefined;
+  }
   await staff.save();
+  if (password) disconnectUserSessions(staff.id);
   await recordAdminAudit(req, {
     action: 'admin_user.updated',
     targetType: 'staff',
@@ -668,7 +677,9 @@ router.delete('/staff/:id', requireSuperAdmin, async (req: Request, res: Respons
 
   staff.deleted = true;
   staff.deletedAt = new Date();
+  staff.sessionVersion = (staff.sessionVersion ?? 0) + 1;
   await staff.save();
+  disconnectUserSessions(staff.id);
   await recordAdminAudit(req, {
     action: 'admin_user.deleted',
     targetType: 'staff',

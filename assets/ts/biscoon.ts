@@ -205,6 +205,7 @@ function startBiscoonSession(token: string): void {
   localStorage.setItem(BISCOON_TOKEN_KEY, token);
   localStorage.setItem(BISCOON_LAST_ACTIVITY_KEY, String(Date.now()));
   biscoonLastActivityWrite = Date.now();
+  window.dispatchEvent(new Event('biscoon:session-changed'));
 }
 
 function touchBiscoonSession(force = false): void {
@@ -526,18 +527,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Home dashboard: click/touch dropdowns (hover alone fails on mobile)
   document.querySelectorAll('.right-panel .dropdown').forEach(dd => {
-    const trigger = dd.querySelector('.pill');
-    if (!trigger) return;
+    const original = dd.querySelector('.pill');
+    if (!original) return;
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = original.className;
+    trigger.setAttribute('style', original.getAttribute('style') || '');
+    trigger.innerHTML = original.innerHTML;
+    trigger.setAttribute('aria-expanded', 'false');
+    const menu = dd.querySelector<HTMLElement>('.dd-menu');
+    if (menu) {
+      menu.id = `home-menu-${Array.from(dd.parentElement!.children).indexOf(dd)}`;
+      trigger.setAttribute('aria-controls', menu.id);
+    }
+    original.replaceWith(trigger);
+    const closeMenus = () => {
+      document.querySelectorAll('.right-panel .dropdown.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.pill')?.setAttribute('aria-expanded', 'false');
+      });
+    };
     trigger.addEventListener('click', (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
       const open = dd.classList.contains('open');
-      document.querySelectorAll('.right-panel .dropdown.open').forEach(el => el.classList.remove('open'));
-      if (!open) dd.classList.add('open');
+      closeMenus();
+      if (!open) { dd.classList.add('open'); trigger.setAttribute('aria-expanded', 'true'); }
+    });
+    dd.addEventListener('keydown', (event: Event) => {
+      const e = event as KeyboardEvent;
+      if (e.key === 'Escape') { closeMenus(); trigger.focus(); }
+      if (e.key === 'ArrowDown' && e.target === trigger) {
+        e.preventDefault(); closeMenus(); dd.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true'); menu?.querySelector('a')?.focus();
+      }
+    });
+    dd.addEventListener('focusout', (event: Event) => {
+      if (!dd.contains((event as FocusEvent).relatedTarget as Node)) closeMenus();
     });
   });
   document.addEventListener('click', () => {
-    document.querySelectorAll('.right-panel .dropdown.open').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.right-panel .dropdown.open').forEach(el => {
+      el.classList.remove('open'); el.querySelector('.pill')?.setAttribute('aria-expanded', 'false');
+    });
   });
 
   // Live header date on homepage
@@ -1891,6 +1923,7 @@ type BrowseSession = {
 };
 
 let browseSession: BrowseSession | null = null;
+let browseRequestId = 0;
 
 async function fetchListingsPage(options: {
   category?: string;
@@ -1898,6 +1931,7 @@ async function fetchListingsPage(options: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 } = {}): Promise<ListingsPage> {
   const {
     category = '',
@@ -1905,6 +1939,7 @@ async function fetchListingsPage(options: {
     search = '',
     page = 1,
     limit = LISTINGS_PAGE_SIZE,
+    sort = '',
   } = options;
   const url = new URL(`${getApiBase()}/api/listings`);
   if (category && category !== 'all') url.searchParams.set('category', category);
@@ -1912,7 +1947,8 @@ async function fetchListingsPage(options: {
   if (search) url.searchParams.set('search', search);
   url.searchParams.set('page', String(Math.max(1, page)));
   url.searchParams.set('limit', String(limit || LISTINGS_PAGE_SIZE));
-  if (!search) {
+  if (sort) url.searchParams.set('sort', sort);
+  if ((!search && !sort) || sort === 'closest') {
     const near = await getUserLocationCity();
     if (near) url.searchParams.set('near', near);
   }
@@ -1974,36 +2010,9 @@ function ensureListingsShell(target: Element): { feed: HTMLElement; controls: HT
   return { feed, controls };
 }
 
-function relevanceScore(listing: Listing, query: string): number {
-  const q = query.toLowerCase();
-  if (!q) return 0;
-  const title = String(listing.title || '').toLowerCase();
-  const desc = String(listing.description || '').toLowerCase();
-  let score = 0;
-  if (title.includes(q)) score += 3;
-  if (desc.includes(q)) score += 1;
-  return score;
-}
-
-function sortListingsClient(listings: Listing[], sort: string, search = ''): Listing[] {
-  const items = [...listings];
-  if (sort === 'relevant') {
-    items.sort((a, b) => relevanceScore(b, search) - relevanceScore(a, search)
-      || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    return items;
-  }
-  if (sort === 'closest') {
-    items.sort((a, b) => String(a.location || '').localeCompare(String(b.location || ''))
-      || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    return items;
-  }
-  items.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-  return items;
-}
-
 function getActiveSortValue(): string {
   const select = document.querySelector('.sort-select') as HTMLSelectElement | null;
-  return select?.value || 'newest';
+  return select?.value || 'closest';
 }
 
 function bindSortSelect(): void {
@@ -2015,14 +2024,12 @@ function bindSortSelect(): void {
       if (label.includes('newest')) opt.value = 'newest';
       else if (label.includes('relevant')) opt.value = 'relevant';
       else if (label.includes('closest')) opt.value = 'closest';
+      else if (label.includes('price') && label.includes('low')) opt.value = 'price-low';
+      else if (label.includes('price') && label.includes('high')) opt.value = 'price-high';
       else if (!opt.value) opt.value = ['newest', 'relevant', 'closest'][index] || 'newest';
     });
     select.addEventListener('change', () => {
-      if (!browseSession) return;
-      browseSession.sort = select.value;
-      const feed = document.getElementById('listingsFeed');
-      if (!feed) return;
-      renderListingsIntoFeed(browseSession.items, feed, false);
+      void hydrateDynamicListings(inferPageCategory(), { page: 1, append: false });
     });
   });
 }
@@ -2184,7 +2191,7 @@ function resolveBrowseQuery(category = inferPageCategory()): { category: string;
 }
 
 function renderListingsIntoFeed(listings: Listing[], feed: HTMLElement, append: boolean): void {
-  const sorted = sortListingsClient(listings, browseSession?.sort || getActiveSortValue(), browseSession?.search || '');
+  const sorted = listings;
 
   if (append) {
     feed.insertAdjacentHTML('beforeend', sorted.map(listingToCard).join(''));
@@ -2207,21 +2214,8 @@ function renderListingsIntoFeed(listings: Listing[], feed: HTMLElement, append: 
     return;
   }
 
-  const grouped = sorted.reduce((groups: Record<string, Listing[]>, listing) => {
-    const cat = listing.category || 'other';
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(listing);
-    return groups;
-  }, {});
-
   (feed.parentElement as HTMLElement | null)?.setAttribute('data-dynamic-state', 'live');
-  feed.innerHTML = Object.entries(grouped).map(([cat, items]) => {
-    const meta = getCategoryMeta(cat);
-    return `
-      <div class="section-divider" data-group="${escapeHtml(cat)}">${meta.emoji} ${escapeHtml(meta.label)} <span class="count">${items.length} live</span></div>
-      ${items.map(listingToCard).join('')}
-    `;
-  }).join('');
+  feed.innerHTML = sorted.map(listingToCard).join('');
   window.dispatchEvent(new CustomEvent('biscoon:listings-rendered', { detail: { listings: sorted, feed } }));
 }
 
@@ -3201,6 +3195,8 @@ async function hydrateDynamicListings(
   if (!target) return;
   const page = Math.max(1, options.page || 1);
   const append = Boolean(options.append);
+  const requestId = ++browseRequestId;
+  const sort = getActiveSortValue();
 
   try {
     const { feed, controls } = ensureListingsShell(target);
@@ -3227,8 +3223,9 @@ async function hydrateDynamicListings(
       search: query.search,
       page,
       limit: LISTINGS_PAGE_SIZE,
+      sort,
     });
-    const sort = getActiveSortValue();
+    if (requestId !== browseRequestId) return;
 
     if (append && browseSession) {
       browseSession = {
@@ -3259,6 +3256,7 @@ async function hydrateDynamicListings(
       target.closest('#listings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   } catch (error) {
+    if (requestId !== browseRequestId) return;
     console.error(error);
     const feed = document.getElementById('listingsFeed');
     if (feed && !append) {

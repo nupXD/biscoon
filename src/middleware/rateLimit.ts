@@ -39,9 +39,7 @@ function createRateLimiter({
     }
   }
 
-  return function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
-    if (process.env.NODE_ENV === 'test') { next(); return; }
-
+  function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
     const now = Date.now();
     sweep(now);
 
@@ -69,7 +67,8 @@ function createRateLimiter({
 
     store.set(key, entry);
     next();
-  };
+  }
+  return Object.assign(rateLimitMiddleware, { reset: () => { store.clear(); lastSweepAt = 0; } });
 }
 
 function cleanEmail(email: string): string {

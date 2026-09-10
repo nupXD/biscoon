@@ -1,3 +1,4 @@
+process.env.EMAIL_VERIFICATION_REQUIRED = 'false';
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
@@ -5,6 +6,9 @@ const appModule = require('../src/app');
 const userModule = require('../src/models/User');
 const reportModule = require('../src/models/Report');
 const discussionModule = require('../src/models/Discussion');
+const limiters = require('../src/middleware/rateLimit');
+const Listing = require('../src/models/Listing').default;
+const Conversation = require('../src/models/Conversation').default;
 
 const app = appModule.default || appModule;
 const User = userModule.default || userModule;
@@ -33,7 +37,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  Object.values(limiters).forEach(limiter => limiter.reset?.());
   await mongoose.connection.db.dropDatabase();
+  await Promise.all([User.createIndexes(), Listing.createIndexes(), Conversation.createIndexes()]);
 
   const user = await registerUser({
     name: 'Test User',
@@ -518,4 +524,114 @@ test('users can report content and admins can update report status', async () =>
 
   const report = await Report.findOne({ id: reports.body.reports[0].id });
   expect(report.status).toBe('resolved');
+});
+
+test('deleted listings disappear from details, saved items, stats and write endpoints', async () => {
+  const created = await request(app).post('/api/listings').set('Authorization', `Bearer ${userToken}`).send({
+    title: 'Removal fixture', description: 'Fixture listing', category: 'housing', subcategory: 'room', location: 'Boston',
+  });
+  expect(created.status).toBe(201);
+  const id = created.body.listing.id;
+  await request(app).post(`/api/listings/${id}/save`).set('Authorization', `Bearer ${userToken}`);
+  expect((await request(app).delete(`/api/listings/${id}`).set('Authorization', `Bearer ${userToken}`)).status).toBe(200);
+  expect((await request(app).get(`/api/listings/${id}`)).status).toBe(404);
+  expect((await request(app).get(`/api/listings/${id}/save`).set('Authorization', `Bearer ${userToken}`)).status).toBe(404);
+  for (const endpoint of ['mine', 'saved']) {
+    const result = await request(app).get(`/api/listings/${endpoint}`).set('Authorization', `Bearer ${userToken}`);
+    expect(result.body.listings).toEqual([]);
+  }
+  expect((await request(app).get('/api/listings/stats/summary')).body.total).toBe(0);
+  expect((await request(app).put(`/api/listings/${id}`).set('Authorization', `Bearer ${userToken}`).send({ title: 'Changed' })).status).toBe(404);
+  expect((await request(app).post(`/api/listings/${id}/comments`).set('Authorization', `Bearer ${userToken}`).send({ body: 'Comment' })).status).toBe(404);
+  expect((await request(app).post(`/api/listings/${id}/save`).set('Authorization', `Bearer ${userToken}`)).status).toBe(404);
+  expect((await Listing.findOne({ id })).deleted).toBe(true);
+});
+
+test('price ordering is numeric, includes older pages and puts unpriced listings last', async () => {
+  const prices = ['$2,500/month', '$100', '$15/hour', 'free', 'negotiable'];
+  await Listing.insertMany(prices.map((price, index) => ({
+    id: `price-${index}`, userId: 'fixture', title: 'Sorting fixture', description: 'Sorting fixture', category: 'jobs',
+    subcategory: 'general', location: index === 2 ? 'Boston, MA' : 'Arlington, VA', price, createdAt: new Date(2026, 0, index + 1),
+  })));
+  const low = await request(app).get('/api/listings?sort=price-low&limit=2&page=1');
+  expect(low.status).toBe(200);
+  expect(low.body.listings.map(item => item.price)).toEqual(['free', '$15/hour']);
+  const next = await request(app).get('/api/listings?sort=price-low&limit=2&page=2');
+  expect(next.body.listings.map(item => item.price)).toEqual(['$100', '$2,500/month']);
+  const high = await request(app).get('/api/listings?sort=price-high&limit=10');
+  expect(high.body.listings.map(item => item.price)).toEqual(['$2,500/month', '$100', '$15/hour', 'free', 'negotiable']);
+  const search = await request(app).get('/api/listings?sort=price-low&search=fixture&limit=2');
+  expect(search.status).toBe(200);
+  expect(search.body.listings.map(item => item.price)).toEqual(['free', '$15/hour']);
+  const closest = await request(app).get('/api/listings?sort=closest&near=Boston&limit=1');
+  expect(closest.body.listings[0].location).toBe('Boston, MA');
+  expect((await request(app).get('/api/listings?sort=unsupported')).status).toBe(400);
+});
+
+test('deactivation invalidates an existing user session', async () => {
+  const owner = await User.findOne({ email: 'user@example.com' });
+  const deleted = await request(app).delete(`/api/admin/users/${owner.id}`).set('Authorization', `Bearer ${adminToken}`);
+  expect(deleted.status).toBe(200);
+  expect((await request(app).get('/api/auth/me').set('Authorization', `Bearer ${userToken}`)).status).toBe(401);
+  await User.updateOne({ id: owner.id }, { deleted: false });
+  expect((await request(app).get('/api/auth/me').set('Authorization', `Bearer ${userToken}`)).status).toBe(401);
+});
+
+test('private attachments require membership and cannot be downloaded via uploads', async () => {
+  const owner = await User.findOne({ email: 'user@example.com' });
+  const buyer = await registerUser({ name: 'Buyer', email: 'buyer@example.com', password: 'password123', confirmPassword: 'password123' });
+  const listing = await Listing.create({ userId: owner.id, title: 'Attachment fixture', description: 'Fixture', category: 'housing' });
+  const sent = await request(app).post('/api/messages').set('Authorization', `Bearer ${buyer.token}`).send({
+    listingId: listing.id, recipientId: owner.id, body: 'Private document',
+    attachments: [{ name: 'fixture.txt', mimeType: 'text/plain', data: `data:text/plain;base64,${Buffer.from('private fixture').toString('base64')}` }],
+  });
+  expect(sent.status).toBe(200);
+  const conversation = await Conversation.findOne({ id: sent.body.conversationId });
+  const storedPath = conversation.messages[0].attachments[0].data;
+  try {
+    const thread = await request(app).get(`/api/messages/${conversation.id}`).set('Authorization', `Bearer ${buyer.token}`);
+    const downloadPath = thread.body.messages[0].attachments[0].data;
+    expect(downloadPath).toMatch(/^\/api\/messages\//);
+    expect((await request(app).get(storedPath)).status).toBe(404);
+    expect((await request(app).get(storedPath.replace('/messages/', '/%6dessages/'))).status).toBe(404);
+    expect((await request(app).get(downloadPath)).status).toBe(401);
+    expect((await request(app).get(downloadPath).set('Authorization', `Bearer ${adminToken}`)).status).toBe(404);
+    const download = await request(app).get(downloadPath).set('Authorization', `Bearer ${userToken}`);
+    expect(download.status).toBe(200);
+    expect(download.text).toBe('private fixture');
+    expect(download.headers['cache-control']).toBe('private, no-store');
+  } finally {
+    const fs = require('fs');
+    const path = require('path');
+    const { STATIC_ROOT } = require('../src/config/env');
+    fs.unlinkSync(path.join(STATIC_ROOT, storedPath));
+  }
+});
+
+test('a full thread continues idempotently and keeps earlier messages available', async () => {
+  const owner = await User.findOne({ email: 'user@example.com' });
+  const other = await registerUser({ name: 'Other', email: 'other@example.com', password: 'password123', confirmPassword: 'password123' });
+  const participantIds = [owner.id, other.user.id].sort();
+  const old = await Conversation.create({
+    listingId: 'history-fixture', participantIds, participantKey: participantIds.join(':'),
+    participantNames: new Map([[owner.id, owner.name], [other.user.id, 'Other']]),
+    messages: Array.from({ length: 200 }, (_, index) => ({ id: `m-${index}`, senderId: owner.id, senderName: owner.name, body: '', readBy: participantIds })),
+  });
+  expect((await request(app).post(`/api/messages/${old.id}/continue`).set('Authorization', `Bearer ${adminToken}`)).status).toBe(404);
+  const next = await request(app).post(`/api/messages/${old.id}/continue`).set('Authorization', `Bearer ${userToken}`);
+  expect(next.status).toBe(200);
+  expect(next.body.conversationId).not.toBe(old.id);
+  const retry = await request(app).post(`/api/messages/${old.id}/continue`).set('Authorization', `Bearer ${userToken}`);
+  expect(retry.body.conversationId).toBe(next.body.conversationId);
+  const replied = await request(app).post(`/api/messages/${next.body.conversationId}/reply`).set('Authorization', `Bearer ${userToken}`).send({ body: 'Message 201' });
+  expect(replied.status).toBe(200);
+  const latest = await request(app).get(`/api/messages/${next.body.conversationId}`).set('Authorization', `Bearer ${userToken}`);
+  expect(latest.body.previousConversationId).toBe(old.id);
+  expect(latest.body.messages[0].body).toBe('Message 201');
+  const history = await request(app).get(`/api/messages/${old.id}?limit=100`).set('Authorization', `Bearer ${userToken}`);
+  expect(history.body.totalMessages).toBe(200);
+  expect(history.body.messages[0].id).toBe('m-100');
+  const earlier = await request(app).get(`/api/messages/${old.id}?limit=100&before=${history.body.nextBefore}`).set('Authorization', `Bearer ${userToken}`);
+  expect(earlier.body.messages[0].id).toBe('m-0');
+  expect(earlier.body.hasMore).toBe(false);
 });

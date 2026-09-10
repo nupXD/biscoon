@@ -1,4 +1,13 @@
 .messages-page{max-width:1100px;margin:0 auto;padding:32px 40px 56px}
+.messages-back{display:none}
+.messages-send-panel{max-height:calc(100dvh - 32px);overflow-y:auto}
+.messages-conv-card:focus-visible,.messages-back:focus-visible{outline:3px solid var(--red);outline-offset:-3px}
+.msg-lightbox,.messages-send-modal{margin:0;border:0;padding:0;width:100%;height:100%;max-width:none;max-height:none;color:inherit}
+.messages-send-modal{background:transparent}
+.msg-lightbox::backdrop,.messages-send-modal::backdrop{background:transparent}
+.msg-lightbox-close{position:absolute;top:16px;right:16px;width:44px;height:44px;border:1px solid white;border-radius:6px;background:#222;color:white;font-size:28px;cursor:pointer}
+.msg-lightbox-close:focus-visible,.msg-attach-image:focus-visible,.messages-attach-remove:focus-visible{outline:3px solid #1688c9;outline-offset:3px}
+#messageRows{display:flex;flex-direction:column;gap:16px}
 .messages-layout{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start;min-height:520px}
 .messages-sidebar{border:1.5px solid var(--border);border-radius:8px;background:white;overflow:hidden}
 .messages-sidebar-head{padding:22px 22px 16px;border-bottom:1.5px solid var(--border)}
@@ -56,12 +65,12 @@
 .messages-attach-item.video-item,.messages-attach-item.file-item{width:120px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px}
 .messages-attach-icon{font-size:24px}
 .messages-attach-name{font-size:10px;color:var(--text-muted);text-align:center;word-break:break-all;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.messages-attach-remove{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.55);color:white;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0}
+.messages-attach-remove{position:absolute;top:0;right:0;width:44px;height:44px;border-radius:6px;background:rgba(0,0,0,.65);color:white;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0}
 .messages-attach-remove:hover{background:var(--red)}
 
 .msg-bubble-attachments{display:flex;flex-direction:column;gap:6px;margin-top:6px}
-.msg-attach-image{max-width:240px;max-height:220px;border-radius:8px;display:block;cursor:zoom-in}
-.msg-attach-video{max-width:260px;border-radius:8px;display:block}
+.msg-attach-image{max-width:min(240px,100%);max-height:220px;border-radius:8px;display:block;cursor:zoom-in}
+.msg-attach-video{max-width:min(260px,100%);border-radius:8px;display:block}
 .msg-attach-file{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:8px;background:rgba(0,0,0,.08);color:inherit;text-decoration:none;font-size:12.5px;font-weight:600;max-width:220px}
 .messages-bubble-row.own .msg-attach-file{background:rgba(255,255,255,.18);color:white}
 .msg-attach-file-icon{font-size:18px}
@@ -100,6 +109,11 @@
 @media(max-width:768px){
   .messages-page{padding:20px 16px 48px}
   .messages-layout{grid-template-columns:1fr;min-height:auto}
+  .messages-layout:not(.thread-open) .messages-thread{display:none}
+  .messages-layout.thread-open .messages-sidebar{display:none}
+  .messages-layout.thread-open .messages-back{display:block;justify-self:start;min-height:44px}
+  .messages-reply-form textarea{min-width:0;font-size:16px}
+  .messages-bubble-row{max-width:90%;min-width:0}
   .messages-thread{min-height:400px}
   .messages-thread-body{max-height:320px}
 }

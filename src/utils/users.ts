@@ -5,6 +5,7 @@ function sanitizeUser(user: IUser): SanitizedUser {
   const userObj = user.toObject ? user.toObject() : user;
   const {
     password,
+    sessionVersion,
     emailVerificationTokenHash,
     emailVerificationExpiresAt,
     passwordResetTokenHash,

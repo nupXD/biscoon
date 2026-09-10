@@ -135,7 +135,7 @@ Production startup fails when `MONGODB_URI`, `JWT_SECRET`, `MSG_ENCRYPTION_KEY`,
 | `npm run build` | Compile server TypeScript into `dist` |
 | `npm run build:client` | Build browser TypeScript and copy vendor assets |
 | `npm start` | Run the compiled server |
-| `npm run test` | Run the Jest API test suite |
+| `npm run test` | Run API integration, security, and frontend regression tests |
 | `npm run typecheck` | Type-check server code |
 | `npm run typecheck:client` | Type-check browser code |
 | `npm run check` | Run tests, both type-checks, and the client build |
@@ -207,6 +207,12 @@ Registration creates an email-confirmation token. When `EMAIL_VERIFICATION_REQUI
 
 Socket.IO provides same-origin real-time updates. Conversations are tied to listings, and message bodies are encrypted at rest. Keep `MSG_ENCRYPTION_KEY` stable: changing it makes existing encrypted messages unreadable.
 
+Attachments are available only through authenticated conversation endpoints to participants, not through public upload URLs. Threads retain up to 200 messages; the inbox can load earlier messages and continue full threads in a linked conversation without deleting history.
+
+Password changes, password resets, and account deactivation revoke existing sessions and disconnect their sockets. Updating a password from the profile issues a replacement session for that browser.
+
+Listing sorting runs on the server before pagination. Price sorting uses numeric amounts, puts `Free` first in ascending order, and leaves unspecified prices last. Closest prioritizes the selected city; it is not a geographic distance calculation. Deleted listings are excluded from public details, saved lists, and statistics.
+
 ### Administration
 
 The dashboard at `/pages/admin/dashboard.html` is available to super admins and staff with assigned permissions. It includes analytics, content management, moderation queues, announcements, audit history, and read-only conversation metadata. Message content is intentionally excluded from admin views.
@@ -249,6 +255,8 @@ npm run check
 ```
 
 The same command runs in GitHub Actions for pushes and pull requests. It executes the API tests, server and browser type-checks, and the browser build.
+
+CI also starts the production Docker stack and checks readiness, crawler files, and the custom 404 response. Integration tests require permission to start a local MongoDB process and bind local sockets. Security and frontend regression tests can run independently with `npx jest --runInBand tests/security-regressions.test.js tests/frontend-regressions.test.js`. Rate limits remain active in tests; email verification can be explicitly enabled with `EMAIL_VERIFICATION_REQUIRED=true`.
 
 ## Docker
 

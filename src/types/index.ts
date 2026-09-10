@@ -10,6 +10,7 @@ export interface IUser extends Document {
   email: string;
   phone?: string;
   password: string;
+  sessionVersion: number;
   role: UserRole;
   permissions: string[];
   emailVerified: boolean;

@@ -1163,6 +1163,7 @@ function resetListingForm() {
   document.getElementById('listingSubmitButton').textContent = 'Publish listing';
   editingListingImages = [];
   renderImagePreview([]);
+  updateCategoryDependentFields();
   if (isPhotographyOnlyMode()) {
     document.getElementById('category').value = 'photography';
     updateCategoryDependentFields();
@@ -1229,6 +1230,8 @@ async function submitListing(event) {
     showListingMessage(editingId ? 'Listing updated successfully.' : 'Listing published successfully.', 'success');
     resetListingForm();
     fetchMyListings();
+  } catch {
+    showListingMessage('Unable to save listing. Please check your connection and try again.', 'error');
   } finally {
     if (submitButton) {
       submitButton.disabled = false;
@@ -1628,18 +1631,21 @@ function updateListingProgress() {
   if (profile.required.availability && profile.visible.availability) fields.push('availability');
   if (profile.required.price && profile.visible.price) fields.push('price');
   if (profile.required.contactEmail && profile.visible.contact) fields.push('contactEmail');
-  const filled = fields.filter(id => document.getElementById(id)?.value.trim()).length;
-  const requiredScore = fields.length ? (filled / fields.length) * 85 : 85;
-  const photoScore = editingListingImages.length ? 15 : 0;
-  const score = Math.min(100, Math.round(requiredScore + photoScore));
+  const filled = fields.filter(id => {
+    const field = document.getElementById(id);
+    return field?.value.trim() && field.validity.valid;
+  }).length;
+  const hasPhotos = editingListingImages.length > 0;
+  const requiredTotal = fields.length + (profile.required.photos ? 1 : 0);
+  const requiredFilled = filled + (profile.required.photos && hasPhotos ? 1 : 0);
+  const ready = requiredFilled === requiredTotal;
+  const score = Math.round(requiredFilled / requiredTotal * 100);
   progress.style.width = `${score}%`;
-  const status = score < 45
+  const status = ready ? 'Ready to publish' : score < 45
     ? (isPhotographyPost ? 'Needs photo basics' : 'Needs basics')
-    : score < 85
-      ? 'Almost ready'
-      : 'Ready to publish';
+    : 'Almost ready';
   label.textContent = status;
-  label.dataset.strength = score < 45 ? 'low' : score < 85 ? 'mid' : 'high';
+  label.dataset.strength = ready ? 'high' : score < 45 ? 'low' : 'mid';
   const wrap = document.getElementById('listingProgress');
   if (wrap) wrap.dataset.strength = label.dataset.strength;
   progress.parentElement?.setAttribute('aria-valuenow', String(score));

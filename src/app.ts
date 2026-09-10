@@ -114,10 +114,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use('/assets', express.static(path.join(STATIC_ROOT, 'assets'), staticOptions));
 app.use('/pages', express.static(path.join(STATIC_ROOT, 'pages'), staticOptions));
-app.use(`/${UPLOAD_DIR}`, express.static(path.join(STATIC_ROOT, UPLOAD_DIR), {
-  ...staticOptions,
-  fallthrough: false,
-}));
+// Message attachments are served only by the authenticated conversation route.
+for (const folder of ['listings', 'news', 'spotlight']) {
+  app.use(`/${UPLOAD_DIR}/${folder}`, express.static(path.join(STATIC_ROOT, UPLOAD_DIR, folder), {
+    ...staticOptions,
+    fallthrough: false,
+  }));
+}
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({

@@ -139,10 +139,10 @@
         <div class="form-section" id="listingFormFields">
           <div class="listing-progress" id="listingProgress" data-strength="low">
             <div class="listing-progress-top">
-              <span>Listing quality</span>
+              <span>Required details</span>
               <strong id="listingProgressLabel" aria-live="polite">Needs basics</strong>
             </div>
-            <div class="listing-progress-track" role="progressbar" aria-label="Listing quality" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="listing-progress-track" role="progressbar" aria-label="Required details" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <span id="listingProgressFill"></span>
             </div>
           </div>
@@ -166,7 +166,7 @@
 
             <div class="form-group">
               <label class="form-label" for="subcategory" id="subcategoryLabel">Type</label>
-              <input class="form-input" id="subcategory" name="subcategory" type="text" list="subcategorySuggestions" placeholder="e.g. room, tech, kinbech, event" required />
+              <input class="form-input" id="subcategory" name="subcategory" type="text" list="subcategorySuggestions" placeholder="e.g. room, tech, kinbech, event" required maxlength="120" />
               <datalist id="subcategorySuggestions"></datalist>
               <div class="field-note" id="subcategoryNote" hidden></div>
               <div class="dynamic-suggestions" id="subcategoryQuickPicks" aria-label="Type suggestions"></div>
@@ -184,7 +184,7 @@
 
             <div class="form-group">
               <label class="form-label" for="description" id="descriptionLabel">Details</label>
-              <textarea class="form-input" id="description" name="description" rows="5" placeholder="What is it, who is it for, and any must-know details." required></textarea>
+              <textarea class="form-input" id="description" name="description" rows="5" placeholder="What is it, who is it for, and any must-know details." required maxlength="5000"></textarea>
             </div>
           </fieldset>
 
@@ -193,18 +193,18 @@
             <div class="form-row--two" id="locationDetailsGroup">
               <div class="form-group">
                 <label class="form-label" for="area" id="areaLabel">Location</label>
-                <input class="form-input" id="area" name="area" type="text" placeholder="e.g. Allston, MA or Remote" required />
+                <input class="form-input" id="area" name="area" type="text" placeholder="e.g. Allston, MA or Remote" required maxlength="220" />
               </div>
               <div class="form-group" id="priceDetailsGroup">
                 <label class="form-label" for="price" id="priceLabel">Price</label>
-                <input class="form-input" id="price" name="price" type="text" placeholder="e.g. $120, free, negotiable" />
+                <input class="form-input" id="price" name="price" type="text" placeholder="e.g. $120, free, negotiable" maxlength="120" />
                 <input id="priceNote" name="priceNote" type="hidden" value="" />
               </div>
             </div>
 
             <div class="form-group" id="availabilityGroup">
               <label class="form-label" for="availability" id="availabilityLabel">Availability <span class="label-optional">optional</span></label>
-              <input class="form-input" id="availability" name="availability" type="text" list="availabilitySuggestions" placeholder="e.g. Available now, weekends, by appointment" />
+              <input class="form-input" id="availability" name="availability" type="text" list="availabilitySuggestions" placeholder="e.g. Available now, weekends, by appointment" maxlength="160" />
               <datalist id="availabilitySuggestions"></datalist>
               <div class="dynamic-suggestions" id="availabilityQuickPicks" aria-label="Availability suggestions"></div>
             </div>
@@ -215,7 +215,7 @@
             <div class="form-row--two" id="contactDetailsSection">
               <div class="form-group">
                 <label class="form-label" for="contactEmail">Email</label>
-                <input class="form-input" id="contactEmail" name="contactEmail" type="email" placeholder="you@example.com" required />
+                <input class="form-input" id="contactEmail" name="contactEmail" type="email" placeholder="you@example.com" required maxlength="200" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="contactPhone">Phone <span class="label-optional">optional</span></label>

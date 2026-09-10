@@ -65,3 +65,8 @@ window.addEventListener('storage', event => {
     connect();
   }
 });
+window.addEventListener('biscoon:session-changed', () => {
+  socket?.disconnect();
+  socket = null;
+  connect();
+});

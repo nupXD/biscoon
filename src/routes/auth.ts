@@ -11,6 +11,7 @@ import { findUserByEmail, findUserById, sanitizeUser } from '../utils/users';
 import { isAdminAccount } from '../utils/adminPermissions';
 import { createAccountToken, hashAccountToken, tokenIsFresh } from '../utils/accountTokens';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../services/mail';
+import { disconnectUserSessions } from '../services/realtime';
 import { validate } from '../utils/validate';
 import type { AuthRequest, SanitizedUser } from '../types';
 
@@ -58,8 +59,8 @@ const profileUpdateSchema = z.object({
   confirmPassword: z.string().max(200).optional(),
 });
 
-function createToken(user: { id: string; email: string }): string {
-  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+function createToken(user: { id: string; email: string; sessionVersion?: number }): string {
+  return jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion ?? 0 }, JWT_SECRET, { expiresIn: '1d' });
 }
 
 function buildAccountActionUrl(path: string, email: string, token: string): string {
@@ -258,7 +259,7 @@ router.post('/verify-email', authRecoveryLimiter, async (req: Request, res: Resp
 
   const email = parsedPayload.value.email.trim().toLowerCase();
   const user = await findUserByEmail(email);
-  if (!user) { res.status(400).json({ error: 'Invalid or expired verification token.' }); return; }
+  if (!user || user.deleted) { res.status(400).json({ error: 'Invalid or expired verification token.' }); return; }
 
   const tokenHash = hashAccountToken(parsedPayload.value.token);
   if (
@@ -314,7 +315,7 @@ router.post('/reset-password', authRecoveryLimiter, async (req: Request, res: Re
 
   const { email, token, password } = parsedPayload.value;
   const user = await findUserByEmail(email.trim().toLowerCase());
-  if (!user) { res.status(400).json({ error: 'Invalid or expired password reset token.' }); return; }
+  if (!user || user.deleted) { res.status(400).json({ error: 'Invalid or expired password reset token.' }); return; }
 
   const tokenHash = hashAccountToken(token);
   if (
@@ -325,11 +326,14 @@ router.post('/reset-password', authRecoveryLimiter, async (req: Request, res: Re
   }
 
   user.password = await bcrypt.hash(password, 10);
+  user.sessionVersion = (user.sessionVersion ?? 0) + 1;
   user.passwordResetTokenHash = undefined;
   user.passwordResetExpiresAt = undefined;
   user.emailVerified = true;
   user.updatedAt = new Date();
   await user.save();
+
+  disconnectUserSessions(user.id);
 
   res.json({ ok: true });
 });
@@ -373,6 +377,9 @@ router.put('/me', authMiddleware, async (req: Request, res: Response): Promise<v
       res.status(401).json({ error: 'Current password is incorrect.' }); return;
     }
     passwordHash = await bcrypt.hash(newPassword, 10);
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetExpiresAt = undefined;
   }
 
   user.name = updatedName;
@@ -380,8 +387,9 @@ router.put('/me', authMiddleware, async (req: Request, res: Response): Promise<v
   user.password = passwordHash;
   await user.save();
 
+  if (newPassword) disconnectUserSessions(user.id);
   const updatedUser = await findUserById(user.id);
-  res.json({ user: sanitizeUser(updatedUser) });
+  res.json({ user: sanitizeUser(updatedUser), ...(newPassword ? { token: createToken(updatedUser) } : {}) });
 });
 
 export default router;

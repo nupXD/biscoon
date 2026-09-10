@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   phone: { type: String },
   password: { type: String, required: true },
+  sessionVersion: { type: Number, default: 0 },
   role: { type: String, default: 'user', enum: ['user', 'staff', 'sub-admin', 'admin', 'super-admin'] },
   permissions: [{ type: String, enum: ADMIN_PERMISSION_KEYS }],
   emailVerified: { type: Boolean, default: false },

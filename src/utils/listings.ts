@@ -2,7 +2,7 @@ import Listing from '../models/Listing';
 import type { IListing } from '../types';
 
 function findListingById(id: string) {
-  return Listing.findOne({ id });
+  return Listing.findOne({ id, deleted: { $ne: true } });
 }
 
 function normalizeListing(listing: IListing | null): Record<string, unknown> | null {

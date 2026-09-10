@@ -26,6 +26,8 @@ const conversationSchema = new mongoose.Schema({
   participantIds: [{ type: String }],
   participantNames: { type: Map, of: String },
   messages: [messageSchema],
+  archived: { type: Boolean, default: false },
+  previousConversationId: { type: String, default: '' },
   updatedAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
 }, { collection: 'conversations' });

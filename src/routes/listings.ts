@@ -13,6 +13,7 @@ import { getPagination, pagedResponse } from '../utils/pagination';
 import { validate } from '../utils/validate';
 import { saveBase64Upload } from '../utils/uploads';
 import { listingCategoryFilter, normalizeCategory } from '../utils/categories';
+import { LISTING_SORTS, ListingSort, listingSortStages } from '../utils/listingSort';
 import * as es from '../services/elasticsearch';
 import type { AuthRequest } from '../types';
 
@@ -51,10 +52,6 @@ const commentPayloadSchema = z.object({
 function cleanString(value: unknown, fallback = ''): string {
   if (value === undefined || value === null) return fallback;
   return String(value).trim();
-}
-
-function escapeRegExp(value: unknown): string {
-  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function primaryLocationTerm(near: string): string {
@@ -209,14 +206,21 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const subcategory = req.query.subcategory as string | undefined;
   const search = req.query.search as string | undefined;
   const { page, limit, skip } = getPagination(req.query, { defaultLimit: 24, maxLimit: 100 });
+  const nearTerm = primaryLocationTerm(cleanString(req.query.near).slice(0, 120));
+  const requestedSort = cleanString(req.query.sort) || (search ? 'relevant' : nearTerm ? 'closest' : 'newest');
+  if (!LISTING_SORTS.includes(requestedSort as ListingSort)) {
+    res.status(400).json({ error: 'Unsupported listing sort.' }); return;
+  }
+  const sort = requestedSort as ListingSort;
 
   // Try Elasticsearch first; fall back to MongoDB text search
-  if (search && await es.isAvailable()) {
+  if (search && sort === 'relevant' && await es.isAvailable()) {
     try {
       const { ids, total } = await es.searchListings({ search, category, subcategory, limit, skip });
       if (!ids.length) { res.json(pagedResponse('listings', [], total, page, limit)); return; }
 
-      const docs = await Listing.find({ id: { $in: ids } });
+      const docs = await Listing.find({ id: { $in: ids }, deleted: { $ne: true }, ...listingCategoryFilter(category, subcategory) });
+      if (docs.length !== ids.length) throw new Error('Search index contains stale listings.');
       const order = new Map(ids.map((id: string, i: number) => [id, i]));
       docs.sort((a: any, b: any) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
       res.json(pagedResponse('listings', docs.map(normalizeListing), total, page, limit)); return;
@@ -229,28 +233,13 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   let query: any = { deleted: { $ne: true }, ...listingCategoryFilter(category, subcategory) };
   if (search) query = { $text: { $search: search }, ...query };
 
-  const near = !search ? cleanString(req.query.near).slice(0, 120) : '';
-  const nearTerm = near ? primaryLocationTerm(near) : '';
-
-  if (nearTerm) {
-    const nearRegex = new RegExp(escapeRegExp(nearTerm), 'i');
-    const [listings, totalCount] = await Promise.all([
-      Listing.aggregate([
-        { $match: query },
-        { $addFields: { _nearMatch: { $cond: [{ $regexMatch: { input: { $ifNull: ['$location', ''] }, regex: nearRegex } }, 0, 1] } } },
-        { $sort: { _nearMatch: 1, createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        { $project: { _nearMatch: 0 } },
-      ]),
-      Listing.countDocuments(query),
-    ]);
-    res.json(pagedResponse('listings', listings.map(normalizeListing), totalCount, page, limit));
-    return;
-  }
-
   const [listings, total] = await Promise.all([
-    Listing.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Listing.aggregate([
+      { $match: query },
+      ...listingSortStages(sort, nearTerm, Boolean(search)),
+      { $skip: skip },
+      { $limit: limit },
+    ]),
     Listing.countDocuments(query),
   ]);
   res.json(pagedResponse('listings', listings.map(normalizeListing), total, page, limit));
@@ -258,7 +247,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 router.get('/mine', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
-  const listings = await Listing.find({ userId: req_.user!.id }).sort({ createdAt: -1 });
+  const listings = await Listing.find({ userId: req_.user!.id, deleted: { $ne: true } }).sort({ createdAt: -1 });
   res.json({ listings: listings.map(normalizeListing) });
 });
 
@@ -270,7 +259,7 @@ router.get('/saved', authMiddleware, async (req: Request, res: Response): Promis
   const savedIds = Array.isArray(user.savedListings) ? user.savedListings.slice(0, 200) : [];
   if (!savedIds.length) { res.json({ listings: [] }); return; }
 
-  const listings = await Listing.find({ id: { $in: savedIds } });
+  const listings = await Listing.find({ id: { $in: savedIds }, deleted: { $ne: true } });
   const listingMap = new Map(listings.map((listing: any) => [listing.id, listing]));
   const orderedListings = savedIds
     .map((id: string) => listingMap.get(id))
@@ -287,20 +276,21 @@ router.get('/stats/summary', async (req: Request, res: Response): Promise<void> 
   startOfWeek.setDate(now.getDate() - 7);
 
   const [total, today, week, byCategory, bySubcategory, cityRows] = await Promise.all([
-    Listing.countDocuments({}),
-    Listing.countDocuments({ createdAt: { $gte: startOfToday } }),
-    Listing.countDocuments({ createdAt: { $gte: startOfWeek } }),
+    Listing.countDocuments({ deleted: { $ne: true } }),
+    Listing.countDocuments({ deleted: { $ne: true }, createdAt: { $gte: startOfToday } }),
+    Listing.countDocuments({ deleted: { $ne: true }, createdAt: { $gte: startOfWeek } }),
     Listing.aggregate([
+      { $match: { deleted: { $ne: true } } },
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     Listing.aggregate([
-      { $match: { subcategory: { $nin: [null, ''] } } },
+      { $match: { deleted: { $ne: true }, subcategory: { $nin: [null, ''] } } },
       { $group: { _id: '$subcategory', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     Listing.aggregate([
-      { $match: { location: { $nin: [null, ''] } } },
+      { $match: { deleted: { $ne: true }, location: { $nin: [null, ''] } } },
       { $project: { city: { $trim: { input: { $arrayElemAt: [{ $split: ['$location', ','] }, 0] } } } } },
       { $match: { city: { $ne: '' } } },
       { $group: { _id: '$city' } },
@@ -326,6 +316,8 @@ router.get('/stats/summary', async (req: Request, res: Response): Promise<void> 
 
 router.get('/:id/save', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   const req_ = req as AuthRequest;
+  const listing = await findListingById(req.params.id as string);
+  if (!listing) { res.status(404).json({ error: 'Listing not found.' }); return; }
   const user = await findUserById(req_.user!.id);
   if (!user) { res.status(404).json({ error: 'User not found.' }); return; }
   const saved = Array.isArray(user.savedListings) && user.savedListings.includes(req.params.id as string);

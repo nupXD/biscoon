@@ -170,6 +170,9 @@ async function handleProfileSubmit(event: Event): Promise<void> {
       return;
     }
 
+    if (data.token) {
+      (window as any).biscoonSession.start(data.token);
+    }
     showProfileMessage('Profile updated successfully.', 'success');
     (document.getElementById('currentPassword') as HTMLInputElement).value = '';
     (document.getElementById('newPassword') as HTMLInputElement).value = '';

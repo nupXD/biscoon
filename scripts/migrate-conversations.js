@@ -41,7 +41,7 @@ function mergeParticipantNames(conversations) {
 }
 
 async function backfillParticipantKeys() {
-  const cursor = Conversation.find({}).cursor();
+  const cursor = Conversation.find({ archived: { $ne: true } }).cursor();
   let updated = 0;
 
   for await (const conversation of cursor) {
@@ -65,6 +65,7 @@ async function backfillParticipantKeys() {
 
 async function mergeDuplicatesByParticipantKey() {
   const duplicates = await Conversation.aggregate([
+    { $match: { archived: { $ne: true } } },
     {
       $group: {
         _id: { listingId: '$listingId', participantKey: '$participantKey' },

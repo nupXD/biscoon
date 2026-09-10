@@ -11,6 +11,7 @@ body.is-home .dropdown.open .dd-menu { display: block; }
 body.is-home .pill { user-select: none; }
 @media (max-width: 980px) {
   body.is-home .page { grid-template-columns: 1fr; }
+  body.is-home .right-panel { grid-row: 1; }
   body.is-home .left-panel,
   body.is-home .right-panel { max-height: none; overflow: visible; }
   body.is-home .left-panel { border-right: none; border-bottom: 1px solid var(--border); }
@@ -150,7 +151,8 @@ body.is-home .dd-menu {
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:5px 0;
 }
-body.is-home .dropdown:hover .dd-menu {display:block;}
+body.is-home .dropdown > button.pill { font:inherit; }
+body.is-home .dropdown > button.pill:focus-visible { outline:3px solid var(--red); outline-offset:3px; }
 body.is-home .dd-menu a {display:flex;align-items:center;gap:8px;padding:7px 14px;color:var(--text);text-decoration:none;font-size:13px;font-weight:500;transition:background .1s;}
 body.is-home .dd-menu a:hover {background:var(--accent-light);color:var(--accent);}
 body.is-home .dm-sep {height:1px;background:var(--border);margin:4px 0;}

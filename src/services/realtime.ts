@@ -1,7 +1,7 @@
-import jwt from 'jsonwebtoken';
 import { Server as SocketIOServer } from 'socket.io';
 import type { Server as HttpServer } from 'http';
-import { CORS_ORIGINS, JWT_SECRET } from '../config/env';
+import { CORS_ORIGINS } from '../config/env';
+import { authenticateSession } from '../utils/sessions';
 
 let io: SocketIOServer | null = null;
 
@@ -28,15 +28,16 @@ function initRealtime(server: HttpServer): SocketIOServer {
     },
   });
 
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = String(socket.handshake.auth?.token || socket.handshake.query?.token || '');
     if (!token) {
       next(new Error('Missing authentication token.'));
       return;
     }
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as { id: string };
-      socket.data.userId = payload.id;
+      const { user, expiresAt } = await authenticateSession(token);
+      socket.data.userId = user.id;
+      socket.data.expiresAt = expiresAt;
       next();
     } catch {
       next(new Error('Invalid authentication token.'));
@@ -48,6 +49,11 @@ function initRealtime(server: HttpServer): SocketIOServer {
     if (!userId) return;
     socket.join(userRoom(userId));
     socket.emit('realtime:ready', { userId });
+    if (socket.data.expiresAt) {
+      const timeout = setTimeout(() => socket.disconnect(true), Math.max(0, socket.data.expiresAt * 1000 - Date.now()));
+      timeout.unref();
+      socket.on('disconnect', () => clearTimeout(timeout));
+    }
   });
 
   return io;
@@ -58,7 +64,12 @@ function emitToUser(userId: string, event: string, payload: unknown): void {
   io.to(userRoom(userId)).emit(event, payload);
 }
 
+function disconnectUserSessions(userId: string): void {
+  io?.in(userRoom(userId)).disconnectSockets(true);
+}
+
 export {
   initRealtime,
   emitToUser,
+  disconnectUserSessions,
 };

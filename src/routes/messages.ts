@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import path from 'path';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import Conversation from '../models/Conversation';
@@ -9,7 +10,8 @@ import { messageSendLimiter } from '../middleware/rateLimit';
 import { findUserById } from '../utils/users';
 import { encrypt, decrypt } from '../utils/crypto';
 import { validate } from '../utils/validate';
-import { saveBase64Upload, isStoredUpload } from '../utils/uploads';
+import { saveBase64Upload } from '../utils/uploads';
+import { STATIC_ROOT, UPLOAD_DIR } from '../config/env';
 import { emitToUser } from '../services/realtime';
 import type { AuthRequest } from '../types';
 
@@ -149,22 +151,20 @@ async function sanitizeAttachment(attachment: any): Promise<{ error?: string; va
   }
 
   const parsed = parseDataUrl(data);
-  if (!parsed && !isStoredUpload(data)) {
+  if (!parsed) {
     return { error: 'Attachment must be a valid base64 data URL.' };
   }
   if (parsed && parsed.mimeType !== mimeType) {
     return { error: 'Attachment MIME type does not match data payload.' };
   }
 
-  const size = parsed ? getAttachmentSizeFromBase64(parsed.base64) : Number(attachment.size || 0);
+  const size = getAttachmentSizeFromBase64(parsed.base64);
   const maxBytes = maxBytesForMimeType(mimeType);
   if (size <= 0 || size > maxBytes) {
     return { error: `Attachment "${name}" exceeds the ${maxBytes} byte limit.` };
   }
 
-  const storedData = parsed
-    ? await saveBase64Upload({ folder: 'messages', mimeType, base64: parsed.base64 })
-    : data;
+  const storedData = await saveBase64Upload({ folder: 'messages', mimeType, base64: parsed.base64 });
 
   return { value: { name, mimeType, size, data: storedData } };
 }
@@ -211,7 +211,7 @@ async function findConversationByParticipantKey(listingId: string, participantId
   let conversation = await Conversation.findOne({ listingId, participantKey });
 
   if (!conversation) {
-    conversation = await Conversation.findOne({ listingId, participantIds: normalizedIds });
+    conversation = await Conversation.findOne({ listingId, participantIds: normalizedIds, archived: { $ne: true } });
     if (conversation && conversation.participantKey !== participantKey) {
       conversation.participantIds = normalizeParticipantIds(conversation.participantIds);
       conversation.participantKey = participantKey;
@@ -223,8 +223,8 @@ async function findConversationByParticipantKey(listingId: string, participantId
 }
 
 function appendMessageOrThrow(conversation: any, message: any): void {
-  if (conversation.messages.length >= MAX_MESSAGES_PER_CONVERSATION) {
-    const error: any = new Error('This conversation has reached its message limit. Start a new thread from the listing page.');
+  if (conversation.archived || conversation.messages.length >= MAX_MESSAGES_PER_CONVERSATION) {
+    const error: any = new Error('Continue this conversation in a new thread from your inbox.');
     error.status = 413;
     throw error;
   }
@@ -294,6 +294,13 @@ router.post('/', authMiddleware, requireVerifiedEmail, messageSendLimiter, async
   const listingId = cleanString(parsedPayload.value.listingId);
   const recipientId = cleanString(parsedPayload.value.recipientId);
   const body = cleanString(parsedPayload.value.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
+
+  const [listing, recipient] = await Promise.all([
+    Listing.findOne({ id: listingId, deleted: { $ne: true } }),
+    findUserById(recipientId),
+  ]);
+  if (!listing) { res.status(404).json({ error: 'Listing not found.' }); return; }
+  if (!recipient || recipient.deleted) { res.status(404).json({ error: 'Recipient not found.' }); return; }
   const validatedAttachments = await validateAttachments(parsedPayload.value.attachments);
 
   if (validatedAttachments.error) {
@@ -308,13 +315,6 @@ router.post('/', authMiddleware, requireVerifiedEmail, messageSendLimiter, async
   if (recipientId === req_.user!.id) {
     res.status(400).json({ error: 'You cannot message yourself.' }); return;
   }
-
-  const [listing, recipient] = await Promise.all([
-    Listing.findOne({ id: listingId }),
-    findUserById(recipientId),
-  ]);
-  if (!listing) { res.status(404).json({ error: 'Listing not found.' }); return; }
-  if (!recipient) { res.status(404).json({ error: 'Recipient not found.' }); return; }
 
   const participantIds = [req_.user!.id, recipientId];
   const lookup = await findConversationByParticipantKey(listingId, participantIds);
@@ -353,6 +353,57 @@ router.post('/', authMiddleware, requireVerifiedEmail, messageSendLimiter, async
 
   emitMessageRealtime(conversation, req_.user!, body, validatedAttachments.attachments!.length);
   res.json({ conversationId: conversation.id });
+});
+
+router.get('/:id/attachments/:messageId/:index', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  const conversation = await Conversation.findOne({ id: req.params.id, participantIds: (req as AuthRequest).user!.id });
+  const message = conversation?.messages.find(item => item.id === req.params.messageId);
+  const index = /^\d+$/.test(String(req.params.index)) ? Number(req.params.index) : -1;
+  const attachment = message?.attachments[index];
+  if (!attachment) { res.status(404).json({ error: 'Attachment not found.' }); return; }
+
+  res.set('Cache-Control', 'private, no-store');
+  res.attachment(attachment.name);
+  res.type(attachment.mimeType);
+  const inlineData = parseDataUrl(attachment.data);
+  if (inlineData) { res.send(Buffer.from(inlineData.base64, 'base64')); return; }
+
+  const prefix = `/${UPLOAD_DIR}/messages/`;
+  const filename = attachment.data.startsWith(prefix) ? attachment.data.slice(prefix.length) : '';
+  if (!filename || filename !== path.basename(filename) || filename.startsWith('.')) {
+    res.status(404).json({ error: 'Attachment not found.' }); return;
+  }
+  res.sendFile(filename, { root: path.join(STATIC_ROOT, UPLOAD_DIR, 'messages'), cacheControl: false });
+});
+
+router.post('/:id/continue', authMiddleware, requireVerifiedEmail, messageSendLimiter, async (req: Request, res: Response): Promise<void> => {
+  const conversation = await Conversation.findOne({ id: req.params.id, participantIds: (req as AuthRequest).user!.id });
+  if (!conversation) { res.status(404).json({ error: 'Conversation not found.' }); return; }
+  if (!conversation.archived && conversation.messages.length < MAX_MESSAGES_PER_CONVERSATION) {
+    res.status(400).json({ error: 'This conversation can still receive messages.' }); return;
+  }
+
+  // Release the active-thread key while retaining the full, readable history.
+  await Conversation.updateOne({ id: conversation.id, archived: { $ne: true } }, {
+    $set: { archived: true, participantKey: `archived:${conversation.id}` },
+  });
+  const participantIds = normalizeParticipantIds(conversation.participantIds);
+  const participantKey = buildParticipantKeyFromIds(participantIds);
+  let next = await Conversation.findOne({ listingId: conversation.listingId, participantKey });
+  if (!next) {
+    try {
+      next = await Conversation.create({
+        id: uuidv4(), listingId: conversation.listingId, listingTitle: conversation.listingTitle,
+        participantIds, participantKey, participantNames: conversation.participantNames,
+        previousConversationId: conversation.id, messages: [],
+      });
+    } catch (error: any) {
+      if (error.code !== 11000) throw error;
+      next = await Conversation.findOne({ listingId: conversation.listingId, participantKey });
+      if (!next) throw error;
+    }
+  }
+  res.json({ conversationId: next.id });
 });
 
 router.get('/:id', authMiddleware, async (req: Request, res: Response): Promise<void> => {
@@ -398,11 +449,16 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response): Promise<
       senderId: message.senderId,
       senderName: message.senderName,
       body: message.body ? decrypt(message.body) : '',
-      attachments: message.attachments || [],
+      attachments: (message.attachments || []).map((attachment, index) => ({
+        name: attachment.name, mimeType: attachment.mimeType, size: attachment.size,
+        data: `/api/messages/${encodeURIComponent(conversation.id)}/attachments/${encodeURIComponent(message.id)}/${index}`,
+      })),
       createdAt: message.createdAt,
       isOwn: message.senderId === req_.user!.id,
     })),
     totalMessages: allMessages.length,
+    canContinue: Boolean(conversation.archived || allMessages.length >= MAX_MESSAGES_PER_CONVERSATION),
+    previousConversationId: conversation.previousConversationId || '',
     hasMore,
     nextBefore,
     updatedAt: conversation.updatedAt,
@@ -415,6 +471,8 @@ router.post('/:id/reply', authMiddleware, requireVerifiedEmail, messageSendLimit
   if (parsedPayload.error) { res.status(400).json({ error: parsedPayload.error }); return; }
 
   const body = cleanString(parsedPayload.value.body).slice(0, MAX_MESSAGE_BODY_LENGTH);
+  const conversation = await Conversation.findOne({ id: req.params.id, participantIds: req_.user!.id });
+  if (!conversation) { res.status(404).json({ error: 'Conversation not found.' }); return; }
   const validatedAttachments = await validateAttachments(parsedPayload.value.attachments);
   if (validatedAttachments.error) {
     res.status(400).json({ error: validatedAttachments.error }); return;
@@ -422,9 +480,6 @@ router.post('/:id/reply', authMiddleware, requireVerifiedEmail, messageSendLimit
   if (!body && validatedAttachments.attachments!.length === 0) {
     res.status(400).json({ error: 'A message body or at least one attachment is required.' }); return;
   }
-
-  const conversation = await Conversation.findOne({ id: req.params.id, participantIds: req_.user!.id });
-  if (!conversation) { res.status(404).json({ error: 'Conversation not found.' }); return; }
 
   if (!conversation.participantKey) {
     conversation.participantIds = normalizeParticipantIds(conversation.participantIds);

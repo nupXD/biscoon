@@ -23,3 +23,24 @@ jobs:
 
       - name: Run checks
         run: npm run check
+
+      - name: Start production containers
+        env:
+          JWT_SECRET: ci-only-biscoon-jwt-secret-at-least-32-characters
+          MSG_ENCRYPTION_KEY: ci-only-biscoon-message-secret-at-least-32-characters
+          CORS_ORIGINS: http://localhost:4000
+        run: docker compose up --build --wait --wait-timeout 180
+
+      - name: Check deployed public files
+        run: |
+          curl --fail http://localhost:4000/api/ready
+          for public_file in robots.txt sitemap.xml llms.txt; do
+            curl --fail "http://localhost:4000/$public_file" -o /dev/null
+          done
+          status=$(curl -sS -H 'Accept: text/html' -o /tmp/biscoon-404.html -w '%{http_code}' http://localhost:4000/missing-page)
+          test "$status" = 404
+          test -s /tmp/biscoon-404.html
+
+      - name: Stop production containers
+        if: always()
+        run: docker compose down
