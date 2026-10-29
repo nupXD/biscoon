@@ -8,6 +8,7 @@ type AgendaEvent = {
   image: string;
   start: Date;
   timeLabel: string;
+  category?: string;
   sample?: boolean;
 };
 
@@ -88,33 +89,39 @@ function excerpt(text: string, max = 140): string {
   return `${clean.slice(0, max - 1).trim()}…`;
 }
 
+// Offsets are relative to "now" so the preview always has something in the
+// current week, the next week, and a month out — regardless of what day this
+// actually runs. Only shown when there are zero real events for a query.
 function sampleEvents(now: Date): AgendaEvent[] {
-  const year = now.getFullYear();
   const items = [
-    { title: 'Boston Nepali Networking Night', date: `${year}-08-18`, time: '11:00am', location: 'Cambridge, MA', description: 'Meet founders, students, and new arrivals over tea — intros, job leads, and housing tips for Greater Boston.' },
-    { title: 'Innovation Workshop', date: `${year}-08-20`, time: '04:00pm', location: 'Lowell, MA', description: 'A hands-on afternoon on storytelling, small-business setup, and community projects for Nepali youth and families.' },
-    { title: 'Leadership Roundtable', date: `${year}-08-22`, time: '10:00am', location: 'Quincy, MA', description: 'Community organizers share how local associations plan Dashain, Tihar, and newcomer welcome weeks.' },
-    { title: 'Neetesh Jung Kunwar — East Coast Tour', date: `${year}-08-15`, time: '07:00pm', location: 'New York City, NY', description: 'Live Nepali music night for the diaspora — doors open early, family seating available.' },
-    { title: 'Sabin Rai & The Pharaoh — Live in Boston', date: `${year}-09-06`, time: '07:00pm', location: 'Boston, MA', description: 'An evening of Nepali rock and folk with the Boston community. Tickets at the door while they last.' },
-    { title: 'Dashain Mela 2083 — Cultural Night', date: `${year}-09-20`, time: '04:00pm', location: 'Dallas, TX', description: 'Tika, food stalls, kids’ games, and a cultural program for Dashain with Nepali families across Texas.' },
-    { title: 'Pramod Kharel — Dashain Special Concert', date: `${year}-10-04`, time: '06:00pm', location: 'Washington DC', description: 'A Dashain concert for the DC–Virginia–Maryland Nepali community.' },
+    { dayOffset: -3, time: '10:00am', title: 'Leadership Roundtable', location: 'Quincy, MA', category: 'Community', description: 'Community organizers share how local associations plan Dashain, Tihar, and newcomer welcome weeks.' },
+    { dayOffset: 0, time: '11:00am', title: 'Boston Nepali Networking Night', location: 'Cambridge, MA', category: 'Community', description: 'Meet founders, students, and new arrivals over tea — intros, job leads, and housing tips for Greater Boston.' },
+    { dayOffset: 2, time: '04:00pm', title: 'Innovation Workshop', location: 'Lowell, MA', category: 'Literature', description: 'A hands-on afternoon on storytelling, small-business setup, and community projects for Nepali youth and families.' },
+    { dayOffset: 4, time: '07:00pm', title: 'Sabin Rai & The Pharaoh — Live in Boston', location: 'Boston, MA', category: 'Music', description: 'An evening of Nepali rock and folk with the Boston community. Tickets at the door while they last.' },
+    { dayOffset: 9, time: '07:00pm', title: 'Neetesh Jung Kunwar — East Coast Tour', location: 'New York City, NY', category: 'Music', description: 'Live Nepali music night for the diaspora — doors open early, family seating available.' },
+    { dayOffset: 13, time: '04:00pm', title: 'Dashain Mela — Cultural Night', location: 'Dallas, TX', category: 'Community', description: 'Tika, food stalls, kids’ games, and a cultural program for Dashain with Nepali families across Texas.' },
+    { dayOffset: 30, time: '06:00pm', title: 'Pramod Kharel — Dashain Special Concert', location: 'Washington, DC', category: 'Music', description: 'A Dashain concert for the DC–Virginia–Maryland Nepali community.' },
   ];
-  return items.map((item, index) => {
-    const [y, m, d] = item.date.split('-').map(Number);
-    return {
-      id: `sample-${index}`,
-      title: item.title,
-      description: item.description,
-      body: item.description,
-      location: item.location,
-      href: `#event-sample-${index}`,
-      image: '',
-      start: new Date(y, m - 1, d),
-      timeLabel: item.time,
-      sample: true,
-    };
-  });
+  return items.map((item, index) => ({
+    id: `sample-${index}`,
+    title: item.title,
+    description: item.description,
+    body: item.description,
+    location: item.location,
+    href: `#event-sample-${index}`,
+    image: '',
+    start: startOfDay(addDays(now, item.dayOffset)),
+    timeLabel: item.time,
+    category: item.category,
+    sample: true,
+  }));
 }
+
+const EVENT_CATEGORY_LABELS: Record<string, string> = {
+  music: 'Music', art: 'Art', matchmaker: 'Matchmaker', matrimony: 'Matrimony',
+  sports: 'Sports', yoga: 'Yoga', literature: 'Literature', travel: 'Travel',
+  jyotish: 'Jyotish', 'pen-pals': 'Pen Pals', events: 'Community',
+};
 
 function fromListing(listing: {
   id?: string;
@@ -124,6 +131,7 @@ function fromListing(listing: {
   availability?: string;
   images?: string[];
   createdAt?: string;
+  subcategory?: string;
 }): AgendaEvent | null {
   const blob = `${listing.availability || ''} ${listing.description || ''} ${listing.title || ''}`;
   const created = listing.createdAt ? new Date(listing.createdAt) : new Date();
@@ -133,6 +141,7 @@ function fromListing(listing: {
     || listing.location
     || 'Nepali community gathering.';
   const image = Array.isArray(listing.images) && listing.images[0] ? listing.images[0] : '';
+  const subKey = String(listing.subcategory || '').toLowerCase();
   return {
     id: listing.id || `listing-${start.getTime()}`,
     title: listing.title || 'Community event',
@@ -143,6 +152,7 @@ function fromListing(listing: {
     image,
     start,
     timeLabel: parseTimeLabel(blob) || formatTime(start, ''),
+    category: EVENT_CATEGORY_LABELS[subKey] || '',
   };
 }
 
@@ -163,36 +173,35 @@ function eventsOnDay(events: AgendaEvent[], date: Date): AgendaEvent[] {
   return events.filter(event => ymd(event.start) === key);
 }
 
+const EVENT_FALLBACK_ICON = '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 9.5h18" stroke="currentColor" stroke-width="1.5"/><path d="M8 3v3.2M16 3v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8.2" cy="14" r="1" fill="currentColor"/><circle cx="12" cy="14" r="1" fill="currentColor"/><circle cx="15.8" cy="14" r="1" fill="currentColor"/><circle cx="8.2" cy="17.3" r="1" fill="currentColor"/><circle cx="12" cy="17.3" r="1" fill="currentColor"/></svg>';
+
 function renderThumb(event: AgendaEvent): string {
   if (event.image) {
     return `<img src="${evEscapeHtml(event.image)}" alt="${evEscapeHtml(event.title || 'Event')}" loading="lazy">`;
   }
-  return `<span aria-hidden="true">🎉</span>`;
+  return `<span class="ev-thumb-fallback" aria-hidden="true">${EVENT_FALLBACK_ICON}</span>`;
 }
 
-function renderGroup(date: Date, events: AgendaEvent[]): string {
-  if (!events.length) return '';
-  const dayName = DAYS[date.getDay()];
-  const dateLabel = `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+const EV_ICON_CLOCK = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.75V8l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const EV_ICON_PIN = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5c-2.49 0-4.5 2.01-4.5 4.5 0 3.375 4.5 8.5 4.5 8.5s4.5-5.125 4.5-8.5c0-2.49-2.01-4.5-4.5-4.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="6" r="1.6" stroke="currentColor" stroke-width="1.3"/></svg>';
+
+function renderCard(event: AgendaEvent): string {
+  const dayName = DAYS[event.start.getDay()].slice(0, 3);
+  const dateLabel = `${MONTHS[event.start.getMonth()].slice(0, 3)} ${event.start.getDate()}`;
+  const whenLabel = `${dayName}, ${dateLabel} · ${event.timeLabel || 'TBA'}`;
   return `
-    <section class="ev-group" data-group-day="${ymd(date)}">
-      <div class="ev-group-head">
-        <span>${evEscapeHtml(dayName)}</span>
-        <span>${evEscapeHtml(dateLabel)}</span>
+    <a class="ev-card" href="${evEscapeHtml(event.href)}" data-event-id="${evEscapeHtml(event.id)}" data-group-day="${ymd(event.start)}"${event.sample ? '' : ` data-listing-id="${evEscapeHtml(event.id)}"`}>
+      <div class="ev-card-media">${renderThumb(event)}</div>
+      <div class="ev-card-body">
+        ${event.category ? `<span class="ev-card-badge">${evEscapeHtml(event.category)}</span>` : ''}
+        <h3>${evEscapeHtml(event.title)}</h3>
+        <p>${evEscapeHtml(event.description)}</p>
+        <div class="ev-card-meta">
+          <span>${EV_ICON_CLOCK}${evEscapeHtml(whenLabel)}</span>
+          ${event.location ? `<span>${EV_ICON_PIN}${evEscapeHtml(event.location)}</span>` : ''}
+        </div>
       </div>
-      ${events.map(event => `
-        <a class="ev-row" href="${evEscapeHtml(event.href)}" data-event-id="${evEscapeHtml(event.id)}"${event.sample ? '' : ` data-listing-id="${evEscapeHtml(event.id)}"`}>
-          <div class="ev-thumb">${renderThumb(event)}</div>
-          <div class="ev-body">
-            <div class="ev-title-row">
-              <h3>${evEscapeHtml(event.title)}</h3>
-              <time>${evEscapeHtml(event.timeLabel || 'TBA')}</time>
-            </div>
-            <p>${evEscapeHtml(event.description)}${event.location ? ` · ${evEscapeHtml(event.location)}` : ''}</p>
-          </div>
-        </a>
-      `).join('')}
-    </section>
+    </a>
   `;
 }
 
@@ -264,9 +273,11 @@ function renderWeek(root: HTMLElement): void {
         ${days.map(day => {
           const key = ymd(day);
           const has = eventsOnDay(state.events, day).length > 0;
-          const selected = state.selected === key || (!state.selected && key === ymd(new Date()) && mondayOf(new Date()).getTime() === state.monday.getTime());
+          const isToday = key === ymd(new Date());
+          const selected = state.selected === key || (!state.selected && isToday && mondayOf(new Date()).getTime() === state.monday.getTime());
+          const todayClass = isToday && !selected ? ' is-today' : '';
           return `
-            <button type="button" class="ev-date${selected ? ' is-selected' : ''}${has ? ' has-event' : ''}" data-day="${key}" role="option" aria-selected="${selected}">
+            <button type="button" class="ev-date${selected ? ' is-selected' : ''}${todayClass}${has ? ' has-event' : ''}" data-day="${key}" role="option" aria-selected="${selected}">
               ${day.getDate()}
             </button>
           `;
@@ -281,23 +292,14 @@ function renderList(root: HTMLElement): void {
   if (!items.length) {
     root.innerHTML = `
       <div class="ev-empty">
-        <p>No events in this week.</p>
+        <h3>No events posted for this week yet</h3>
+        <p>Try another week with the arrows above, browse by type above, or be the first to post one.</p>
         <a class="btn-primary" href="../post/listing.html?category=events">Post an event</a>
       </div>
     `;
     return;
   }
-  const groups = new Map<string, AgendaEvent[]>();
-  items.forEach(event => {
-    const key = ymd(event.start);
-    const bucket = groups.get(key) || [];
-    bucket.push(event);
-    groups.set(key, bucket);
-  });
-  root.innerHTML = Array.from(groups.entries()).map(([key, events]) => {
-    const [y, m, d] = key.split('-').map(Number);
-    return renderGroup(new Date(y, m - 1, d), events);
-  }).join('');
+  root.innerHTML = `<div class="ev-cards-grid">${items.map(renderCard).join('')}</div>`;
 }
 
 function paint(): void {
@@ -523,7 +525,13 @@ async function initEventsAgenda(): Promise<void> {
   const root = document.getElementById('eventsAgenda');
   if (!root) return;
   bind(root);
-  if (!isAgendaMode()) return;
+  if (!isAgendaMode()) {
+    document.body.classList.remove('events-agenda-on');
+    window.addEventListener('biscoon:listings-rendered', ((event: CustomEvent) => {
+      applyListings(event.detail?.listings || []);
+    }) as EventListener);
+    return;
+  }
   document.body.classList.add('events-agenda-on');
   const live = await fetchLiveEvents();
   setEvents(live);

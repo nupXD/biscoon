@@ -9,6 +9,7 @@ const discussionModule = require('../src/models/Discussion');
 const limiters = require('../src/middleware/rateLimit');
 const Listing = require('../src/models/Listing').default;
 const Conversation = require('../src/models/Conversation').default;
+const News = require('../src/models/News').default;
 
 const app = appModule.default || appModule;
 const User = userModule.default || userModule;
@@ -496,6 +497,36 @@ test('admins can publish news and drafts stay private', async () => {
 
   const draftDetail = await request(app).get(`/api/news/${draft.body.article.slug}`);
   expect(draftDetail.status).toBe(404);
+});
+
+test('latest news orders by publication before pagination and excludes nonpublic stories', async () => {
+  const now = Date.now();
+  const article = (id, age, extra = {}) => ({
+    id, slug: id, title: id, summary: 'News fixture', body: 'News fixture body',
+    status: 'published', publishedAt: new Date(now - age), ...extra,
+  });
+  await News.insertMany([
+    article('older-featured', 30000, { featured: true }),
+    article('recent', 20000),
+    article('latest', 10000),
+    article('removed', 1000, { deleted: true }),
+    article('draft', 1000, { status: 'draft' }),
+    article('scheduled', -86400000),
+  ]);
+
+  const first = await request(app).get('/api/news?sort=latest&limit=1');
+  expect(first.status).toBe(200);
+  expect(first.body.news.map(item => item.id)).toEqual(['latest']);
+  expect(first.body.total).toBe(3);
+  const second = await request(app).get('/api/news?sort=latest&limit=1&page=2');
+  expect(second.body.news.map(item => item.id)).toEqual(['recent']);
+  const featured = await request(app).get('/api/news?limit=1');
+  expect(featured.body.news[0].id).toBe('older-featured');
+
+  for (const slug of ['removed', 'draft', 'scheduled']) {
+    expect((await request(app).get(`/api/news/${slug}`)).status).toBe(404);
+  }
+  expect((await request(app).get('/api/news/latest')).body.article.id).toBe('latest');
 });
 
 test('users can report content and admins can update report status', async () => {

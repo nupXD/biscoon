@@ -8,6 +8,7 @@ const router = Router();
 function publishedNewsQuery(extra: Record<string, any> = {}): Record<string, any> {
   return {
     status: 'published',
+    deleted: { $ne: true },
     publishedAt: { $lte: new Date() },
     ...extra,
   };
@@ -21,10 +22,13 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   let query: any = publishedNewsQuery();
   if (category && category !== 'all') query.category = category;
   if (search) query = { ...query, $text: { $search: search } };
+  const sort: Record<string, 1 | -1> = req.query.sort === 'latest'
+    ? { publishedAt: -1, _id: -1 }
+    : { featured: -1, publishedAt: -1 };
 
   const [news, total] = await Promise.all([
     News.find(query)
-      .sort({ featured: -1, publishedAt: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit),
     News.countDocuments(query),

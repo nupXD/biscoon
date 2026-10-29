@@ -10,6 +10,7 @@ let myListingsCache = [];
 let myListingsView = localStorage.getItem('biscoonListingView') || 'grid';
 let myListingsQuery = '';
 let myListingsSort = 'newest';
+let listingFormDirty = false;
 
 function normalizeListingCategory(category) {
   const aliases = {
@@ -308,6 +309,7 @@ const LISTING_FORM_PROFILES = {
 };
 
 const SPECIFIC_TYPE_PROFILE = {
+  event: 'event',
   events: 'event',
   restaurants: 'marketplace',
   shops: 'marketplace',
@@ -797,7 +799,7 @@ function renderImagePreview(images = []) {
       <span class="image-preview-count">${index + 1}</span>
       <button class="image-remove-btn" type="button" data-remove-listing-image="${index}" aria-label="Remove image">×</button>
     </div>
-  `).join('') + (images.length < limit ? `
+  `).join('') + (images.length > 0 && images.length < limit ? `
     <label class="image-preview-add" for="imagesUpload">
       <span>+</span>
       <small>${limit - images.length} left</small>
@@ -900,35 +902,50 @@ function applyCategoryGuide(category, subcategory = '') {
   const guide = getCategoryGuide(category, subcategory);
   const tips = (guide.best || []).slice(0, 3);
   if (tips.length) setSidebarList('sidebarBestList', tips);
+  setText('sidebarBestTitle', guide.bestTitle);
+  const next = (guide.next || []).slice(0, 3);
+  if (next.length) setSidebarList('sidebarNextList', next);
 }
 
 function applyCategoryContext(category, subcategory = '') {
   const context = getCategoryContext(category, subcategory);
+  const profile = getActiveListingFormProfile(category, subcategory);
+  const key = getActiveListingProfileKey(category, subcategory);
   applyCategoryGuide(category, subcategory);
+  const headings = { housing: 'Post a home or room', jobs: 'Post a job', services: 'Offer a service', marketplace: 'Sell an item', event: 'Post an event', photography: 'Share your photography', professional: 'Offer professional help', community: 'Post to the community' };
+  setText('postingHeading', category ? headings[key] || 'Create your ad' : 'What are you posting?');
+  ['title', 'description', 'area', 'locationType', 'images'].forEach(id => setText(id + 'Label', context[id + 'Label']));
+  ['title', 'description', 'price', 'priceNote'].forEach(id => setPlaceholder(id, context[id + 'Placeholder']));
+  setText('priceLabel', (context.priceLabel || 'Price') + (profile.required.price ? '' : ' (optional)'));
+  setText('priceNoteLabel', (context.priceNoteLabel || 'Pricing note') + ' (optional)');
+  setText('linkLabel', (context.linkLabel || 'Website') + ' (optional)');
+  setText('logisticsHeading', { housing: 'Rent & move-in', jobs: 'Pay & work setup', services: 'Rates & service area', marketplace: 'Price & pickup', event: 'Venue & tickets' }[key] || 'Location & pricing');
+  setText('contactPhotosHeading', key === 'photography' ? 'Photos' : 'Contact & photos');
+  if (context.locationTypes?.length) setLocationTypeOptions(context.locationTypes);
+}
 
-  // Keep placeholders short — long category copy made the form feel heavy.
-  const shortTitle = {
-    jobs: 'e.g. Full-stack developer — Boston / remote',
-    housing: 'e.g. Sunny room in Allston — $950/mo',
-    marketplace: 'e.g. IKEA desk for sale — good condition',
-    community: 'e.g. Dashain meetup — this Saturday',
-    photography: 'e.g. Street photos from Kathmandu',
-  };
-  const shortDesc = {
-    jobs: 'Role, pay range if known, schedule, and who should apply.',
-    housing: 'Room/home details, rent, move-in date, and house rules.',
-    marketplace: 'Condition, what’s included, pickup/delivery, and price notes.',
-    community: 'What it is, who it’s for, when/where, and how to join.',
-    photography: 'Caption or story behind the photos.',
-  };
-  setPlaceholder('title', shortTitle[category] || 'Clear headline for your listing');
-  setPlaceholder('description', shortDesc[category] || 'What is it, who is it for, and any must-know details.');
-  setPlaceholder('price', context.pricePlaceholder || 'e.g. $120, free, negotiable');
-  setText('imagesNote', 'Up to 6 photos. Clear shots help people respond faster.');
-  setText('subcategoryLabel', category === 'photography' ? 'Photo style' : 'Type');
-  setText('availabilityLabel', category === 'community' || subcategory === 'events' ? 'Date / timing' : 'Availability');
-  if (document.getElementById('locationType') && Array.isArray(context.locationTypes) && context.locationTypes.length) {
-    setLocationTypeOptions(context.locationTypes);
+function updateAdPreview() {
+  const preview = document.getElementById('postPreviewTitle');
+  if (!preview) return;
+  const category = document.getElementById('category')?.value || '';
+  const type = document.getElementById('subcategory')?.value || '';
+  const profile = getActiveListingFormProfile(category, type);
+  const context = getCategoryContext(category, type);
+  preview.textContent = document.getElementById('title')?.value.trim() || 'Your ad title';
+  setText('postPreviewCategory', category ? context.label : 'Your ad');
+  const fields = { postPreviewPrice: profile.visible.price ? 'price' : null, postPreviewLocation: profile.visible.location ? 'area' : null, postPreviewDescription: 'description' };
+  Object.entries(fields).forEach(([id, source]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = source ? document.getElementById(source)?.value.trim() || '' : '';
+  });
+  const media = document.getElementById('postPreviewMedia');
+  if (media) {
+    const image = editingListingImages[0];
+    media.hidden = !image;
+    if (media.dataset.image !== (image || '')) {
+      media.dataset.image = image || '';
+      media.innerHTML = image ? '<img src="' + escapeHtml(image) + '" alt="Selected ad photo">' : '';
+    }
   }
 }
 
@@ -936,7 +953,8 @@ function updateImageLimitCopy(category) {
   const note = document.getElementById('imagesNote');
   if (!note) return;
   const limit = getMaxListingImages(category);
-  note.textContent = `Up to ${limit} photo${limit === 1 ? '' : 's'}. Clear shots help people respond faster.`;
+  const required = getActiveListingFormProfile(category).required.photos;
+  note.textContent = `${required ? 'At least one photo required. ' : 'Optional. '}Up to ${limit} photos.`;
 }
 
 function enforceImageLimitForCurrentCategory() {
@@ -957,6 +975,7 @@ function setGroupVisible(id, visible) {
   const element = document.getElementById(id);
   if (!element) return;
   element.classList.toggle('listing-field-hidden', !visible);
+  element.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = !visible; });
 }
 
 function applyListingFormProfile(category, subcategory = '') {
@@ -970,17 +989,15 @@ function applyListingFormProfile(category, subcategory = '') {
   setGroupVisible('priceDetailsGroup', profile.visible.price);
   setGroupVisible('contactDetailsSection', profile.visible.contact);
   setGroupVisible('linkGroup', profile.visible.link);
+  setGroupVisible('logisticsSection', !isPhotoMode);
+  const link = document.getElementById('link');
+  if (link) link.disabled = !profile.visible.link;
 
   setFieldRequired('availability', profile.required.availability && profile.visible.availability);
   setFieldRequired('area', profile.required.location && profile.visible.location);
   setFieldRequired('price', profile.required.price && profile.visible.price);
   setFieldRequired('contactEmail', profile.required.contactEmail && profile.visible.contact);
 
-  Object.entries(profile.defaults).forEach(([id, value]) => {
-    const htmlId = id === 'externalLink' ? 'link' : id;
-    const element = document.getElementById(htmlId);
-    if (element) element.value = value;
-  });
 }
 
 function setDatalistOptions(id, values = []) {
@@ -1036,6 +1053,11 @@ function updateCategoryDependentFields(options = {}) {
 
   const normalizedCategory = normalizeListingCategory(category.value);
   if (category.value !== normalizedCategory) category.value = normalizedCategory;
+  syncPostingVisibility(Boolean(normalizedCategory));
+  if (!normalizedCategory) {
+    setText('postingHeading', 'What are you posting?');
+    return;
+  }
   const selectedSubcategory = options.clearValues ? '' : subcategory.value;
   const profileKey = getActiveListingProfileKey(normalizedCategory, selectedSubcategory);
   const preset = getCategoryPreset(normalizedCategory, selectedSubcategory);
@@ -1045,7 +1067,8 @@ function updateCategoryDependentFields(options = {}) {
   subcategory.placeholder = preset.subcategoryPlaceholder;
   availability.placeholder = preset.availabilityPlaceholder;
   setText('subcategoryLabel', profileKey === 'photography' ? 'Photo style' : 'Type');
-  setText('availabilityLabel', profileKey === 'event' ? 'Date / timing' : 'Availability');
+  const timingLabel = { housing: 'Move-in date', jobs: 'Start date / schedule', event: 'Event date & time' }[profileKey] || 'Availability';
+  setText('availabilityLabel', timingLabel + (mergeListingProfile(profileKey).required.availability ? '' : ' (optional)'));
   setText('subcategoryNote', '');
   setDatalistOptions('subcategorySuggestions', preset.subcategories);
   setDatalistOptions('availabilitySuggestions', preset.availability);
@@ -1058,6 +1081,15 @@ function updateCategoryDependentFields(options = {}) {
   }
   enforceImageLimitForCurrentCategory();
   updateListingProgress();
+}
+
+function syncPostingVisibility(selected) {
+  document.querySelectorAll('[data-ad-details]').forEach(section => {
+    section.hidden = !selected;
+    section.querySelectorAll('input, select, textarea, button').forEach(field => {
+      field.disabled = !selected;
+    });
+  });
 }
 
 function setElementText(selector, value) {
@@ -1073,6 +1105,7 @@ function applyPhotographyOnlyMode() {
   if (category) {
     category.value = 'photography';
     category.setAttribute('aria-readonly', 'true');
+    category.disabled = true;
   }
 
   setElementText('.breadcrumb span:last-child', 'Post Photography');
@@ -1080,7 +1113,7 @@ function applyPhotographyOnlyMode() {
   const heroTitle = document.querySelector('.post-hero .page-hero-title');
   if (heroTitle) heroTitle.innerHTML = '<span class="emoji">📸</span>Post Photography';
   setElementText('.post-hero .page-hero-devanagari', 'तपाईंको फोटो कला साझा गर्नुहोस्');
-  setElementText('.post-hero .page-hero-desc', 'Share your photos, caption, creative story, style, and tags. No booking, pricing, contact, or location details needed.');
+  setElementText('.post-hero .page-hero-desc', 'Original photography from your community.');
   setElementText('.post-card > h2', 'Share a photography post');
   setElementText('.post-card > p', 'Post your own photos like a creative forum: choose a genre, write the story behind the images, upload multiple photos, and publish.');
 
@@ -1088,7 +1121,7 @@ function applyPhotographyOnlyMode() {
   if (group && !group.querySelector('.photography-lock-note')) {
     const note = document.createElement('div');
     note.className = 'photography-lock-note';
-    note.textContent = 'Photography showcase only. Booking, location, price, and contact fields are hidden.';
+    note.textContent = 'Photography showcase';
     group.appendChild(note);
   }
 }
@@ -1158,6 +1191,7 @@ async function mapFormToListing() {
 function resetListingForm() {
   const form = document.getElementById('listingForm');
   if (!form) return;
+  listingFormDirty = false;
   form.removeAttribute('data-editing-id');
   form.reset();
   document.getElementById('listingSubmitButton').textContent = 'Publish listing';
@@ -1619,6 +1653,7 @@ function openImageLightbox(src) {
 }
 
 function updateListingProgress() {
+  if (document.getElementById('postPreviewHeading')) updateAdPreview();
   const progress = document.getElementById('listingProgressFill');
   const label = document.getElementById('listingProgressLabel');
   if (!progress || !label) return;
@@ -1638,10 +1673,12 @@ function updateListingProgress() {
   const hasPhotos = editingListingImages.length > 0;
   const requiredTotal = fields.length + (profile.required.photos ? 1 : 0);
   const requiredFilled = filled + (profile.required.photos && hasPhotos ? 1 : 0);
-  const ready = requiredFilled === requiredTotal;
+  const link = document.getElementById('link');
+  const invalidLink = profile.visible.link && link?.value.trim() && !link.validity.valid;
+  const ready = requiredFilled === requiredTotal && !invalidLink;
   const score = Math.round(requiredFilled / requiredTotal * 100);
   progress.style.width = `${score}%`;
-  const status = ready ? 'Ready to publish' : score < 45
+  const status = invalidLink ? 'Check website address' : ready ? 'Ready to publish' : score < 45
     ? (isPhotographyPost ? 'Needs photo basics' : 'Needs basics')
     : 'Almost ready';
   label.textContent = status;
@@ -1668,6 +1705,14 @@ function bindInteractiveForm() {
     if (event.target.id === 'availability') {
       syncQuickPickActive('availability');
     }
+    if (event.target.closest('#listingFormFields')) {
+      listingFormDirty = true;
+    }
+  });
+  window.addEventListener('beforeunload', event => {
+    if (!listingFormDirty) return;
+    event.preventDefault();
+    event.returnValue = '';
   });
   document.addEventListener('change', event => {
     if (event.target.id === 'myListingsSort') {

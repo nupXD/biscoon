@@ -48,6 +48,7 @@
 </script>
 </head>
 <body class="has-dash-nav">
+<a class="skip-link" href="#main">Skip to content</a>
 
 <nav class="site-header">
   <a href="../../index.html" class="nav-logo logo-wrap" aria-label="Biscoon.com home">
@@ -112,23 +113,19 @@
   </div>
 </div>
 
-<div class="breadcrumb">
+<div class="breadcrumb" id="main" tabindex="-1">
   <a href="../../index.html">Biscoon</a>
   <span class="sep">›</span>
   <span aria-current="page">Post a Listing</span>
 </div>
 <section class="post-page">
   <div class="post-hero post-hero--compact">
-    <p class="page-hero-eyebrow">Free · Nepali community</p>
-    <h1 class="page-hero-title">Post a Listing</h1>
-    <p class="page-hero-desc">Share a job, room, service, or item with Nepalis near you.</p>
+    <p class="page-hero-eyebrow">Free · No fees, ever</p>
+    <h1 class="page-hero-title">Post an ad</h1>
+    <p class="page-hero-desc">Reach Nepalis across the US in minutes — jobs, housing, services, and more.</p>
   </div>
   <div class="post-layout post-layout--simple">
     <div class="post-card">
-      <header class="post-card-head">
-        <h2>Create a listing</h2>
-        <p class="post-card-lead">Pick a category, add clear details, and give people a way to reach you. Photos help a lot.</p>
-      </header>
       <form id="listingForm" action="#" method="post">
         <div id="listingAuthGate" class="listing-comment-signin" hidden>
           <p>Sign in to publish or manage your listings. <span lang="ne">सूची प्रकाशित गर्न साइन इन गर्नुहोस्।</span></p>
@@ -137,7 +134,7 @@
         <div id="listingGuardMessage" class="form-helper" hidden></div>
 
         <div class="form-section" id="listingFormFields">
-          <div class="listing-progress" id="listingProgress" data-strength="low">
+          <div class="listing-progress" id="listingProgress" data-strength="low" data-ad-details hidden>
             <div class="listing-progress-top">
               <span>Required details</span>
               <strong id="listingProgressLabel" aria-live="polite">Needs basics</strong>
@@ -147,8 +144,7 @@
             </div>
           </div>
           <fieldset class="form-block">
-            <legend class="form-block-title">Category &amp; type</legend>
-            <p class="form-block-hint">Start here so the rest of the form fits your listing.</p>
+            <legend class="form-block-title" id="postingHeading">What are you posting?</legend>
             <div class="form-group" id="categoryGroup">
               <label class="form-label" for="category">Category</label>
               <select class="form-select" id="category" name="category" required>
@@ -164,7 +160,7 @@
               <div class="category-field-guide" id="categoryFieldGuide" hidden></div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" data-ad-details hidden>
               <label class="form-label" for="subcategory" id="subcategoryLabel">Type</label>
               <input class="form-input" id="subcategory" name="subcategory" type="text" list="subcategorySuggestions" placeholder="e.g. room, tech, kinbech, event" required maxlength="120" />
               <datalist id="subcategorySuggestions"></datalist>
@@ -173,9 +169,8 @@
             </div>
           </fieldset>
 
-          <fieldset class="form-block">
+          <fieldset class="form-block" data-ad-details hidden>
             <legend class="form-block-title">Details</legend>
-            <p class="form-block-hint">A specific title gets better replies.</p>
             <div class="form-group">
               <label class="form-label" for="title" id="titleLabel">Title</label>
               <input class="form-input" id="title" name="title" type="text" placeholder="Clear headline for your listing" required maxlength="120" />
@@ -188,8 +183,12 @@
             </div>
           </fieldset>
 
-          <fieldset class="form-block">
-            <legend class="form-block-title">Location &amp; price</legend>
+          <fieldset class="form-block" id="logisticsSection" data-ad-details hidden>
+            <legend class="form-block-title" id="logisticsHeading">Location &amp; price</legend>
+            <div class="form-group">
+              <label class="form-label" for="locationType" id="locationTypeLabel">Format</label>
+              <select class="form-select" id="locationType" name="locationType"><option value="in-person">In person</option></select>
+            </div>
             <div class="form-row--two" id="locationDetailsGroup">
               <div class="form-group">
                 <label class="form-label" for="area" id="areaLabel">Location</label>
@@ -198,8 +197,12 @@
               <div class="form-group" id="priceDetailsGroup">
                 <label class="form-label" for="price" id="priceLabel">Price</label>
                 <input class="form-input" id="price" name="price" type="text" placeholder="e.g. $120, free, negotiable" maxlength="120" />
-                <input id="priceNote" name="priceNote" type="hidden" value="" />
               </div>
+            </div>
+
+            <div class="form-group" id="priceNoteGroup">
+              <label class="form-label" for="priceNote" id="priceNoteLabel">Pricing note (optional)</label>
+              <input class="form-input" id="priceNote" name="priceNote" type="text" maxlength="220" />
             </div>
 
             <div class="form-group" id="availabilityGroup">
@@ -210,23 +213,25 @@
             </div>
           </fieldset>
 
-          <fieldset class="form-block form-block--last">
-            <legend class="form-block-title">Contact &amp; photos</legend>
+          <fieldset class="form-block form-block--last" data-ad-details hidden>
+            <legend class="form-block-title" id="contactPhotosHeading">Contact &amp; photos</legend>
             <div class="form-row--two" id="contactDetailsSection">
               <div class="form-group">
-                <label class="form-label" for="contactEmail">Email</label>
+                <label class="form-label" for="contactEmail">Public contact email</label>
                 <input class="form-input" id="contactEmail" name="contactEmail" type="email" placeholder="you@example.com" required maxlength="200" />
               </div>
               <div class="form-group">
-                <label class="form-label" for="contactPhone">Phone <span class="label-optional">optional</span></label>
-                <input class="form-input" id="contactPhone" name="contactPhone" type="tel" placeholder="+1 555 123 4567" />
+                <label class="form-label" for="contactPhone">Public phone <span class="label-optional">optional</span></label>
+                <input class="form-input" id="contactPhone" name="contactPhone" type="tel" placeholder="+1 555 123 4567" maxlength="50" />
               </div>
             </div>
             <input id="state" name="state" type="hidden" value="" />
-            <input id="locationType" name="locationType" type="hidden" value="in-person" />
             <input id="location" name="location" type="hidden" />
             <input id="contactPreference" name="contactPreference" type="hidden" value="email" />
-            <input id="link" name="link" type="hidden" value="" />
+            <div class="form-group" id="linkGroup">
+              <label class="form-label" for="link" id="linkLabel">Website (optional)</label>
+              <input class="form-input" id="link" name="link" type="url" placeholder="https://" maxlength="1000" />
+            </div>
             <input id="tags" name="tags" type="hidden" value="" />
 
             <div class="form-group">
@@ -241,10 +246,13 @@
           </fieldset>
         </div>
 
-        <div id="listingMessage" class="form-helper"></div>
+        <div id="listingMessage" class="form-helper" role="status" tabindex="-1"></div>
+        <div data-ad-details hidden>
         <div class="post-submit" id="listingSubmitRow">
           <button class="btn-primary" id="listingSubmitButton" type="submit">Publish listing</button>
           <a class="btn-ghost" id="listingSigninLink" href="../auth/login.html" hidden>Sign in</a>
+        </div>
+        <p class="post-submit-note">Free to post. No fees, ever.</p>
         </div>
       </form>
 
@@ -253,19 +261,27 @@
         <div id="listingList">Loading your listings...</div>
       </div>
     </div>
-
-    <aside class="post-sidebar post-sidebar--simple">
-      <div class="sidebar-widget sidebar-tip">
-        <div class="sidebar-tip-badge" aria-hidden="true">Tip</div>
-        <h4 id="sidebarBestTitle">Quick tip</h4>
-        <ul id="sidebarBestList">
-          <li>Use a specific title and real location.</li>
-          <li>Add price when it helps (or write free / negotiable).</li>
-          <li>Upload a couple of clear photos.</li>
-        </ul>
-        <ul id="sidebarNextList" hidden></ul>
-        <ul id="sidebarTypesList" hidden></ul>
-      </div>
+    <aside class="post-sidebar post-sidebar--simple" data-ad-details hidden aria-label="Listing preview and tips">
+      <section class="sidebar-widget post-preview" aria-labelledby="postPreviewHeading">
+        <h2 id="postPreviewHeading">How your ad will look</h2>
+        <div class="post-preview-card">
+          <div class="post-preview-media" id="postPreviewMedia" hidden></div>
+          <p class="post-preview-category" id="postPreviewCategory">Your ad</p>
+          <h3 id="postPreviewTitle">Your ad title</h3>
+          <p class="post-preview-price" id="postPreviewPrice"></p>
+          <p id="postPreviewLocation"></p>
+          <p id="postPreviewDescription"></p>
+        </div>
+      </section>
+      <section class="sidebar-widget sidebar-tip">
+        <span class="sidebar-tip-badge">Tips</span>
+        <h4 id="sidebarBestTitle">Strong posts include</h4>
+        <ul id="sidebarBestList"></ul>
+      </section>
+      <section class="sidebar-widget">
+        <h4>What happens next</h4>
+        <ul id="sidebarNextList"></ul>
+      </section>
     </aside>
   </div>
 </section>

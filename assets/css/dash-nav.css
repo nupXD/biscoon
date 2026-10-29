@@ -305,3 +305,11 @@ body.has-dash-nav .site-header .user-name {
     gap: 6px;
   }
 }
+
+@media (max-width: 480px) {
+  body.biscoon-logged-in nav.site-header { padding:0 8px; gap:6px; }
+  body.biscoon-logged-in .site-header .hdr-right { gap:6px; }
+  body.biscoon-logged-in .site-header .user-name { display:none; }
+  body.biscoon-logged-in .site-header .user-btn { padding:6px 8px; gap:4px; }
+  body.biscoon-logged-in .site-header .nav-user-post { padding:8px; font-size:13px; }
+}

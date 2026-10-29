@@ -3,10 +3,48 @@ const path = require('path');
 const vm = require('vm');
 const ts = require('typescript');
 
+test('signed-in navigation adds one adjacent Post Ad link and removes it on sign-out', () => {
+  let inserted = null;
+  const parent = {
+    querySelector: () => inserted,
+    insertBefore: jest.fn(button => { inserted = button; }),
+  };
+  const account = { setAttribute: jest.fn() };
+  const dropdown = { parentElement: parent, querySelector: () => account };
+  const context = vm.createContext({
+    dropdown, document: { createElement: () => ({ remove: () => { inserted = null; } }) },
+  });
+  const source = ts.createSourceFile('biscoon.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/biscoon.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const code = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'syncUserPostButton').getText(source);
+  vm.runInContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  vm.runInContext('syncUserPostButton(dropdown, true); syncUserPostButton(dropdown, true);', context);
+  expect(parent.insertBefore).toHaveBeenCalledTimes(1);
+  expect(parent.insertBefore.mock.calls[0][1]).toBe(dropdown);
+  expect(inserted.href).toBe('/pages/post/listing.html');
+  expect(inserted.textContent).toBe('Post Ad');
+  expect(account.setAttribute).toHaveBeenCalledWith('aria-label', 'Account menu');
+  vm.runInContext('syncUserPostButton(dropdown, false)', context);
+  expect(inserted).toBe(null);
+});
+
+test('homepage keeps newspaper and radio directories on the left and recent posts on the right', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  const left = html.slice(html.indexOf('<aside class="left-panel'), html.indexOf('</aside>'));
+  const right = html.slice(html.indexOf('<main class="right-panel'), html.indexOf('</main>'));
+  for (const heading of ['homePatrikaHeading', 'homeRadioHeading']) {
+    expect(left).toContain(`id="${heading}"`);
+    expect(right).not.toContain(`id="${heading}"`);
+    expect(html.split(`id="${heading}"`)).toHaveLength(2);
+  }
+  expect(left).toContain('https://radionepal.gov.np');
+  expect(left).toContain('https://ekantipur.com');
+  expect(right).toContain('id="homeRecentPosts"');
+});
+
 function listingForm() {
   const fields = new Map();
   function field(id) {
-    if (!fields.has(id)) fields.set(id, { value: '', textContent: '', style: {}, dataset: {}, validity: { valid: true }, parentElement: { setAttribute: jest.fn() } });
+    if (!fields.has(id)) fields.set(id, { value: '', textContent: '', style: {}, dataset: {}, validity: { valid: true }, classList: { toggle: jest.fn() }, querySelectorAll: () => [], parentElement: { setAttribute: jest.fn() } });
     return fields.get(id);
   }
   const context = vm.createContext({
@@ -61,12 +99,122 @@ test('photos cannot compensate for missing rent, whitespace, or invalid email', 
   expect(field('listingProgressLabel').textContent).not.toBe('Ready to publish');
 });
 
+test.each([
+  ['housing', 'room', 'Rent / monthly cost', 'Housing details'],
+  ['jobs', 'full-time', 'Pay / compensation (optional)', 'Job description'],
+  ['marketplace', 'services', 'Rate / starting price (optional)', 'Service details'],
+  ['marketplace', 'kinbech', 'Asking price', 'Item details'],
+  ['community', 'event', 'Ticket / entry cost (optional)', 'Event details'],
+])('posting labels adapt to %s / %s', (category, type, price, description) => {
+  const { context, field } = listingForm();
+  field('category').value = category;
+  field('subcategory').value = type;
+  vm.runInContext(`applyCategoryContext(${JSON.stringify(category)}, ${JSON.stringify(type)})`, context);
+  expect(field('priceLabel').textContent).toBe(price);
+  expect(field('descriptionLabel').textContent).toBe(description);
+  expect(field('linkLabel').textContent).toContain('(optional)');
+});
+
+test('photography hides unrelated sections without erasing values and preview omits them', () => {
+  const { context, field } = listingForm();
+  field('category').value = 'photography';
+  field('subcategory').value = 'portrait';
+  field('price').value = '$950';
+  field('contactEmail').value = 'not-an-email';
+  field('area').value = 'Boston';
+  field('logisticsSection').querySelectorAll = () => [field('price'), field('area')];
+  field('contactDetailsSection').querySelectorAll = () => [field('contactEmail')];
+  context.document.body = { classList: { toggle() {} } };
+  vm.runInContext('applyListingFormProfile("photography", "portrait"); updateAdPreview()', context);
+  expect(field('logisticsSection').classList.toggle).toHaveBeenCalledWith('listing-field-hidden', true);
+  expect(field('contactEmail').disabled).toBe(true);
+  expect(field('contactEmail').value).toBe('not-an-email');
+  expect(field('postPreviewPrice').textContent).toBe('');
+  expect(field('postPreviewLocation').textContent).toBe('');
+  vm.runInContext('applyListingFormProfile("housing", "room")', context);
+  expect(field('contactEmail').disabled).toBe(false);
+  expect(field('price').value).toBe('$950');
+});
+
+test('news ticker refreshes latest headlines, links to stories, and recovers from failures', async () => {
+  const ticker = { innerHTML: '', dataset: {}, setAttribute: jest.fn() };
+  const listeners = {};
+  const document = {
+    hidden: false,
+    getElementById: id => id === 'homeNewsTicker' ? ticker : null,
+    addEventListener: (event, handler) => { listeners[event] = handler; },
+  };
+  const fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ news: [
+    { slug: 'latest-story', title: 'Latest <news>' },
+    { slug: 'older-story', title: 'Older story' },
+  ] }) });
+  const setInterval = jest.fn();
+  const context = vm.createContext({ document, fetch, window: { setInterval }, getApiBase: () => 'http://localhost:4000' });
+  const source = ts.createSourceFile('biscoon.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/biscoon.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const names = ['initHomeNewsTicker', 'renderHomeNewsTicker', 'newsArticleHref', 'escapeHtml'];
+  const code = source.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text)).map(node => node.getText(source)).join('\n');
+  vm.runInContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  vm.runInContext('initHomeNewsTicker(); initHomeNewsTicker();', context);
+  await new Promise(resolve => setImmediate(resolve));
+  expect(fetch).toHaveBeenCalledWith('http://localhost:4000/api/news?sort=latest&limit=12', { cache: 'no-store' });
+  expect(ticker.innerHTML).toContain('href="pages/news/index.html?story=latest-story"');
+  expect(ticker.innerHTML).toContain('Latest &lt;news&gt;');
+  expect(ticker.innerHTML.indexOf('Latest')).toBeLessThan(ticker.innerHTML.indexOf('Older'));
+  expect(setInterval).toHaveBeenCalledTimes(1);
+  expect(setInterval.mock.calls[0][1]).toBe(60000);
+
+  const refresh = setInterval.mock.calls[0][0];
+  document.hidden = true;
+  refresh();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  document.hidden = false;
+  fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ news: [{ slug: 'new-story', title: 'Newly published' }] }) });
+  listeners.visibilitychange();
+  await new Promise(resolve => setImmediate(resolve));
+  expect(ticker.innerHTML).toContain('Newly published');
+  expect(ticker.innerHTML).not.toContain('Older story');
+
+  fetch.mockRejectedValueOnce(new Error('offline'));
+  refresh();
+  await new Promise(resolve => setImmediate(resolve));
+  expect(ticker.innerHTML).toContain('Headlines unavailable');
+  expect(ticker.innerHTML).toContain('href="pages/news/index.html"');
+  fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ news: [] }) });
+  refresh();
+  await new Promise(resolve => setImmediate(resolve));
+  expect(ticker.innerHTML).toContain('No headlines yet');
+  expect(ticker.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+});
+
 function browseFunctions(context) {
   const source = ts.createSourceFile('biscoon.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/biscoon.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
   const names = ['fetchListingsPage', 'bindSortSelect', 'renderListingsIntoFeed'];
   const code = source.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text)).map(node => node.getText(source)).join('\n');
   vm.runInContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
 }
+
+test('recent posts request the newest six listings and support empty, error, and retry states', async () => {
+  const target = { innerHTML: '', setAttribute: jest.fn(), querySelector: () => ({ addEventListener: jest.fn((_, handler) => { target.retry = handler; }) }) };
+  const fetchListingsPage = jest.fn().mockResolvedValue({ listings: [{ id: 'new' }, { id: 'older' }] });
+  const source = ts.createSourceFile('biscoon.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/biscoon.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const code = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'initHomeRecentPosts').getText(source);
+  const context = vm.createContext({ document: { getElementById: () => target }, fetchListingsPage, renderRecentPost: post => `<a>${post.id}</a>` });
+  vm.runInContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  await vm.runInContext('initHomeRecentPosts()', context);
+  expect(fetchListingsPage).toHaveBeenCalledWith({ page: 1, limit: 6, sort: 'newest' });
+  expect(target.innerHTML).toBe('<a>new</a><a>older</a>');
+  expect(target.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+  fetchListingsPage.mockResolvedValueOnce({ listings: [] });
+  await vm.runInContext('initHomeRecentPosts()', context);
+  expect(target.innerHTML).toContain('No posts yet.');
+  fetchListingsPage.mockRejectedValueOnce(new Error('offline'));
+  await vm.runInContext('initHomeRecentPosts()', context);
+  expect(target.innerHTML).toContain('Try again');
+  target.retry();
+  await new Promise(resolve => setImmediate(resolve));
+  expect(fetchListingsPage).toHaveBeenCalledTimes(4);
+  expect(target.innerHTML).toBe('<a>new</a><a>older</a>');
+});
 
 test('price sort goes to the API and changing sort reloads the first page', async () => {
   const select = { value: 'price-low', dataset: {}, options: ['Newest first', 'Price: Low', 'Price: High'].map(textContent => ({ textContent, value: '' })), addEventListener: jest.fn() };

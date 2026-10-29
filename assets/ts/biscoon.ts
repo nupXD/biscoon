@@ -581,6 +581,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   initHomeInlineFeed();
+  void initHomeRecentPosts();
+  initHomeNewsTicker();
   initHomeNews();
 
   // ── Geolocation ──
@@ -1094,6 +1096,21 @@ async function initHeroSpotlight(): Promise<void> {
 }
 
 // ── Auth functions ──
+function syncUserPostButton(dropdown: HTMLElement, signedIn: boolean): void {
+  const parent = dropdown.parentElement;
+  if (!parent) return;
+  let button = parent.querySelector<HTMLAnchorElement>(':scope > .nav-user-post');
+  if (!signedIn) { button?.remove(); return; }
+  dropdown.querySelector('.user-btn')?.setAttribute('aria-label', 'Account menu');
+  if (!button) {
+    button = document.createElement('a');
+    button.className = 'btn-primary nav-user-post';
+    button.href = '/pages/post/listing.html';
+    button.textContent = 'Post Ad';
+    parent.insertBefore(button, dropdown);
+  }
+}
+
 function checkAuthState(): void {
   const token = getBiscoonToken();
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
@@ -1116,11 +1133,15 @@ function checkAuthState(): void {
       const dropdown = nav.querySelector('.user-dropdown') as HTMLElement | null;
       if (dropdown) {
         dropdown.style.display = 'block';
+        syncUserPostButton(dropdown, true);
         visibleDropdowns.add(dropdown);
       }
     });
     userDropdowns.forEach(el => {
-      if (!visibleDropdowns.has(el)) (el as HTMLElement).style.display = 'none';
+      if (!visibleDropdowns.has(el)) {
+        (el as HTMLElement).style.display = 'none';
+        syncUserPostButton(el as HTMLElement, false);
+      }
     });
     mobileBtns.forEach(el => { (el as HTMLElement).style.display = ''; });
     mobileUserMenus.forEach(el => { (el as HTMLElement).style.display = ''; });
@@ -1140,7 +1161,10 @@ function checkAuthState(): void {
 
     // User is not logged in
     navCtas.forEach(el => { (el as HTMLElement).style.display = 'flex'; });
-    userDropdowns.forEach(el => { (el as HTMLElement).style.display = 'none'; });
+    userDropdowns.forEach(el => {
+      (el as HTMLElement).style.display = 'none';
+      syncUserPostButton(el as HTMLElement, false);
+    });
     mobileBtns.forEach(el => { (el as HTMLElement).style.display = ''; });
     mobileUserMenus.forEach(el => { (el as HTMLElement).style.display = ''; });
     looseAuthLinks.forEach(el => { (el as HTMLElement).style.display = ''; });
@@ -1763,6 +1787,22 @@ function escapeHtml(value: string | null | undefined): string {
   }[char] || char));
 }
 
+const ICON_PIN = '<svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5c-2.49 0-4.5 2.01-4.5 4.5 0 3.375 4.5 8.5 4.5 8.5s4.5-5.125 4.5-8.5c0-2.49-2.01-4.5-4.5-4.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="6" r="1.6" stroke="currentColor" stroke-width="1.3"/></svg>';
+const ICON_CLOCK = '<svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.75V8l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PERSON = '<svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5.25" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.75 14c0-2.9 2.35-4.5 5.25-4.5s5.25 1.6 5.25 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const ICON_PHONE = '<svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4.2 2.5h2l1 2.7-1.4 1.1a8 8 0 0 0 3.9 3.9l1.1-1.4 2.7 1v2c0 .7-.6 1.2-1.3 1.1C7.3 12.4 3.6 8.7 3.1 3.8c-.1-.7.4-1.3 1.1-1.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const ICON_MAIL = '<svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 4.5 8 8.5l5.5-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// A bare number like "2232" gets a $ prefix so it reads as a price, not a random figure.
+// Anything already containing a currency symbol or words (e.g. "$18/hr", "Negotiable", "Free")
+// is left exactly as the poster typed it.
+function formatListingPrice(price: string | null | undefined): string {
+  const trimmed = String(price ?? '').trim();
+  if (!trimmed) return 'Open';
+  if (/^\d[\d,]*(\.\d+)?$/.test(trimmed)) return `$${trimmed}`;
+  return trimmed;
+}
+
 interface PageMetaUpdate {
   title: string;
   description: string;
@@ -1851,7 +1891,7 @@ function getMessagePosterActionMarkup({ listingId = '', recipientId = '', listin
     `;
   }
   return `
-    <button class="${token ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listingId)}" data-msg-recipient-id="${escapeHtml(recipientId)}" data-msg-listing-title="${escapeHtml(listingTitle)}" onclick="window._openMsgModal(this)">✉️ Message Poster</button>
+    <button class="${token ? 'btn-primary' : 'btn-ghost'}" type="button" data-msg-listing-id="${escapeHtml(listingId)}" data-msg-recipient-id="${escapeHtml(recipientId)}" data-msg-listing-title="${escapeHtml(listingTitle)}" onclick="window._openMsgModal(this)">${ICON_MAIL}Message Poster</button>
   `;
 }
 
@@ -2270,7 +2310,7 @@ function listingToCard(listing: Listing): string {
   const contact = !isPhotographyListing && listing.contactEmail ? `<span>${escapeHtml(listing.contactEmail)}</span>` : '';
   const priceText = isPhotographyListing
     ? `📷 ${imageCount} photo${imageCount !== 1 ? 's' : ''}`
-    : escapeHtml(listing.price || 'Open');
+    : escapeHtml(formatListingPrice(listing.price));
   return `
     <a class="listing-card${isPhotographyListing ? ' listing-card--photo' : ''}" data-cat="${escapeHtml(category)}" data-listing-id="${escapeHtml(listing.id || '')}" href="${getListingPageHref(listing.id || '')}">
       <div class="${thumbClass}">${thumb}</div>
@@ -2462,12 +2502,12 @@ function renderListingModalContent(listing: Listing): string {
     : 'listing-detail-gallery';
   const gallery = modalImages.length
     ? `<div class="${galleryClass}" data-pswp-gallery>${modalImages.map((image, index) => `<a href="${escapeHtml(image)}" data-pswp-src="${escapeHtml(image)}"${isPhotoModal && index === 0 ? ' class="photo-hero-slot"' : ''} aria-label="Open image ${index + 1}"><img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}" loading="lazy"></a>`).join('')}</div>`
-    : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
+    : '';
   const contactPhone = listing.contactPhone
-    ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>`
+    ? `<a class="contact-chip" href="tel:${escapeHtml(listing.contactPhone)}">${ICON_PHONE}${escapeHtml(listing.contactPhone)}</a>`
     : '';
   const contactEmail = listing.contactEmail
-    ? `<a class="btn-ghost" href="mailto:${escapeHtml(listing.contactEmail)}">${escapeHtml(listing.contactEmail)}</a>`
+    ? `<a class="contact-chip" href="mailto:${escapeHtml(listing.contactEmail)}">${ICON_MAIL}${escapeHtml(listing.contactEmail)}</a>`
     : '';
   const externalHref = safeExternalHref(listing.externalLink);
   const externalLink = externalHref
@@ -2506,15 +2546,16 @@ function renderListingModalContent(listing: Listing): string {
     <h2 id="listingModalTitle">${escapeHtml(listing.title || 'Untitled listing')}</h2>
     ${gallery}
     <div class="listing-detail-meta">
-      ${isPhotoModal ? '' : `<span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>`}
-      <span>🕐 Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
-      ${listing.authorName ? `<span>👤 ${escapeHtml(listing.authorName)}</span>` : ''}
+      ${isPhotoModal ? '' : `<span>${ICON_PIN}${escapeHtml(listing.location || 'Remote / Flexible')}</span>`}
+      <span>${ICON_CLOCK}Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+      ${listing.authorName ? `<span>${ICON_PERSON}${escapeHtml(listing.authorName)}</span>` : ''}
       ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
     </div>
-    ${isPhotoModal ? '' : `<div class="listing-detail-price">${escapeHtml(listing.price || '')}</div>`}
+    ${isPhotoModal ? '' : `<div class="listing-detail-price">${escapeHtml(formatListingPrice(listing.price))}</div>`}
     ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
     <p>${escapeHtml(listing.description || 'No description provided.')}</p>
-    <div class="listing-detail-contact">${saveBtn}${messageBtn}${contactPhone}${contactEmail}${externalLink}${reportBtn}</div>
+    <div class="listing-detail-contact">${saveBtn}${messageBtn}${externalLink}${reportBtn}</div>
+    ${(contactPhone || contactEmail) ? `<div class="listing-detail-contact-info">${contactPhone}${contactEmail}</div>` : ''}
     ${renderListingComments(listing)}
   `;
 }
@@ -3059,22 +3100,86 @@ function renderHomeNewsTicker(articles: HomeNewsArticle[]): string {
   return html + html;
 }
 
+function initHomeNewsTicker(): void {
+  const ticker = document.getElementById('homeNewsTicker');
+  if (!ticker || ticker.dataset.newsTickerBound === 'true') return;
+  ticker.dataset.newsTickerBound = 'true';
+  let loading = false;
+
+  const refresh = async (): Promise<void> => {
+    if (loading || document.hidden) return;
+    loading = true;
+    ticker.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch(`${getApiBase()}/api/news?sort=latest&limit=12`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Could not load headlines.');
+      const data = await response.json();
+      if (!Array.isArray(data.news)) throw new Error('Invalid news response.');
+      const html = renderHomeNewsTicker(data.news);
+      // Preserve the scroll position when the headlines have not changed.
+      if (ticker.innerHTML !== html) ticker.innerHTML = html;
+    } catch {
+      ticker.innerHTML = '<span class="t-item"><a href="pages/news/index.html">Headlines unavailable. Visit the News page.</a></span>';
+    } finally {
+      loading = false;
+      ticker.setAttribute('aria-busy', 'false');
+    }
+  };
+
+  void refresh();
+  window.setInterval(() => { void refresh(); }, 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void refresh();
+  });
+}
+
+function renderRecentPost(listing: Listing): string {
+  const category = listing.category || 'other';
+  const image = Array.isArray(listing.images) ? listing.images[0] : '';
+  const meta = [getCategoryMeta(category).label, listing.location, formatListingDate(listing.createdAt)].filter(Boolean);
+  return `<a class="home-recent-post" href="${getListingPageHref(listing.id || '')}">
+    <span class="home-recent-thumb">${image
+      ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" width="64" height="64">`
+      : getDefaultListingImageMarkup(category)}</span>
+    <span class="home-recent-content">
+      <span class="home-recent-title">${escapeHtml(listing.title || 'Untitled listing')}</span>
+      <span class="home-recent-meta">${escapeHtml(meta.join(' · '))}</span>
+      ${listing.price && category !== 'photography' ? `<span class="home-recent-price">${escapeHtml(formatListingPrice(listing.price))}</span>` : ''}
+    </span>
+  </a>`;
+}
+
+async function initHomeRecentPosts(): Promise<void> {
+  const target = document.getElementById('homeRecentPosts');
+  if (!target) return;
+  target.setAttribute('aria-busy', 'true');
+  target.innerHTML = '<p class="home-recent-status">Loading recent posts...</p>';
+  try {
+    const { listings } = await fetchListingsPage({ page: 1, limit: 6, sort: 'newest' });
+    target.innerHTML = listings.length
+      ? listings.map(renderRecentPost).join('')
+      : '<p class="home-recent-status">No posts yet. <a href="/pages/post/listing.html">Create the first post</a></p>';
+  } catch {
+    target.innerHTML = '<div class="home-recent-status"><p>Recent posts could not be loaded.</p><button class="btn-ghost" type="button">Try again</button></div>';
+    target.querySelector('button')?.addEventListener('click', () => { void initHomeRecentPosts(); });
+  } finally {
+    target.setAttribute('aria-busy', 'false');
+  }
+}
+
 async function initHomeNews(): Promise<void> {
   if (!document.body.classList.contains('is-home')) return;
-  const ticker = document.getElementById('homeNewsTicker');
   const featured = document.getElementById('homeFeaturedStory');
   const diasporaList = document.getElementById('homeDiasporaList');
   const nepalList = document.getElementById('homeNepalList');
   const trendingList = document.getElementById('homeTrendingList');
-  if (!ticker && !featured && !diasporaList && !nepalList && !trendingList) return;
+  if (!featured && !diasporaList && !nepalList && !trendingList) return;
 
   try {
     const response = await fetch(`${getApiBase()}/api/news?limit=24`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not load news.');
     const articles = (Array.isArray(data.news) ? data.news : []) as HomeNewsArticle[];
-
-    if (ticker) ticker.innerHTML = renderHomeNewsTicker(articles);
 
     const featuredArticle =
       articles.find(a => a.featured) ||
@@ -3120,9 +3225,6 @@ async function initHomeNews(): Promise<void> {
         : `<div class="home-news-empty">No Nepal stories yet.</div>`;
     }
   } catch {
-    if (ticker) {
-      ticker.innerHTML = `<span class="t-item">Unable to load headlines &nbsp;<span class="t-sep">◆</span></span>`;
-    }
     if (featured) {
       featured.innerHTML = `<div class="home-news-empty">Couldn’t load news. <a href="pages/news/index.html">Open newsroom →</a></div>`;
     }
@@ -3334,9 +3436,11 @@ async function hydrateListingDetail(): Promise<void> {
     const detailGalleryClass = isPhotographyListing && detailImages.length > 1
       ? 'listing-detail-gallery photo-detail-gallery'
       : 'listing-detail-gallery';
+    // No photos: skip the gallery entirely rather than stretching a single emoji to fill a
+    // full-width 4:3 box — most jobs/services ads have no photo, and that's normal, not broken.
     const gallery = detailImages.length
       ? `<div class="${detailGalleryClass}" data-pswp-gallery>${detailImages.map((image, index) => `<a href="${escapeHtml(image)}" data-pswp-src="${escapeHtml(image)}"${isPhotographyListing && index === 0 ? ' class="photo-hero-slot"' : ''} aria-label="Open image ${index + 1}"><img src="${escapeHtml(image)}" alt="${escapeHtml(listing.title || 'Listing image')}" loading="lazy"></a>`).join('')}</div>`
-      : `<div class="listing-detail-gallery">${getDefaultListingImageMarkup(listing.category || 'other')}</div>`;
+      : '';
     const externalHref = safeExternalHref(listing.externalLink);
     const externalLink = !isPhotographyListing && externalHref
       ? `<a class="btn-ghost" href="${escapeHtml(externalHref)}" target="_blank" rel="noopener">Open link</a>`
@@ -3361,12 +3465,10 @@ async function hydrateListingDetail(): Promise<void> {
       isOwner: isDetailOwner,
       conversationId: listing.existingConversationId || '',
     });
-    const detailActions = [
-      detailSaveBtn,
-      detailMessageBtn,
-      !isPhotographyListing && listing.contactPhone ? `<a class="btn-ghost" href="tel:${escapeHtml(listing.contactPhone)}">${escapeHtml(listing.contactPhone)}</a>` : '',
-      !isPhotographyListing && listing.contactEmail ? `<a class="btn-ghost" href="mailto:${escapeHtml(listing.contactEmail)}">${escapeHtml(listing.contactEmail)}</a>` : '',
-      externalLink,
+    const detailActions = [detailSaveBtn, detailMessageBtn, externalLink].filter(Boolean).join('');
+    const contactInfo = [
+      !isPhotographyListing && listing.contactPhone ? `<a class="contact-chip" href="tel:${escapeHtml(listing.contactPhone)}">${ICON_PHONE}${escapeHtml(listing.contactPhone)}</a>` : '',
+      !isPhotographyListing && listing.contactEmail ? `<a class="contact-chip" href="mailto:${escapeHtml(listing.contactEmail)}">${ICON_MAIL}${escapeHtml(listing.contactEmail)}</a>` : '',
     ].filter(Boolean).join('');
     const mapHref = listing.location
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.location)}`
@@ -3396,15 +3498,16 @@ async function hydrateListingDetail(): Promise<void> {
         <h1>${escapeHtml(listing.title || 'Untitled listing')}</h1>
         ${gallery}
         <div class="listing-detail-meta">
-          ${isPhotographyListing ? '<span>Photo showcase</span>' : `<span>📍 ${escapeHtml(listing.location || 'Remote / Flexible')}</span>`}
-          <span>🕐 Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
-          ${listing.authorName ? `<span>👤 ${escapeHtml(listing.authorName)}</span>` : ''}
+          ${isPhotographyListing ? '<span>Photo showcase</span>' : `<span>${ICON_PIN}${escapeHtml(listing.location || 'Remote / Flexible')}</span>`}
+          <span>${ICON_CLOCK}Posted ${escapeHtml(formatListingDate(listing.createdAt))}</span>
+          ${listing.authorName ? `<span>${ICON_PERSON}${escapeHtml(listing.authorName)}</span>` : ''}
           ${listing.subcategory ? `<span>${escapeHtml(listing.subcategory)}</span>` : ''}
         </div>
-        ${isPhotographyListing ? '' : `<div class="listing-detail-price">${escapeHtml(listing.price || 'Open')}</div>`}
+        ${isPhotographyListing ? '' : `<div class="listing-detail-price">${escapeHtml(formatListingPrice(listing.price))}</div>`}
         ${detailRows ? `<div class="listing-detail-meta">${detailRows}</div>` : ''}
         <p>${escapeHtml(listing.description || 'No description provided.')}</p>
         ${detailActions ? `<div class="listing-detail-contact">${detailActions}</div>` : ''}
+        ${contactInfo ? `<div class="listing-detail-contact-info">${contactInfo}</div>` : ''}
         ${mapBlock}
         ${renderListingComments(listing)}
       </article>
