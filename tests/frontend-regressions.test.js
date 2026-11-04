@@ -157,7 +157,7 @@ test('news ticker refreshes latest headlines, links to stories, and recovers fro
   vm.runInContext('initHomeNewsTicker(); initHomeNewsTicker();', context);
   await new Promise(resolve => setImmediate(resolve));
   expect(fetch).toHaveBeenCalledWith('http://localhost:4000/api/news?sort=latest&limit=12', { cache: 'no-store' });
-  expect(ticker.innerHTML).toContain('href="pages/news/index.html?story=latest-story"');
+  expect(ticker.innerHTML).toContain('href="pages/news/article.html?story=latest-story"');
   expect(ticker.innerHTML).toContain('Latest &lt;news&gt;');
   expect(ticker.innerHTML.indexOf('Latest')).toBeLessThan(ticker.innerHTML.indexOf('Older'));
   expect(setInterval).toHaveBeenCalledTimes(1);
@@ -341,4 +341,272 @@ test('mobile Back clears the thread, cancels stale selection, and restores list 
   expect(vm.runInContext('activeConversationId', context)).toBe(null);
   expect(thread.innerHTML).not.toContain('Previous messages');
   expect(context.window.history.replaceState.mock.calls[0][2].search).toBe('');
+});
+
+test('news links navigate to article pages and legacy story URLs redirect before loading headlines', () => {
+  let ready;
+  const replace = jest.fn();
+  const fetch = jest.fn();
+  const context = vm.createContext({
+    URLSearchParams,
+    Intl,
+    fetch,
+    window: { location: { origin: 'http://localhost:4000', search: '?story=test-story&category=usa&search=students', replace } },
+    document: {
+      addEventListener: (event, handler) => { if (event === 'DOMContentLoaded') ready = handler; },
+      getElementById: () => null,
+    },
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../assets/js/news.js'), 'utf8'), context);
+  for (const render of ['leadStory', 'storyCard', 'latestItem']) {
+    const html = vm.runInContext(`${render}({slug: 'test-story', title: 'Story'})`, context);
+    expect(html).toContain('href="article.html?story=test-story&amp;category=usa&amp;search=students"');
+    expect(html).not.toContain('data-news-slug');
+  }
+  ready();
+  expect(replace).toHaveBeenCalledWith('article.html?story=test-story&category=usa&search=students');
+  expect(fetch).not.toHaveBeenCalled();
+  const listing = fs.readFileSync(path.join(__dirname, '../pages/news/index.html'), 'utf8');
+  const article = fs.readFileSync(path.join(__dirname, '../pages/news/article.html'), 'utf8');
+  expect(listing).not.toContain('id="newsReader"');
+  expect(article).toContain('id="newsReader"');
+  expect(article).not.toContain('id="newsFront"');
+});
+
+test('news requests newest published stories and renders every story after loading more', async () => {
+  const target = { innerHTML: '', querySelector: () => null, appendChild: jest.fn() };
+  const stories = Array.from({ length: 24 }, (_, index) => ({
+    id: `story-${index}`, slug: `story-${index}`, title: `Headline ${index}`, featured: false,
+  }));
+  const fetch = jest.fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ news: stories.slice(0, 12), page: 1, pages: 2 }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ news: stories.slice(12), page: 2, pages: 2 }) });
+  const context = vm.createContext({
+    URLSearchParams, Intl, fetch,
+    window: { location: { origin: 'http://localhost:4000', search: '' } },
+    document: {
+      addEventListener() {},
+      getElementById: id => id === 'newsFront' ? target : null,
+      createElement: () => ({ setAttribute() {}, addEventListener() {} }),
+    },
+  });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../assets/js/news.js'), 'utf8'), context);
+  await vm.runInContext('loadNews()', context);
+  expect(new URL(fetch.mock.calls[0][0]).searchParams.get('sort')).toBe('latest');
+  expect(target.innerHTML).toContain('Headline 0');
+  await vm.runInContext('loadNews({page: 2, append: true})', context);
+  for (const story of stories) {
+    expect(target.innerHTML).toContain(`href="article.html?story=${story.slug}"`);
+  }
+  expect(new URL(fetch.mock.calls[1][0]).searchParams.get('page')).toBe('2');
+});
+
+test('inline news images insert at the cursor without replacing selected text and leave a writing paragraph', () => {
+  const calls = [];
+  const chain = { focus() { return this; }, insertContentAt(position, nodes) { calls.push({ position, nodes }); return this; }, run: () => true };
+  const context = vm.createContext({
+    editor: { state: { selection: { from: 12, to: 30 } }, chain: () => chain },
+    resolveMedia: item => item, sync: jest.fn(), syncToolbar: jest.fn(),
+  });
+  const source = ts.createSourceFile('news-editor.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/plugins/news-editor.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'insertMedia').getText(source);
+  vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  expect(vm.runInContext("insertMedia({id: 'one', type: 'image', url: '/uploads/one.jpg'})", context)).toBe(true);
+  expect(calls[0].position).toBe(12);
+  expect(calls[0].nodes.map(node => node.type)).toEqual(['image', 'paragraph']);
+  expect(calls[0].nodes[0].attrs.mediaId).toBe('one');
+  expect(vm.runInContext("insertMedia({id: 'two', type: 'image', url: '/uploads/two.jpg'})", context)).toBe(true);
+  expect(calls[1].nodes[0].attrs.mediaId).toBe('two');
+  expect(vm.runInContext("insertMedia({id: 'missing'})", context)).toBe(false);
+});
+
+test('news photos resize large uploads and release temporary URLs on success or decode failure', async () => {
+  const source = ts.createSourceFile('admin.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/admin.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'prepareNewsImage').getText(source);
+  const revokeObjectURL = jest.fn();
+  const readFileAsDataUrl = jest.fn(async () => 'data:image/jpeg;base64,optimized');
+  let failDecode = false;
+  const canvas = { width: 0, height: 0, getContext: () => ({ fillRect() {}, drawImage() {} }), toBlob: callback => callback({ size: 400000 }) };
+  const context = vm.createContext({
+    URL: { createObjectURL: () => 'blob:test', revokeObjectURL },
+    Image: class { naturalWidth = 6000; naturalHeight = 4000; set src(value) { if (failDecode) this.onerror(); else this.onload(); } },
+    File: class { constructor(parts, name, options) { this.name = name; this.type = options.type; } },
+    document: { createElement: () => canvas }, readFileAsDataUrl,
+  });
+  vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  await expect(vm.runInContext("prepareNewsImage({size: 10000000, name: 'photo.jpg'})", context)).resolves.toContain('optimized');
+  expect(canvas.width).toBe(2400);
+  expect(canvas.height).toBe(1600);
+  expect(readFileAsDataUrl.mock.calls[0][0].type).toBe('image/jpeg');
+  expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+  failDecode = true;
+  await expect(vm.runInContext("prepareNewsImage({size: 10000000, name: 'bad.heic'})", context)).rejects.toThrow('Try a JPG, PNG, or WebP');
+  expect(revokeObjectURL).toHaveBeenCalledTimes(2);
+  await expect(vm.runInContext("prepareNewsImage({size: 1000, name: 'small.png'})", context)).resolves.toContain('optimized');
+  expect(readFileAsDataUrl.mock.calls[1][0].name).toBe('small.png');
+});
+
+test('full news preview uses unsaved editor content and closes without closing the editor', () => {
+  const handlers = {};
+  const dialog = { setAttribute: jest.fn(), querySelector: () => ({ addEventListener: jest.fn() }), addEventListener: (name, fn) => { handlers[name] = fn; }, showModal: jest.fn(), remove: jest.fn() };
+  const focus = jest.fn();
+  const appendChild = jest.fn();
+  const sync = jest.fn();
+  const media = [{ id: 'inline', type: 'image', url: '/uploads/inline.jpg', caption: 'Caption' }];
+  const formatNewsBody = jest.fn(() => '<p>Full story body</p><figure>Inline image and caption</figure>');
+  const fields = { newsTitle: 'Unsaved headline', newsSummary: 'Unsaved summary', newsBody: '<p>Current writing</p>', newsCategory: 'community' };
+  const context = vm.createContext({
+    window: { BiscoonNewsEditor: { sync } }, _newsMediaDraft: media,
+    esc: value => value, newsCategoryLabel: value => value, formatNewsBody,
+    document: {
+      createElement: () => dialog,
+      getElementById: id => id === 'newsFullPreviewTrigger' ? { focus } : id === 'adminModalOverlay' ? { appendChild } : fields[id] ? { value: fields[id] } : null,
+    },
+  });
+  const source = ts.createSourceFile('admin.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/admin.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'openNewsFullPreview').getText(source);
+  vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  vm.runInContext('openNewsFullPreview()', context);
+  expect(sync).toHaveBeenCalled();
+  expect(dialog.innerHTML).toContain('Unsaved headline');
+  expect(dialog.innerHTML).toContain('Full story body');
+  expect(formatNewsBody).toHaveBeenCalledWith('<p>Current writing</p>', media);
+  expect(dialog.showModal).toHaveBeenCalled();
+  const stopPropagation = jest.fn();
+  handlers.keydown({ key: 'Escape', stopPropagation });
+  expect(stopPropagation).toHaveBeenCalled();
+  handlers.close();
+  expect(dialog.remove).toHaveBeenCalled();
+  expect(focus).toHaveBeenCalled();
+});
+
+test('Biscoon News shows newest stories once across the lead and homepage feed', async () => {
+  const featured = { innerHTML: '' };
+  const list = { innerHTML: '' };
+  const articles = [{ slug: 'new', title: 'New' }, { slug: 'older', title: 'Older', featured: true }];
+  const fetch = jest.fn(async () => ({ ok: true, json: async () => ({ news: articles }) }));
+  const context = vm.createContext({
+    fetch, getApiBase: () => 'http://localhost:4000',
+    renderHomeFeatured: article => article.slug,
+    renderHomeNewsItem: article => article.slug,
+    document: { body: { classList: { contains: () => true } }, getElementById: id => id === 'homeFeaturedStory' ? featured : id === 'homeBiscoonList' ? list : null },
+  });
+  const source = ts.createSourceFile('biscoon.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/biscoon.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'initHomeNews').getText(source);
+  vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  await vm.runInContext('initHomeNews()', context);
+  expect(fetch).toHaveBeenCalledWith('http://localhost:4000/api/news?sort=latest&limit=12');
+  expect(featured.innerHTML).toBe('new');
+  expect(list.innerHTML).toBe('older');
+  const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  expect(html).toContain('id="homeBiscoonNewsHeading">Biscoon News');
+  expect(html).not.toContain('Trending status');
+  expect(html).not.toContain('Diaspora News');
+});
+
+test('listing maps configure the same-origin MapLibre module worker before creating a map', () => {
+  const events = [];
+  const marker = { setLngLat() { return this; }, setPopup() { return this; }, addTo() { return this; } };
+  const maplibregl = {
+    setWorkerUrl: url => events.push(['worker', url]),
+    Map: class { constructor() { events.push(['map']); } addControl() {} },
+    NavigationControl: class {}, Marker: function () { return marker; },
+    Popup: class { setText() { return this; } },
+  };
+  const shell = { dataset: { location: 'Boston' }, querySelector: () => ({}) };
+  const context = vm.createContext({
+    maplibregl, shell, URL, LOCAL_STYLE: {}, injectCss() {}, guessCoords: () => [-71, 42],
+    document: { currentScript: null, querySelector: () => ({ src: 'https://example.com/assets/js/plugins/listing-map.js' }) },
+  });
+  const source = ts.createSourceFile('listing-map.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/plugins/listing-map.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  for (const name of ['scriptRelativeUrl', 'initMap']) {
+    const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name).getText(source);
+    vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  }
+  vm.runInContext('initMap(shell)', context);
+  expect(events).toEqual([['worker', 'https://example.com/assets/vendor/maplibre/maplibre-gl-worker.mjs'], ['map']]);
+});
+
+function newsDraftContext(overrides = {}) {
+  const source = ts.createSourceFile('admin.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/admin.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const storage = new Map();
+  const state = { key: 'draft:fixture', baseline: 'original', saving: false, pending: false, maxRequestBytes: 25 * 1024 * 1024 };
+  const hint = { textContent: '' };
+  const remove = jest.fn();
+  const context = vm.createContext({
+    _newsEditorState: state, newsDraftSnapshot: () => 'changed',
+    window: { confirm: jest.fn(() => false), BiscoonNewsEditor: { destroy: jest.fn() } },
+    sessionStorage: { setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    document: { getElementById: id => id === 'newsDraftStatus' ? hint : id === 'adminModalOverlay' ? { remove } : {} },
+    notify: jest.fn(), ...overrides,
+  });
+  for (const name of ['persistNewsDraft', 'closeModal']) {
+    const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name).getText(source);
+    vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  }
+  return { context, storage, state, hint, remove, source };
+}
+
+test('news dismissal preserves unsaved drafts and canceling dismissal keeps the editor open', () => {
+  const { context, storage, remove } = newsDraftContext();
+  expect(vm.runInContext('closeModal()', context)).toBe(false);
+  expect(storage.get('draft:fixture')).toBe('changed');
+  expect(remove).not.toHaveBeenCalled();
+  context.window.confirm.mockReturnValue(true);
+  expect(vm.runInContext('closeModal()', context)).toBe(true);
+  expect(storage.get('draft:fixture')).toBe('changed');
+  expect(remove).toHaveBeenCalledTimes(1);
+});
+
+test.each(['pending', 'saving'])('news dismissal is blocked while %s', flag => {
+  const { context, state, remove } = newsDraftContext();
+  state[flag] = true;
+  expect(vm.runInContext('closeModal()', context)).toBe(false);
+  expect(context.window.confirm).not.toHaveBeenCalled();
+  expect(remove).not.toHaveBeenCalled();
+});
+
+test('successful news saves close without a discard prompt', () => {
+  const { context, remove } = newsDraftContext();
+  expect(vm.runInContext('closeModal(true)', context)).toBe(true);
+  expect(context.window.confirm).not.toHaveBeenCalled();
+  expect(remove).toHaveBeenCalled();
+});
+
+test('news draft recovery restores the saved body and media without publishing it', async () => {
+  const saved = { title: 'Recovered title', body: '<p>Unfinished story</p>', media: [{ id: 'one', type: 'image', url: '/uploads/news/one.jpg' }] };
+  let shown;
+  const { context, source } = newsDraftContext({
+    _newsEditorState: null, _me: { id: 'fixture' }, _newsMediaDraft: [],
+    api: jest.fn(async () => ({ maxRequestBytes: 25 * 1024 * 1024 })),
+    sessionStorage: { getItem: () => JSON.stringify(saved) },
+    window: { confirm: () => true },
+    openModal: jest.fn(), newsFormHtml: article => { shown = article; return ''; },
+    document: { getElementById: () => ({ remove() {}, querySelector: () => ({ classList: { add() {} } }) }) },
+    requestAnimationFrame() {},
+  });
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'openNewsEditor').getText(source);
+  vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  await vm.runInContext('openNewsEditor()', context);
+  expect(shown.title).toBe(saved.title);
+  expect(shown.media).toEqual(saved.media);
+  expect(context.api).toHaveBeenCalledTimes(1);
+  expect(context.api).toHaveBeenCalledWith('/api/admin/news/media-limits');
+});
+
+test('news media requests check the configured body limit before sending and upload individually', async () => {
+  const source = ts.createSourceFile('admin.ts', fs.readFileSync(path.join(__dirname, '../assets/ts/admin.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'uploadNewsMedia').getText(source);
+  const api = jest.fn(async () => ({ media: { id: 'saved', url: '/uploads/news/saved.mp4' } }));
+  const context = vm.createContext({
+    _newsEditorState: { maxRequestBytes: 8 }, Blob, api,
+    newsMediaTypeFromFile: () => 'video', readFileAsDataUrl: async () => 'data:video/mp4;base64,AAAA',
+  });
+  vm.runInContext(ts.transpileModule(fn, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  await expect(vm.runInContext("uploadNewsMedia({name:'clip.mp4'})", context)).rejects.toThrow('upload limit');
+  expect(api).not.toHaveBeenCalled();
+  context._newsEditorState.maxRequestBytes = 1024;
+  await expect(vm.runInContext("uploadNewsMedia({name:'clip.mp4'})", context)).resolves.toMatchObject({ url: '/uploads/news/saved.mp4' });
+  expect(api.mock.calls[0][0]).toBe('/api/admin/news/media');
+  expect(JSON.parse(api.mock.calls[0][1].body).type).toBe('video');
 });

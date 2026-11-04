@@ -67,34 +67,34 @@ function articleMeta(article) {
 
 function leadStory(article) {
   return `
-    <article class="news-lead" data-news-slug="${newsEscape(article.slug)}">
+    <a class="news-lead news-story-link" href="${newsEscape(newsStoryHref(article.slug))}">
       ${newsImage(article)}
       <div class="news-category">${newsEscape(newsCategoryLabel(article.category))}</div>
       <h2 class="news-title">${newsEscape(article.title)}</h2>
       <p class="news-summary">${newsEscape(article.summary)}</p>
       ${articleMeta(article)}
-    </article>
+    </a>
   `;
 }
 
 function storyCard(article) {
   return `
-    <article class="news-card" data-news-slug="${newsEscape(article.slug)}">
+    <a class="news-card news-story-link" href="${newsEscape(newsStoryHref(article.slug))}">
       <div class="news-category">${newsEscape(newsCategoryLabel(article.category))}</div>
       <h3 class="news-title">${newsEscape(article.title)}</h3>
       <p class="news-summary">${newsEscape(article.summary)}</p>
       ${articleMeta(article)}
-    </article>
+    </a>
   `;
 }
 
 function latestItem(article) {
   return `
-    <article class="news-latest-item" data-news-slug="${newsEscape(article.slug)}">
+    <a class="news-latest-item news-story-link" href="${newsEscape(newsStoryHref(article.slug))}">
       <div class="news-category">${newsEscape(newsCategoryLabel(article.category))}</div>
       <h3>${newsEscape(article.title)}</h3>
       <div class="news-meta"><span>${newsDate(article.publishedAt || article.createdAt)}</span></div>
-    </article>
+    </a>
   `;
 }
 
@@ -107,8 +107,8 @@ function renderNewsFront(articles) {
   }
 
   const [lead, ...rest] = articles;
-  const secondary = rest.slice(0, 4);
-  const latest = rest.slice(4, 12);
+  const secondary = rest.slice(0, 4).concat(rest.slice(11));
+  const latest = rest.slice(4, 11);
   target.innerHTML = `
     <div class="news-layout">
       <div>
@@ -205,7 +205,7 @@ function articleBodyHtml(value, mediaItems = []) {
   return html.join('');
 }
 
-async function openNewsArticle(slug, pushState = true) {
+async function openNewsArticle(slug) {
   const reader = document.getElementById('newsReader');
   if (!reader) return;
   reader.hidden = false;
@@ -215,9 +215,9 @@ async function openNewsArticle(slug, pushState = true) {
   const article = data.article;
   reader.innerHTML = `
     <article class="news-article">
-      <button class="news-reader-close" type="button" data-close-news-reader>Back to headlines</button>
+
       <div class="news-category">${newsEscape(newsCategoryLabel(article.category))}</div>
-      <h2>${newsEscape(article.title)}</h2>
+      <h1>${newsEscape(article.title)}</h1>
       ${articleMeta(article)}
       ${article.imageUrl ? `<img src="${newsEscape(article.imageUrl)}" alt="${newsEscape(article.title)}">` : ''}
       <p class="news-summary">${newsEscape(article.summary)}</p>
@@ -231,12 +231,7 @@ async function openNewsArticle(slug, pushState = true) {
       url: `${window.location.origin}${window.location.pathname}?story=${encodeURIComponent(article.slug)}`,
     });
   }
-  if (pushState) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('story', article.slug);
-    window.history.replaceState({}, '', url.toString());
-  }
-  reader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
 }
 
 async function loadNews(options = {}) {
@@ -245,7 +240,7 @@ async function loadNews(options = {}) {
   const target = document.getElementById('newsFront');
   if (target && !append) target.innerHTML = '<div class="news-loading">Loading latest stories...</div>';
 
-  const params = new URLSearchParams({ page: String(page), limit: '12' });
+  const params = new URLSearchParams({ page: String(page), limit: '12', sort: 'latest' });
   if (newsState.category) params.set('category', newsState.category);
   if (newsState.search) params.set('search', newsState.search);
   const data = await newsFetch(`/api/news?${params}`);
@@ -256,16 +251,7 @@ async function loadNews(options = {}) {
   renderNewsFront(newsState.items);
   renderNewsLoadMore();
 
-  if (!append) {
-    const story = new URLSearchParams(window.location.search).get('story');
-    if (story) openNewsArticle(story, false).catch(error => {
-      const reader = document.getElementById('newsReader');
-      if (reader) {
-        reader.hidden = false;
-        reader.innerHTML = `<div class="news-empty">${newsEscape(error.message)}</div>`;
-      }
-    });
-  }
+
 }
 
 function renderNewsLoadMore() {
@@ -326,23 +312,38 @@ function bindNewsPage() {
     loadNews().catch(console.error);
   });
 
-  document.addEventListener('click', event => {
-    const story = event.target.closest('[data-news-slug]');
-    if (story) {
-      openNewsArticle(story.dataset.newsSlug).catch(error => alert(error.message));
-      return;
-    }
-    if (event.target.closest('[data-close-news-reader]')) {
-      const reader = document.getElementById('newsReader');
-      if (reader) reader.hidden = true;
-      const url = new URL(window.location.href);
-      url.searchParams.delete('story');
-      window.history.replaceState({}, '', url.toString());
-    }
-  });
+
+}
+
+function newsStoryHref(slug) {
+  const params = new URLSearchParams({ story: slug });
+  if (newsState.category) params.set('category', newsState.category);
+  if (newsState.search) params.set('search', newsState.search);
+  return `article.html?${params}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const story = new URLSearchParams(window.location.search).get('story');
+  const reader = document.getElementById('newsReader');
+  if (reader) {
+    const back = document.getElementById('newsBackLink');
+    const params = new URLSearchParams();
+    if (newsState.category) params.set('category', newsState.category);
+    if (newsState.search) params.set('search', newsState.search);
+    if (back) back.href = `index.html${params.size ? `?${params}` : ''}`;
+    if (!story) {
+      reader.innerHTML = '<div class="news-empty">No story selected. Choose a story from the headlines.</div>';
+      return;
+    }
+    openNewsArticle(story).catch(error => {
+      reader.innerHTML = `<div class="news-empty" role="alert">${newsEscape(error.message)}</div>`;
+    });
+    return;
+  }
+  if (story) {
+    window.location.replace(newsStoryHref(story));
+    return;
+  }
   bindNewsPage();
   loadNews().catch(error => {
     const target = document.getElementById('newsFront');

@@ -1,0 +1,276 @@
+{
+  "reviewDate": "2026-11-03",
+  "command": "npm audit --omit=dev --json",
+  "counts": {
+    "info": 0,
+    "low": 1,
+    "moderate": 29,
+    "high": 13,
+    "critical": 0,
+    "total": 43
+  },
+  "packages": [
+    {
+      "name": "@tiptap/core",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-blockquote",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-bold",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-bullet-list",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-code",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-code-block",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-document",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-dropcursor",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-font-family",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-gapcursor",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-hard-break",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-heading",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-horizontal-rule",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-image",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-italic",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-link",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-list",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-list-item",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-list-keymap",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-ordered-list",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-paragraph",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-strike",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-text",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-text-style",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extension-underline",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "@tiptap/extensions",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "body-parser",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "compression",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "deepmerge",
+      "severity": "low",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "engine.io",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "ip-address",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "mongoose",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "nanoid",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "nodemailer",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "postcss",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "prosemirror-view",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "qs",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "sanitize-html",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "sharp",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "socket.io-parser",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "source-map-js",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "uuid",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": {
+        "name": "uuid",
+        "version": "14.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "zod",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true
+    }
+  ]
+}

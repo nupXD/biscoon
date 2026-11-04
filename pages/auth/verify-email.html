@@ -46,6 +46,8 @@
   ]
 }
 </script>
+<link rel="stylesheet" href="../../assets/css/forms.css">
+<script src="../../assets/js/plugins/form-guidance.js" defer></script>
 </head>
 <body class="has-dash-nav" data-auth-page="verify-email">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -78,7 +80,7 @@
   </div>
   <div class="auth-layout auth-layout-single">
     <div class="auth-card">
-      <div id="authMessage" class="form-helper">Confirming your email…</div>
+      <div id="authMessage" role="status" aria-live="polite" class="form-helper">Confirming your email…</div>
       <div class="resend-row" id="resendRow">
         <input class="form-input" id="email" type="email" placeholder="you@example.com" autocomplete="email" />
         <button type="button" class="btn-link" id="resendVerificationBtn">Resend confirmation email</button>

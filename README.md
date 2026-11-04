@@ -120,7 +120,7 @@ In development, the server automatically tries the next available port if port `
 | `MAIL_FROM` | No | From address; defaults to `Biscoon <noreply@biscoon.com>` |
 | `UPLOAD_DIR` | No | Upload directory; defaults to `uploads` |
 | `JSON_BODY_LIMIT` | No | JSON request limit; defaults to `25mb` |
-| `TRUST_PROXY` | Recommended | Express proxy setting; defaults to `1` in production |
+| `TRUST_PROXY` | Recommended | Express proxy setting; defaults to `false`; explicitly configure trusted proxy addresses or hop count |
 | `SENTRY_DSN` | No | Enables server-side Sentry reporting |
 | `SENTRY_TRACES_SAMPLE_RATE` | No | Sentry trace sample rate; defaults to `0.05` |
 

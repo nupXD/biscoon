@@ -31,7 +31,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       MAIL_FROM: ${MAIL_FROM:-Biscoon <noreply@biscoon.com>}
       UPLOAD_DIR: uploads
-      TRUST_PROXY: "1"
+      TRUST_PROXY: ${TRUST_PROXY:-false}
     ports:
       - "4000:4000"
     volumes:

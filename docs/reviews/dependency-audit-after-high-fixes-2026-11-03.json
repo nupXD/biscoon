@@ -1,0 +1,40 @@
+{
+  "reviewDate": "2026-11-03",
+  "productionCounts": {
+    "info": 0,
+    "low": 0,
+    "moderate": 3,
+    "high": 0,
+    "critical": 0,
+    "total": 3
+  },
+  "allDependencyCounts": {
+    "info": 0,
+    "low": 3,
+    "moderate": 20,
+    "high": 0,
+    "critical": 0,
+    "total": 23
+  },
+  "remainingProductionFindings": [
+    {
+      "name": "express",
+      "severity": "moderate",
+      "fixAvailable": true
+    },
+    {
+      "name": "qs",
+      "severity": "moderate",
+      "fixAvailable": true
+    },
+    {
+      "name": "uuid",
+      "severity": "moderate",
+      "fixAvailable": {
+        "name": "uuid",
+        "version": "14.0.3",
+        "isSemVerMajor": true
+      }
+    }
+  ]
+}

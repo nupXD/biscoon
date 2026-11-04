@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import path from 'path';
+import { parseTrustProxy } from './trustProxy';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
@@ -59,7 +60,11 @@ export const SMTP_PASS = process.env.SMTP_PASS || '';
 export const SMTP_SECURE = getBoolean('SMTP_SECURE', SMTP_PORT === 465);
 export const MAIL_FROM = clean(process.env.MAIL_FROM) || 'Biscoon <noreply@biscoon.com>';
 export const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '25mb';
-export const TRUST_PROXY = process.env.TRUST_PROXY || (isProduction ? '1' : '');
+const bodyLimitMatch = /^(\d+(?:\.\d+)?)\s*(b|kb|mb|gb)?$/i.exec(JSON_BODY_LIMIT.trim());
+if (!bodyLimitMatch) throw new Error('JSON_BODY_LIMIT must be a byte size such as 25mb.');
+export const JSON_BODY_LIMIT_BYTES = Math.floor(Number(bodyLimitMatch[1]) * ({ b: 1, kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3 }[bodyLimitMatch[2]?.toLowerCase() || 'b']));
+if (JSON_BODY_LIMIT_BYTES < 1) throw new Error('JSON_BODY_LIMIT must be positive.');
+export const TRUST_PROXY = parseTrustProxy(process.env.TRUST_PROXY);
 export const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 // Compiled files live in dist/src/config; ts-node uses src/config.
 export const STATIC_ROOT = path.resolve(

@@ -327,3 +327,26 @@ body.is-home .home-feed-trigger:hover { filter: brightness(1.05); }
 body.is-home .chip[data-feed-cat],
 body.is-home .bz-item[data-feed-cat],
 body.is-home .qcard[data-feed-cat] { cursor: pointer; }
+
+/* A single newsroom feed with consistent image and headline columns. */
+body.is-home .home-biscoon-news{background:var(--surface,#fff);border-top:1px solid var(--border)}
+body.is-home .home-news-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 18px 16px}
+body.is-home .home-news-eyebrow{display:block;font-size:9px;letter-spacing:.14em;font-weight:700;color:var(--muted);margin-bottom:5px}
+body.is-home .home-news-heading h2{font-family:Georgia,serif;font-size:26px;line-height:1.15;letter-spacing:-.6px;color:var(--text);margin:0}
+body.is-home .home-news-heading>a{font-size:12px;font-weight:600;white-space:nowrap;color:var(--red);text-decoration:none}
+body.is-home .home-biscoon-news .n-item{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:start;gap:16px;padding:16px 18px;border-top:1px solid var(--border);border-bottom:0;text-decoration:none;color:var(--text)}
+body.is-home .home-biscoon-news .ni-content{min-width:0}
+body.is-home .home-biscoon-news .ni-thumb{width:96px;height:76px;border-radius:6px;overflow:hidden;background:var(--bg)}
+body.is-home .ni-placeholder{font-family:Georgia,serif;font-size:28px;font-weight:700;line-height:1;text-align:center;color:var(--muted)}
+body.is-home .ni-placeholder span{display:block;font-family:var(--font-sans);font-size:7px;font-weight:600;letter-spacing:.15em;margin-top:6px}
+body.is-home .home-biscoon-news .ni-cat{font-size:9px;color:var(--red);margin-bottom:5px;letter-spacing:.08em}
+body.is-home .home-biscoon-news .ni-title{font-size:16px;font-weight:650;line-height:1.45;margin:0 0 7px;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+body.is-home .home-biscoon-news .ni-meta{font-size:11px;color:var(--muted)}
+body.is-home .home-biscoon-news a:focus-visible{outline:2px solid var(--red);outline-offset:-3px}
+@media(max-width:480px){
+  body.is-home .home-news-heading{padding:18px 14px 14px}
+  body.is-home .home-news-heading h2{font-size:24px}
+  body.is-home .home-biscoon-news .n-item{grid-template-columns:76px minmax(0,1fr);gap:12px;padding:14px}
+  body.is-home .home-biscoon-news .ni-thumb{width:76px;height:68px}
+  body.is-home .home-biscoon-news .ni-title{font-size:14px}
+}

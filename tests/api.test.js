@@ -666,3 +666,45 @@ test('a full thread continues idempotently and keeps earlier messages available'
   expect(earlier.body.messages[0].id).toBe('m-0');
   expect(earlier.body.hasMore).toBe(false);
 });
+
+test('news media uploads are admin-only and large batches save as small references', async () => {
+  const uploads = require('../src/utils/uploads');
+  let sequence = 0;
+  const save = jest.spyOn(uploads, 'saveBase64Upload').mockImplementation(async () => `/uploads/news/fixture-${++sequence}.mp4`);
+  try {
+    const denied = await request(app).post('/api/admin/news/media').set('Authorization', `Bearer ${userToken}`).send({ type: 'video', url: 'data:video/mp4;base64,AAAA' });
+    expect(denied.status).toBe(403);
+    const limits = await request(app).get('/api/admin/news/media-limits').set('Authorization', `Bearer ${adminToken}`);
+    expect(limits.body.maxRequestBytes).toBe(25 * 1024 * 1024);
+    const invalid = await request(app).post('/api/admin/news/media').set('Authorization', `Bearer ${adminToken}`).send({ type: 'image', url: 'data:video/mp4;base64,AAAA' });
+    expect(invalid.status).toBe(400);
+    const url = `data:video/mp4;base64,${Buffer.alloc(10 * 1024 * 1024).toString('base64')}`;
+    expect(Buffer.byteLength(JSON.stringify({ media: [{ url }, { url }] }))).toBeGreaterThan(limits.body.maxRequestBytes);
+    const media = [];
+    for (let index = 0; index < 2; index++) {
+      const uploaded = await request(app).post('/api/admin/news/media').set('Authorization', `Bearer ${adminToken}`).send({ type: 'video', url });
+      expect(uploaded.status).toBe(201);
+      media.push(uploaded.body.media);
+    }
+    const published = await request(app).post('/api/admin/news').set('Authorization', `Bearer ${adminToken}`).send({
+      title: 'Multiple videos', summary: 'A story with two uploads', category: 'community', status: 'published',
+      body: media.map(item => `<p>[[media:${item.id}]]</p>`).join(''), media,
+    });
+    expect(published.status).toBe(201);
+    expect(published.body.article.media).toHaveLength(2);
+    expect(save).toHaveBeenCalledTimes(2);
+  } finally { save.mockRestore(); }
+});
+
+test('proxy policy ignores spoofed forwarded headers unless the connecting proxy is explicitly trusted', async () => {
+  const express = require('express');
+  const { parseTrustProxy } = require('../src/config/trustProxy');
+  const fixture = express();
+  fixture.set('trust proxy', parseTrustProxy());
+  fixture.get('/', (req, res) => res.json({ ip: req.ip }));
+  const direct = await request(fixture).get('/').set('X-Forwarded-For', '198.51.100.99');
+  expect(direct.body.ip).not.toBe('198.51.100.99');
+  fixture.set('trust proxy', parseTrustProxy('loopback'));
+  const proxied = await request(fixture).get('/').set('X-Forwarded-For', '198.51.100.99');
+  expect(proxied.body.ip).toBe('198.51.100.99');
+});

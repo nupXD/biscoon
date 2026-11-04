@@ -45,6 +45,8 @@
   ]
 }
 </script>
+<link rel="stylesheet" href="../../assets/css/forms.css">
+<script src="../../assets/js/plugins/form-guidance.js" defer></script>
 </head>
 <body class="has-dash-nav">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -163,6 +165,7 @@
       <button class="discussion-modal-close" type="button" aria-label="Close" data-close-discussion-modal>×</button>
     </div>
     <form id="discussionForm">
+      <p class="form-helper">Start a public conversation. Give it a clear title, explain what you want to discuss, and avoid sharing private contact details.</p>
       <div class="form-row--two">
         <div class="form-group">
           <label class="form-label required" for="discussionTitle">Topic title</label>
@@ -190,11 +193,11 @@
           <input class="form-input" id="discussionLocation" name="location" type="text" maxlength="120" placeholder="e.g. Boston, MA" />
         </div>
         <div class="form-group">
-          <label class="form-label" for="discussionTags">Tags</label>
+          <label class="form-label" for="discussionTags">Tags (optional, separated by commas)</label>
           <input class="form-input" id="discussionTags" name="tags" type="text" placeholder="visa, boston, room, momo" />
         </div>
       </div>
-      <div id="discussionMessage" class="form-helper"></div>
+      <div id="discussionMessage" role="status" aria-live="polite" class="form-helper"></div>
       <div class="discussion-modal-actions">
         <button class="btn-ghost" type="button" data-close-discussion-modal>Cancel</button>
         <button class="btn-primary" type="submit">Create discussion</button>

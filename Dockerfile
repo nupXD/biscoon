@@ -19,7 +19,6 @@ COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/pages ./pages
 COPY --from=builder /app/index.html ./index.html
 COPY --from=builder /app/robots.txt /app/sitemap.xml /app/llms.txt /app/404.html ./
-COPY --from=builder /app/seed.js ./seed.js
 
 RUN mkdir -p uploads
 

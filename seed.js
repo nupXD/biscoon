@@ -1,3 +1,9 @@
+require('dotenv/config');
+if (process.env.NODE_ENV === 'production') {
+  console.error('Demo seeding is disabled in production. Use npm run bootstrap:admin with explicit credentials.');
+  process.exit(1);
+}
+
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const connectDatabaseModule = require('./src/config/database');

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { JSON_BODY_LIMIT_BYTES } from '../config/env';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import sanitizeHtml from 'sanitize-html';
@@ -690,6 +691,25 @@ router.delete('/staff/:id', requireSuperAdmin, async (req: Request, res: Respons
 });
 
 /* -- News -- */
+// Media uploads are separate from article saves so batches do not share one JSON limit.
+router.get('/news/media-limits', requirePermission('news'), (_req: Request, res: Response): void => {
+  res.json({ maxRequestBytes: JSON_BODY_LIMIT_BYTES });
+});
+
+router.post('/news/media', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
+  const type = req.body.type;
+  if (type !== 'image' && type !== 'video') {
+    res.status(400).json({ error: 'Choose an image or video.' }); return;
+  }
+  const parsed = parseNewsMediaDataUrl(req.body.url);
+  if (!parsed || !parsed.mimeType.startsWith(`${type}/`)) {
+    res.status(400).json({ error: 'Unsupported media format.' }); return;
+  }
+  const url = await cleanNewsMediaUrl(req.body.url, type);
+  if (!url) { res.status(400).json({ error: 'Image must be under 4 MB; video must be under 18 MB.' }); return; }
+  res.status(201).json({ media: { id: uuidv4(), type, url, caption: '', createdAt: new Date().toISOString() } });
+});
+
 router.get('/news', requirePermission('news'), async (req: Request, res: Response): Promise<void> => {
   const { page, limit, skip } = getPagination(req.query, { defaultLimit: 20, maxLimit: 50 });
   const search = cleanString(req.query.search);

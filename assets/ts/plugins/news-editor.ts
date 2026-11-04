@@ -213,23 +213,17 @@ function insertMedia(mediaOrId: NewsMediaItem | string): boolean {
   if (!editor) return false;
   const item = resolveMedia(mediaOrId);
   if (!item?.url) return false;
-  if (item.type === 'video') {
-    (editor.chain().focus() as any).setVideo({
-      src: item.url,
-      title: item.caption || '',
-      mediaId: item.id,
-    }).run();
-  } else {
-    (editor.chain().focus() as any).setImage({
-      src: item.url,
-      alt: item.caption || '',
-      title: item.caption || '',
-      mediaId: item.id,
-    }).run();
-  }
+  // Insert without replacing selected story text, and leave room to keep writing.
+  const inserted = editor.chain().focus().insertContentAt(editor.state.selection.from, [
+    {
+      type: item.type === 'video' ? 'video' : 'image',
+      attrs: { src: item.url, alt: item.caption || '', title: item.caption || '', mediaId: item.id },
+    },
+    { type: 'paragraph' },
+  ]).run();
   sync();
   syncToolbar();
-  return true;
+  return inserted;
 }
 
 function isActive(command: string): boolean {
@@ -302,6 +296,7 @@ function mount(options: MountOptions = {}): void {
     },
     onUpdate: () => {
       sync();
+      document.dispatchEvent(new Event('news-editor-change'));
       syncToolbar();
     },
     onSelectionUpdate: syncToolbar,

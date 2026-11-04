@@ -76,7 +76,7 @@ function cleanEmail(email: string): string {
 }
 
 function authKey(req: Request): string {
-  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown-ip';
+  const ip = req.ip || 'unknown-ip';
   const email = cleanEmail(req.body && req.body.email);
   return `${ip}:${email || 'unknown-email'}`;
 }
@@ -84,9 +84,18 @@ function authKey(req: Request): string {
 function userKey(req: Request): string {
   const userId = (req as any).user?.id;
   if (userId) return `user:${userId}`;
-  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown-ip';
+  const ip = req.ip || 'unknown-ip';
   return `ip:${ip}`;
 }
+
+// An independent IP budget prevents rotating account identifiers from resetting protection.
+const authIpLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  blockMs: 15 * 60 * 1000,
+  keyFn: req => req.ip || 'unknown-ip',
+  message: 'Too many account requests. Please wait and try again.',
+});
 
 const authLoginLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000,
@@ -100,7 +109,7 @@ const authRegisterLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000,
   max: 10,
   blockMs: 60 * 60 * 1000,
-  keyFn: authKey,
+  keyFn: req => req.ip || 'unknown-ip',
   message: 'Too many registration attempts. Please wait and try again.',
 });
 
@@ -146,6 +155,7 @@ const reportCreateLimiter = createRateLimiter({
 
 export {
   createRateLimiter,
+  authIpLimiter,
   authLoginLimiter,
   authRegisterLimiter,
   authRecoveryLimiter,

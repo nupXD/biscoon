@@ -377,7 +377,7 @@ async function openConversation(id) {
         <div class="messages-attach-preview" id="attachPreview"></div>
         <div class="messages-reply-input-row">
           <button class="messages-attach-btn" type="button" id="attachBtn" title="Attach file">📎</button>
-          <textarea name="body" placeholder="Write a reply…" rows="2"></textarea>
+          <textarea name="body" aria-label="Your reply" placeholder="Write a reply…" rows="2"></textarea>
           <button class="btn-primary" type="submit">Send</button>
         </div>
       </form>`}

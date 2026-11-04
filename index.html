@@ -55,6 +55,8 @@
   }
 }
 </script>
+<link rel="stylesheet" href="assets/css/forms.css">
+<script src="assets/js/plugins/form-guidance.js" defer></script>
 </head>
 <body class="is-home">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -222,22 +224,13 @@
     </div>
   </div>
 
-  <div id="homeTrendingNews">
-    <div class="sec-hdr">Trending status <span class="badge">Live</span></div>
-    <div class="home-news-list" id="homeTrendingList"></div>
-  </div>
-
-  <div id="homeDiasporaNews">
-    <div class="sec-hdr">🌍 Diaspora News <span class="badge" id="homeDiasporaBadge">…</span></div>
-    <div class="home-news-list" id="homeDiasporaList"></div>
-    <a class="see-all" href="pages/news/index.html">See all diaspora news →</a>
-  </div>
-
-  <div id="homeNepalNews">
-    <div class="sec-hdr">🏔 Nepal News <span class="badge" id="homeNepalBadge">…</span></div>
-    <div class="home-news-list" id="homeNepalList"></div>
-    <a class="see-all" href="pages/news/index.html?category=nepal">See all Nepal news →</a>
-  </div>
+  <section class="home-biscoon-news" aria-labelledby="homeBiscoonNewsHeading">
+    <header class="home-news-heading">
+      <div><span class="home-news-eyebrow">FROM OUR NEWSROOM</span><h2 id="homeBiscoonNewsHeading">Biscoon News</h2></div>
+      <a href="pages/news/index.html">View all news <span aria-hidden="true">↗</span></a>
+    </header>
+    <div class="home-news-list" id="homeBiscoonList" aria-live="polite"><div class="home-news-loading">Loading stories…</div></div>
+  </section>
 
   <a class="see-all" href="pages/community/discussions.html">Browse community discussions →</a>
   <section class="home-media-directory" aria-labelledby="homePatrikaHeading">

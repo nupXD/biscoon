@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/User';
 import authMiddleware from '../middleware/auth';
-import { authLoginLimiter, authRecoveryLimiter, authRegisterLimiter } from '../middleware/rateLimit';
+import { authIpLimiter, authLoginLimiter, authRecoveryLimiter, authRegisterLimiter } from '../middleware/rateLimit';
 import { APP_BASE_URL, EMAIL_VERIFICATION_REQUIRED, JWT_SECRET, isProduction } from '../config/env';
 import { findUserByEmail, findUserById, sanitizeUser } from '../utils/users';
 import { isAdminAccount } from '../utils/adminPermissions';
@@ -16,6 +16,7 @@ import { validate } from '../utils/validate';
 import type { AuthRequest, SanitizedUser } from '../types';
 
 const router = Router();
+router.use(['/register', '/login', '/admin/login', '/forgot-password', '/reset-password', '/verify-email', '/resend-verification', '/request-email-verification'], authIpLimiter);
 
 const registerSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -70,8 +71,8 @@ function buildAccountActionUrl(path: string, email: string, token: string): stri
   return url.toString();
 }
 
-function accountActionPayload(type: string, email: string, token: string, includeLink = false): Record<string, string> {
-  if (isProduction && !includeLink) return {};
+function accountActionPayload(type: string, email: string, token: string): Record<string, string> {
+  if (isProduction) return {};
   return {
     [`${type}Token`]: token,
     [`${type}Url`]: buildAccountActionUrl(
@@ -171,7 +172,7 @@ router.post('/register', authRegisterLimiter, async (req: Request, res: Response
     token: createToken(user),
     emailSent,
     emailVerificationRequired: EMAIL_VERIFICATION_REQUIRED,
-    ...accountActionPayload('verification', normalizedEmail, verification.token, !emailSent),
+    ...accountActionPayload('verification', normalizedEmail, verification.token),
   });
 });
 
@@ -222,7 +223,7 @@ router.post('/request-email-verification', authMiddleware, authRecoveryLimiter, 
     emailVerified: false,
     emailSent,
     emailVerificationRequired: EMAIL_VERIFICATION_REQUIRED,
-    ...accountActionPayload('verification', user.email, verification.token, !emailSent),
+    ...accountActionPayload('verification', user.email, verification.token),
   });
 });
 
@@ -242,7 +243,7 @@ router.post('/resend-verification', authRecoveryLimiter, async (req: Request, re
     user.updatedAt = new Date();
     await user.save();
     emailSent = await dispatchMail(() => sendVerificationEmail(user.email, verification.token));
-    recoveryPayload = accountActionPayload('verification', user.email, verification.token, !emailSent);
+    recoveryPayload = accountActionPayload('verification', user.email, verification.token);
   }
 
   res.json({
@@ -298,7 +299,7 @@ router.post('/forgot-password', authRecoveryLimiter, async (req: Request, res: R
     user.updatedAt = new Date();
     await user.save();
     emailSent = await dispatchMail(() => sendPasswordResetEmail(user.email, reset.token));
-    recoveryPayload = accountActionPayload('reset', user.email, reset.token, !emailSent);
+    recoveryPayload = accountActionPayload('reset', user.email, reset.token);
   }
 
   res.json({

@@ -84,7 +84,9 @@ let profileApiBase=window.location.origin||"http://localhost:4000";profileApiBas
       <div class="form-row--two">
         <div class="form-group">
           <label class="form-label" for="modalEditCategory">Category</label>
-          <input class="form-input" id="modalEditCategory" name="category" type="text" value="${escapeHtml(e.category||"")}" required />
+          <select class="form-select" id="modalEditCategory" name="category" required>
+          ${Array.from(new Set([e.category||"","jobs","housing","photography","marketplace","community","services","events","other"])).filter(Boolean).map(i=>`<option value="${escapeHtml(i)}" ${i===e.category?"selected":""}>${escapeHtml(i.charAt(0).toUpperCase()+i.slice(1))}</option>`).join("")}
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label" for="modalEditSubcategory">Specific type</label>

@@ -42,7 +42,7 @@ function brandedEmail(title: string, intro: string, actionUrl: string, actionLab
 }
 
 function writeOutbox(message: MailMessage): void {
-  if (NODE_ENV === 'test') return;
+  if (NODE_ENV !== 'development') return;
   const dir = path.join(STATIC_ROOT, 'data', 'mail-outbox');
   fs.mkdirSync(dir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -72,7 +72,7 @@ async function sendViaSmtp(message: MailMessage): Promise<void> {
 export async function sendMail(message: MailMessage): Promise<boolean> {
   writeOutbox(message);
   if (!SMTP_HOST) {
-    if (NODE_ENV !== 'test') {
+    if (NODE_ENV === 'development') {
       console.info(`[mail] SMTP is not configured. Confirmation was not sent to ${message.to}`);
       console.info(message.text);
     }

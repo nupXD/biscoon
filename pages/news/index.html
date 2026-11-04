@@ -25,6 +25,8 @@
 <link rel="stylesheet" href="../../assets/css/main.css"/>
 <link rel="stylesheet" href="../../assets/css/dash-nav.css"/>
 <link rel="stylesheet" href="../../assets/css/pages/news/news.css"/>
+<link rel="stylesheet" href="../../assets/css/forms.css">
+<script src="../../assets/js/plugins/form-guidance.js" defer></script>
 </head>
 <body class="has-dash-nav">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -113,7 +115,7 @@
       <button class="news-tab" type="button" data-news-category="usa">USA</button>
     </div>
     <form class="news-search" id="newsSearchForm">
-      <input id="newsSearchInput" type="search" placeholder="Search news"/>
+      <input id="newsSearchInput" name="q" aria-label="Search Biscoon News" type="search" placeholder="Search news"/>
       <button type="submit">Search</button>
     </form>
   </section>
@@ -122,7 +124,7 @@
     <div class="news-loading">Loading latest stories...</div>
   </section>
 
-  <section class="news-reader" id="newsReader" hidden></section>
+
 </main>
 
 <footer>

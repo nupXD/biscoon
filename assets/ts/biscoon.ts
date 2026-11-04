@@ -2592,23 +2592,64 @@ async function submitReport(targetType: string, targetId: string): Promise<void>
     window.location.href = getLoginPath(window.location.pathname + window.location.search);
     return;
   }
-  const reason = window.prompt('Why are you reporting this? Type spam, scam, harassment, illegal, misinformation, or other.', 'spam');
-  if (!reason) return;
-  const normalizedReason = reason.trim().toLowerCase();
-  const allowed = ['spam', 'scam', 'harassment', 'illegal', 'misinformation', 'other'];
-  if (!allowed.includes(normalizedReason)) {
-    biscoonToast('Please use one of: spam, scam, harassment, illegal, misinformation, other.', 'error');
-    return;
-  }
-  const details = window.prompt('Optional: add details for the admin team.', '') || '';
-  const response = await fetch(`${getApiBase()}/api/moderation/reports`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ targetType, targetId, reason: normalizedReason, details }),
+  if (document.getElementById('reportDialog')) return;
+  const previousFocus = document.activeElement as HTMLElement | null;
+  const dialog = document.createElement('dialog');
+  dialog.id = 'reportDialog';
+  dialog.className = 'guidance-dialog';
+  dialog.setAttribute('aria-labelledby', 'reportTitle');
+  dialog.innerHTML = `
+    <form id="reportForm">
+      <h2 id="reportTitle">Report this content</h2>
+      <p class="field-guidance">Tell the moderation team what needs attention.</p>
+      <label class="form-label" for="reportReason">Reason</label>
+      <select class="form-select" id="reportReason" name="reason" required>
+        <option value="">Choose a reason</option>
+        <option value="spam">Spam or unwanted promotion</option>
+        <option value="scam">Scam or fraud</option>
+        <option value="harassment">Harassment or abuse</option>
+        <option value="illegal">Illegal content</option>
+        <option value="misinformation">False or misleading information</option>
+        <option value="other">Something else</option>
+      </select>
+      <label class="form-label" for="reportDetails">Details (optional)</label>
+      <textarea class="form-input" id="reportDetails" name="details" rows="4" maxlength="1000" placeholder="Explain what the team should check."></textarea>
+      <p id="reportError" role="alert" class="field-guidance-error"></p>
+      <div class="guidance-dialog-actions">
+        <button type="button" class="btn-ghost" id="reportCancel">Cancel</button>
+        <button type="submit" class="btn-primary" id="reportSubmit">Send report</button>
+      </div>
+    </form>`;
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => { dialog.remove(); previousFocus?.focus(); });
+  dialog.querySelector('#reportCancel')!.addEventListener('click', () => dialog.close());
+  dialog.querySelector('form')!.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = dialog.querySelector<HTMLButtonElement>('#reportSubmit')!;
+    const error = dialog.querySelector<HTMLElement>('#reportError')!;
+    button.disabled = true;
+    button.textContent = 'Sending…';
+    error.textContent = '';
+    try {
+      const reason = dialog.querySelector<HTMLSelectElement>('#reportReason')!.value;
+      const details = dialog.querySelector<HTMLTextAreaElement>('#reportDetails')!.value.trim();
+      const response = await fetch(`${getApiBase()}/api/moderation/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ targetType, targetId, reason, details }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not submit report. Please try again.');
+      dialog.close();
+      biscoonToast('Thanks. The report was sent to admins.', 'success');
+    } catch (err) {
+      error.textContent = err.message || 'Could not send your report. Please try again.';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Send report';
+    }
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Could not submit report.');
-  biscoonToast('Thanks. The report was sent to admins.', 'success');
+  dialog.showModal();
 }
 
 async function openListingModal(id: string): Promise<void> {
@@ -3002,12 +3043,9 @@ type HomeNewsArticle = {
   createdAt?: string;
 };
 
-const HOME_NEPAL_CATS = new Set(['nepal']);
-const HOME_DIASPORA_CATS = new Set(['usa', 'immigration', 'community', 'culture', 'business']);
-
 function newsArticleHref(article: HomeNewsArticle): string {
   const slug = String(article.slug || '').trim();
-  return slug ? `pages/news/index.html?story=${encodeURIComponent(slug)}` : 'pages/news/index.html';
+  return slug ? `pages/news/article.html?story=${encodeURIComponent(slug)}` : 'pages/news/index.html';
 }
 
 function homeNewsCategoryLabel(category = ''): string {
@@ -3043,27 +3081,19 @@ function newsThumb(article: HomeNewsArticle): string {
   if (article.imageUrl) {
     return `<img src="${escapeHtml(article.imageUrl)}" alt="${escapeHtml(article.title || 'News')}" loading="lazy">`;
   }
-  const icons: Record<string, string> = {
-    usa: '🇺🇸', immigration: '🛂', community: '🤝', culture: '🎭',
-    business: '💼', nepal: '🏔', news: '📰',
-  };
-  return icons[String(article.category || '').toLowerCase()] || '📰';
+  return '<span class="ni-placeholder" aria-hidden="true">B<span>NEWS</span></span>';
 }
 
-function renderHomeNewsItem(article: HomeNewsArticle, index: number, trending = false): string {
-  const tone = newsCategoryTone(article.category, index);
-  const num = String(index + 1).padStart(2, '0');
+function renderHomeNewsItem(article: HomeNewsArticle): string {
   const when = newsRelativeTime(article.publishedAt || article.createdAt);
-  const trend = trending ? '<span class="ni-trend">Trending</span>' : '';
   return `
     <a class="n-item" href="${newsArticleHref(article)}">
-      <div class="ni-num">${num}</div>
-      <div>
-        <div class="ni-cat${tone ? ` ${tone}` : ''}">${escapeHtml(homeNewsCategoryLabel(article.category))}${trend}</div>
-        <div class="ni-title">${escapeHtml(article.title || 'Untitled story')}</div>
-        <div class="ni-meta">${escapeHtml([when, article.sourceName || 'Biscoon Newsroom'].filter(Boolean).join(' · '))}</div>
-      </div>
       <div class="ni-thumb">${newsThumb(article)}</div>
+      <div class="ni-content">
+        <div class="ni-cat">${escapeHtml(homeNewsCategoryLabel(article.category))}</div>
+        <h3 class="ni-title">${escapeHtml(article.title || 'Untitled story')}</h3>
+        <div class="ni-meta">${escapeHtml(when || 'Biscoon Newsroom')}</div>
+      </div>
     </a>`;
 }
 
@@ -3170,67 +3200,22 @@ async function initHomeRecentPosts(): Promise<void> {
 async function initHomeNews(): Promise<void> {
   if (!document.body.classList.contains('is-home')) return;
   const featured = document.getElementById('homeFeaturedStory');
-  const diasporaList = document.getElementById('homeDiasporaList');
-  const nepalList = document.getElementById('homeNepalList');
-  const trendingList = document.getElementById('homeTrendingList');
-  if (!featured && !diasporaList && !nepalList && !trendingList) return;
-
+  const list = document.getElementById('homeBiscoonList');
+  if (!featured && !list) return;
   try {
-    const response = await fetch(`${getApiBase()}/api/news?limit=24`);
+    const response = await fetch(`${getApiBase()}/api/news?sort=latest&limit=12`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not load news.');
     const articles = (Array.isArray(data.news) ? data.news : []) as HomeNewsArticle[];
-
-    const featuredArticle =
-      articles.find(a => a.featured) ||
-      articles[0] ||
-      null;
-    if (featured) featured.innerHTML = renderHomeFeatured(featuredArticle);
-
-    if (trendingList) {
-      const trending = articles.filter(a => a.featured).concat(articles).slice(0, 4);
-      const unique: HomeNewsArticle[] = [];
-      trending.forEach(article => {
-        const key = article.id || article.slug;
-        if (unique.some(item => (item.id || item.slug) === key)) return;
-        unique.push(article);
-      });
-      trendingList.innerHTML = unique.length
-        ? unique.slice(0, 4).map((article, index) => renderHomeNewsItem(article, index, true)).join('')
-        : `<div class="home-news-empty">No trending stories yet.</div>`;
-    }
-
-    const featuredId = featuredArticle?.id || featuredArticle?.slug;
-    const rest = articles.filter(a => (a.id || a.slug) !== featuredId);
-
-    const nepal = rest.filter(a => HOME_NEPAL_CATS.has(String(a.category || '').toLowerCase()));
-    let diaspora = rest.filter(a => HOME_DIASPORA_CATS.has(String(a.category || '').toLowerCase()));
-    if (!diaspora.length) {
-      diaspora = rest.filter(a => !HOME_NEPAL_CATS.has(String(a.category || '').toLowerCase()));
-    }
-
-    const diasporaBadge = document.getElementById('homeDiasporaBadge');
-    const nepalBadge = document.getElementById('homeNepalBadge');
-    if (diasporaBadge) diasporaBadge.textContent = diaspora.length ? `${Math.min(diaspora.length, 8)}` : '0';
-    if (nepalBadge) nepalBadge.textContent = nepal.length ? `${Math.min(nepal.length, 8)}` : '0';
-
-    if (diasporaList) {
-      diasporaList.innerHTML = diaspora.length
-        ? diaspora.slice(0, 4).map((article, index) => renderHomeNewsItem(article, index)).join('')
-        : `<div class="home-news-empty">No diaspora stories yet.</div>`;
-    }
-    if (nepalList) {
-      nepalList.innerHTML = nepal.length
-        ? nepal.slice(0, 5).map((article, index) => renderHomeNewsItem(article, index)).join('')
-        : `<div class="home-news-empty">No Nepal stories yet.</div>`;
-    }
+    const lead = articles[0] || null;
+    if (featured) featured.innerHTML = renderHomeFeatured(lead);
+    const remaining = featured ? articles.slice(1) : articles;
+    if (list) list.innerHTML = remaining.length
+      ? remaining.slice(0, 6).map(article => renderHomeNewsItem(article)).join('')
+      : `<div class="home-news-empty">${lead ? 'You’re caught up. More stories coming soon.' : 'New stories will appear here when published.'}</div>`;
   } catch {
-    if (featured) {
-      featured.innerHTML = `<div class="home-news-empty">Couldn’t load news. <a href="pages/news/index.html">Open newsroom →</a></div>`;
-    }
-    if (diasporaList) diasporaList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
-    if (nepalList) nepalList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
-    if (trendingList) trendingList.innerHTML = `<div class="home-news-empty">Couldn’t load stories.</div>`;
+    if (featured) featured.innerHTML = '<div class="home-news-empty">Couldn’t load news. <a href="pages/news/index.html">Open newsroom →</a></div>';
+    if (list) list.innerHTML = '<div class="home-news-empty">Couldn’t load stories. <a href="pages/news/index.html">Browse Biscoon News →</a></div>';
   }
 }
 
@@ -3607,7 +3592,7 @@ function biscoonOpenSendMessageModal({ listingId, recipientId, listingTitle }: {
       <h3 style="font-family:Inter,sans-serif;font-size:24px;color:var(--navy);margin-bottom:6px">Message Poster</h3>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">About: ${esc(listingTitle || 'this listing')}</p>
       <div id="biscoonSendMsgError" style="display:none;font-size:13px;color:var(--red);margin-bottom:10px"></div>
-      <textarea id="biscoonSendMsgBody" placeholder="Write your message…" rows="4" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;min-height:90px;outline:none;margin-bottom:14px;transition:border-color .15s"></textarea>
+      <label for="biscoonSendMsgBody">Your message</label><textarea id="biscoonSendMsgBody" placeholder="Write your message…" rows="4" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;min-height:90px;outline:none;margin-bottom:14px;transition:border-color .15s"></textarea>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn-ghost" type="button" id="biscoonSendMsgCancel">Cancel</button>
         <button class="btn-primary" type="button" id="biscoonSendMsgSubmit">Send Message</button>

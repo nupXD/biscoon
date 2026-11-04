@@ -46,6 +46,8 @@
   ]
 }
 </script>
+<link rel="stylesheet" href="../../assets/css/forms.css">
+<script src="../../assets/js/plugins/form-guidance.js" defer></script>
 </head>
 <body class="has-dash-nav">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -170,7 +172,7 @@
           </fieldset>
 
           <fieldset class="form-block" data-ad-details hidden>
-            <legend class="form-block-title">Details</legend>
+            <legend class="form-block-title">Describe your listing</legend>
             <div class="form-group">
               <label class="form-label" for="title" id="titleLabel">Title</label>
               <input class="form-input" id="title" name="title" type="text" placeholder="Clear headline for your listing" required maxlength="120" />
@@ -218,7 +220,8 @@
             <div class="form-row--two" id="contactDetailsSection">
               <div class="form-group">
                 <label class="form-label" for="contactEmail">Public contact email</label>
-                <input class="form-input" id="contactEmail" name="contactEmail" type="email" placeholder="you@example.com" required maxlength="200" />
+                <p class="form-helper" id="publicEmailHelp">This email will appear on your listing. Use an address you are comfortable sharing publicly.</p>
+                <input class="form-input" id="contactEmail" aria-describedby="publicEmailHelp" autocomplete="email" name="contactEmail" type="email" placeholder="you@example.com" required maxlength="200" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="contactPhone">Public phone <span class="label-optional">optional</span></label>

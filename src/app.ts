@@ -7,7 +7,7 @@ import compression from 'compression';
 import mongoose from 'mongoose';
 import {
   CORS_ORIGINS,
-  JSON_BODY_LIMIT,
+  JSON_BODY_LIMIT_BYTES,
   NODE_ENV,
   STATIC_ROOT,
   TRUST_PROXY,
@@ -84,7 +84,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: JSON_BODY_LIMIT }));
+app.use(express.json({ limit: JSON_BODY_LIMIT_BYTES }));
 
 app.get(['/', '/index.html'], (_req: Request, res: Response) => {
   res.sendFile(path.join(STATIC_ROOT, 'index.html'));

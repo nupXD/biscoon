@@ -10,7 +10,7 @@
     "build:client": "npm run build:client:core && npm run build:client:plugins && npm run copy:vendor",
     "build:client:core": "esbuild assets/ts/biscoon.ts assets/ts/auth.ts assets/ts/admin.ts assets/ts/profile.ts assets/ts/ticker.ts --outdir=assets/js --target=es2020 --bundle=false --minify",
     "build:client:plugins": "esbuild assets/ts/plugins/*.ts --outdir=assets/js/plugins --target=es2020 --bundle --format=iife --platform=browser --minify",
-    "copy:vendor": "mkdir -p assets/vendor/photoswipe assets/vendor/maplibre assets/vendor/swiper && cp node_modules/photoswipe/dist/photoswipe.css assets/vendor/photoswipe/photoswipe.css && cp node_modules/maplibre-gl/dist/maplibre-gl.css assets/vendor/maplibre/maplibre-gl.css && cp node_modules/swiper/swiper-bundle.min.js assets/vendor/swiper/swiper-bundle.min.js && cp node_modules/swiper/swiper-bundle.min.css assets/vendor/swiper/swiper-bundle.min.css",
+    "copy:vendor": "mkdir -p assets/vendor/photoswipe assets/vendor/maplibre assets/vendor/swiper && cp node_modules/photoswipe/dist/photoswipe.css assets/vendor/photoswipe/photoswipe.css && cp node_modules/maplibre-gl/dist/maplibre-gl.css assets/vendor/maplibre/maplibre-gl.css && cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs assets/vendor/maplibre/maplibre-gl-worker.mjs && cp node_modules/swiper/swiper-bundle.min.js assets/vendor/swiper/swiper-bundle.min.js && cp node_modules/swiper/swiper-bundle.min.css assets/vendor/swiper/swiper-bundle.min.css",
     "test": "jest --runInBand",
     "typecheck": "tsc --noEmit",
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
@@ -18,7 +18,8 @@
     "mongo": "mkdir -p data/mongo && mongod --dbpath data/mongo --bind_ip 127.0.0.1 --port 27017",
     "seed": "ts-node seed.js",
     "reindex": "ts-node scripts/reindex-elasticsearch.js",
-    "migrate:conversations": "ts-node scripts/migrate-conversations.js"
+    "migrate:conversations": "ts-node scripts/migrate-conversations.js",
+    "bootstrap:admin": "node dist/scripts/bootstrap-admin.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.17.14",
@@ -27,13 +28,13 @@
     "@fullcalendar/interaction": "^6.1.20",
     "@sentry/browser": "^10.53.1",
     "@sentry/node": "^10.53.1",
-    "@tiptap/core": "^3.23.5",
-    "@tiptap/extension-font-family": "^3.23.5",
-    "@tiptap/extension-image": "^3.23.5",
-    "@tiptap/extension-link": "^3.23.5",
-    "@tiptap/extension-text-style": "^3.23.5",
-    "@tiptap/pm": "^3.23.5",
-    "@tiptap/starter-kit": "^3.23.5",
+    "@tiptap/core": "^3.32.2",
+    "@tiptap/extension-font-family": "^3.32.2",
+    "@tiptap/extension-image": "^3.32.2",
+    "@tiptap/extension-link": "^3.32.2",
+    "@tiptap/extension-text-style": "^3.32.2",
+    "@tiptap/pm": "^3.32.2",
+    "@tiptap/starter-kit": "^3.32.2",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -43,9 +44,9 @@
     "fuse.js": "^7.3.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.0",
-    "maplibre-gl": "^5.24.0",
+    "maplibre-gl": "^6.16.0",
     "mongoose": "^7.0.0",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^10.3.1",
     "photoswipe": "^5.4.4",
     "sanitize-html": "^2.17.4",
     "sharp": "^0.35.4",
@@ -56,6 +57,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
@@ -73,5 +75,8 @@
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

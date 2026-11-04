@@ -1,0 +1,557 @@
+{
+  "reviewDate": "2026-11-03",
+  "command": "npm audit --omit=dev --json",
+  "counts": {
+    "info": 0,
+    "low": 1,
+    "moderate": 29,
+    "high": 13,
+    "critical": 2,
+    "total": 45
+  },
+  "packages": [
+    {
+      "name": "@tiptap/core",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "Tiptap: mergeAttributes() turns an own __proto__ key into inherited executable DOM attributes",
+          "url": "https://github.com/advisories/GHSA-cp6q-959q-f8rh"
+        },
+        {
+          "title": "Tiptap: Quadratic ReDoS in block and inline Markdown attribute parsing",
+          "url": "https://github.com/advisories/GHSA-j95f-988m-3j2f"
+        }
+      ]
+    },
+    {
+      "name": "@tiptap/extension-blockquote",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-bold",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-bullet-list",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-code",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-code-block",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-document",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-dropcursor",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-font-family",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-gapcursor",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-hard-break",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-heading",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-horizontal-rule",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-image",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-italic",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-link",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-list",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-list-item",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-list-keymap",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-ordered-list",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-paragraph",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-strike",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-text",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-text-style",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extension-underline",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "@tiptap/extensions",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": []
+    },
+    {
+      "name": "body-parser",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
+          "url": "https://github.com/advisories/GHSA-v422-hmwv-36x6"
+        },
+        {
+          "title": "body-parser vulnerable to Denial of Service via trailing bytes after a compressed request body",
+          "url": "https://github.com/advisories/GHSA-27r3-jxmh-p828"
+        }
+      ]
+    },
+    {
+      "name": "compression",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "compression vulnerable to Denial of Service via memory leak on premature response close",
+          "url": "https://github.com/advisories/GHSA-vc2v-76pw-4v95"
+        }
+      ]
+    },
+    {
+      "name": "deepmerge",
+      "severity": "low",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4"
+        }
+      ]
+    },
+    {
+      "name": "engine.io",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "Socket.IO: Engine.IO Protocol Revision Mismatch DoS",
+          "url": "https://github.com/advisories/GHSA-2gc4-cqfq-p2gv"
+        }
+      ]
+    },
+    {
+      "name": "ip-address",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
+          "url": "https://github.com/advisories/GHSA-mwp4-54f8-5fhr"
+        },
+        {
+          "title": "ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks",
+          "url": "https://github.com/advisories/GHSA-4xrf-jv44-h6hh"
+        },
+        {
+          "title": "ip-address: misclassification of IPv4-mapped/NAT64 IPv6 addresses can bypass SSRF and trust-boundary checks",
+          "url": "https://github.com/advisories/GHSA-22jq-vg5j-6vgg"
+        },
+        {
+          "title": "ip-address: Address6.isLinkLocal() recognizes fe80::/64 rather than fe80::/10, allowing SSRF and trust-boundary bypass to on-link hosts",
+          "url": "https://github.com/advisories/GHSA-rpw4-54j3-4h4q"
+        },
+        {
+          "title": "ip-address: no classifier recognizes the NAT64 local-use range 64:ff9b:1::/48, allowing SSRF and trust-boundary bypass",
+          "url": "https://github.com/advisories/GHSA-2vr4-cq9g-pvrc"
+        },
+        {
+          "title": "ip-address: isInSubnet() and isHostInSubnet() compare addresses of different families as if they shared an address space, allowing an allowlist check to admit an address outside its range",
+          "url": "https://github.com/advisories/GHSA-j6r3-76f7-8jcv"
+        },
+        {
+          "title": "ip-address: Address6 builds a parse diagnostic proportional to the input with no length bound, allowing a single long string to stall or crash the process",
+          "url": "https://github.com/advisories/GHSA-h3mg-xc3c-68pw"
+        },
+        {
+          "title": "ip-address: Address6 matches a zone identifier in quadratic time ahead of its length limit, allowing a single long string to stall the process",
+          "url": "https://github.com/advisories/GHSA-rxp7-6hxx-x8q5"
+        }
+      ]
+    },
+    {
+      "name": "maplibre-gl",
+      "severity": "critical",
+      "direct": true,
+      "fixAvailable": {
+        "name": "maplibre-gl",
+        "version": "6.16.0",
+        "isSemVerMajor": true
+      },
+      "advisories": [
+        {
+          "title": "MapLibre GL JS: XSS Sanitizer Bypass in DOM.sanitize() via Live NamedNodeMap Removal Skip",
+          "url": "https://github.com/advisories/GHSA-jrc7-96c5-q579"
+        }
+      ]
+    },
+    {
+      "name": "mongoose",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "Mongoose: Prototype pollution in mongoose update casting via __proto__-prefixed dotted path (Schema._getSchema/path getter)",
+          "url": "https://github.com/advisories/GHSA-664h-wqgq-64gw"
+        }
+      ]
+    },
+    {
+      "name": "nanoid",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "nanoid: non-secure generators can loop indefinitely with negative size",
+          "url": "https://github.com/advisories/GHSA-28wg-ghj8-5hjv"
+        },
+        {
+          "title": "nanoid: custom generators can loop indefinitely when size is zero",
+          "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8"
+        }
+      ]
+    },
+    {
+      "name": "nodemailer",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "Nodemailer: resolveContent() on a MailMessage bypasses disableFileAccess/disableUrlAccess when called with the legacy signature",
+          "url": "https://github.com/advisories/GHSA-8m3c-c648-2xjj"
+        },
+        {
+          "title": "Nodemailer: IDN/Punycode domain allow-list bypass leads to email delivery to an attacker-controlled domain",
+          "url": "https://github.com/advisories/GHSA-wmmp-3585-3rmp"
+        },
+        {
+          "title": "Nodemailer: Quadratic (O(n\u00b2)) time complexity in addressparser allows remote denial of service via a crafted address list",
+          "url": "https://github.com/advisories/GHSA-2x7j-588g-ccc2"
+        },
+        {
+          "title": "Nodemailer: Recipient-domain validation bypass via RFC 5322 comment mis-parsing leads to email delivery to an attacker-controlled domain",
+          "url": "https://github.com/advisories/GHSA-cc9r-2j5m-2m83"
+        },
+        {
+          "title": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
+          "url": "https://github.com/advisories/GHSA-6vj9-mwq6-2f5v"
+        },
+        {
+          "title": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
+          "url": "https://github.com/advisories/GHSA-8vvx-rff5-p5rq"
+        },
+        {
+          "title": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
+          "url": "https://github.com/advisories/GHSA-v53p-9fqp-m79j"
+        },
+        {
+          "title": "Nodemailer: Quadratic (O(n^2)) DKIM header unfolding lets a large folded header cause remote denial of service during signing",
+          "url": "https://github.com/advisories/GHSA-39m8-27wv-hr27"
+        },
+        {
+          "title": "Nodemailer: A nested comment ends early in addressparser, releasing the rest of the comment as a recipient",
+          "url": "https://github.com/advisories/GHSA-8c8m-p3m8-cjg8"
+        },
+        {
+          "title": "Nodemailer: A \";\" inside a quoted string or comment ends an address group early in addressparser, turning display text into a recipient",
+          "url": "https://github.com/advisories/GHSA-m943-m63m-w62w"
+        },
+        {
+          "title": "Nodemailer: A \">\" inside a quoted local part ends an angle-addr early in addressparser, delivering to a domain the header does not name",
+          "url": "https://github.com/advisories/GHSA-85x2-q946-cp5h"
+        },
+        {
+          "title": "Nodemailer: Quadratic backtracking in SMTP AUTH mechanism detection regexes allows pre-auth remote denial of service",
+          "url": "https://github.com/advisories/GHSA-4ffr-jq9g-5ffx"
+        },
+        {
+          "title": "Nodemailer: RFC 5322 comment inside an angle-bracket address is never stripped",
+          "url": "https://github.com/advisories/GHSA-g73g-hqqh-jr95"
+        },
+        {
+          "title": "Nodemailer: Quadratic (O(n^2)) SMTP client reply parsing lets a malicious server or MITM cause a pre-auth remote denial of service",
+          "url": "https://github.com/advisories/GHSA-4g23-2xm8-66gc"
+        }
+      ]
+    },
+    {
+      "name": "postcss",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+          "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp"
+        },
+        {
+          "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+          "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849"
+        }
+      ]
+    },
+    {
+      "name": "prosemirror-view",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "ProseMirror has a XSS vulnerability in prosemirror-view's paste handling",
+          "url": "https://github.com/advisories/GHSA-c8x8-7fp4-3x9w"
+        }
+      ]
+    },
+    {
+      "name": "proxy-addr",
+      "severity": "critical",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+          "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h"
+        }
+      ]
+    },
+    {
+      "name": "qs",
+      "severity": "moderate",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "qs array-limit bypass via bracket-key comma parsing",
+          "url": "https://github.com/advisories/GHSA-x5fp-wj9c-mxmx"
+        },
+        {
+          "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+          "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g"
+        },
+        {
+          "title": "qs : qs.stringify with arrayFormat 'comma' throws an uncaught TypeError on array elements carrying a non-callable own toString (DoS)",
+          "url": "https://github.com/advisories/GHSA-6pq8-jhm2-2vcw"
+        }
+      ]
+    },
+    {
+      "name": "sanitize-html",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "sanitize-html has incomplete URI scheme validation in that allows javascript: URIs through action, formaction, data, poster, and background attributes",
+          "url": "https://github.com/advisories/GHSA-vccv-cmxp-4j9h"
+        },
+        {
+          "title": "ApostropheCMS: Stored XSS via SVG SMIL URI-list scheme-policy bypass",
+          "url": "https://github.com/advisories/GHSA-g8qq-57p8-ggw5"
+        },
+        {
+          "title": "ApostropheCMS: Mutation-XSS / allowedTags bypass via literal `</textarea/>` solidus close",
+          "url": "https://github.com/advisories/GHSA-jxwj-j7wr-gfrw"
+        },
+        {
+          "title": "ApostropheCMS sanitize-html: nonTextTags discard region ends early on an implied close, letting <noscript> content render",
+          "url": "https://github.com/advisories/GHSA-x3q4-9hxx-gx8m"
+        },
+        {
+          "title": "ApostropheCMS: Incomplete CVE-2026-53606: `meta http-equiv=refresh` `content` still ships `javascript:` / `data:` URLs",
+          "url": "https://github.com/advisories/GHSA-cv27-6wvh-8x7j"
+        }
+      ]
+    },
+    {
+      "name": "sharp",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+          "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w"
+        }
+      ]
+    },
+    {
+      "name": "socket.io-parser",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "Socket.IO: Zero-attachment Memory Exhaustion",
+          "url": "https://github.com/advisories/GHSA-2m8v-j782-fhvr"
+        }
+      ]
+    },
+    {
+      "name": "source-map-js",
+      "severity": "high",
+      "direct": false,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+          "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q"
+        }
+      ]
+    },
+    {
+      "name": "uuid",
+      "severity": "moderate",
+      "direct": true,
+      "fixAvailable": {
+        "name": "uuid",
+        "version": "14.0.3",
+        "isSemVerMajor": true
+      },
+      "advisories": [
+        {
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq"
+        }
+      ]
+    },
+    {
+      "name": "zod",
+      "severity": "high",
+      "direct": true,
+      "fixAvailable": true,
+      "advisories": [
+        {
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
+        }
+      ]
+    }
+  ]
+}

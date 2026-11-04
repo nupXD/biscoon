@@ -47,6 +47,8 @@
   ]
 }
 </script>
+<link rel="stylesheet" href="../../assets/css/forms.css">
+<script src="../../assets/js/plugins/form-guidance.js" defer></script>
 </head>
 <body class="has-dash-nav">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -131,7 +133,7 @@
         <form id="profileForm">
           <div class="form-group">
             <label class="form-label" for="profileName">Name</label>
-            <input class="form-input" id="profileName" name="name" type="text" required />
+            <input class="form-input" id="profileName" name="name" type="text" autocomplete="name" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="profileEmail">Email</label>
@@ -142,22 +144,26 @@
             </p>
           </div>
           <div class="form-group">
-            <label class="form-label" for="profilePhone">Phone</label>
-            <input class="form-input" id="profilePhone" name="phone" type="tel" />
+            <label class="form-label" for="profilePhone">Phone (optional)</label>
+            <input class="form-input" id="profilePhone" name="phone" type="tel" autocomplete="tel" />
           </div>
+          <details class="optional-form-section">
+            <summary>Change password (optional)</summary>
           <div class="form-group">
+            <p class="form-helper">Changing your password is optional. To change it, complete all three password fields below.</p>
             <label class="form-label" for="currentPassword">Current password</label>
-            <input class="form-input" id="currentPassword" name="currentPassword" type="password" />
+            <input class="form-input" id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" />
           </div>
           <div class="form-group">
             <label class="form-label" for="newPassword">New password</label>
-            <input class="form-input" id="newPassword" name="newPassword" type="password" />
+            <input class="form-input" id="newPassword" name="newPassword" type="password" minlength="8" autocomplete="new-password" />
           </div>
           <div class="form-group">
             <label class="form-label" for="confirmPassword">Confirm new password</label>
-            <input class="form-input" id="confirmPassword" name="confirmPassword" type="password" />
+            <input class="form-input" id="confirmPassword" name="confirmPassword" type="password" minlength="8" autocomplete="new-password" />
           </div>
-          <div id="profileMessage" class="form-helper"></div>
+          </details>
+          <div id="profileMessage" role="status" aria-live="polite" class="form-helper"></div>
           <div class="form-row">
             <button class="btn-primary auth-button" type="submit">Update profile</button>
             <button class="btn-ghost" id="logoutButton" type="button">Logout</button>
@@ -203,7 +209,7 @@
               <input class="form-input" id="editContactPhone" name="contactPhone" type="tel" />
             </div>
           </div>
-          <div id="editListingMessage" class="form-helper"></div>
+          <div id="editListingMessage" role="status" class="form-helper"></div>
           <div class="form-row">
             <button class="btn-primary auth-button" type="submit">Save changes</button>
             <button class="btn-ghost" id="cancelEditListing" type="button">Cancel</button>

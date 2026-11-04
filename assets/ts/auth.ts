@@ -112,7 +112,7 @@ function handleRegister(event: Event): void {
         showAuthMessage(`We sent a confirmation link to ${email}. Open it, then sign in.`, 'success');
         return;
       }
-      showAuthMessage('This server cannot send mail yet. Confirm your account with the button below, then sign in.', 'success');
+      showAuthMessage(data.verificationUrl ? 'Account created. Use the button below to confirm your email, then sign in.' : 'Account created, but we could not send the confirmation email. Try signing in and choose Resend confirmation email.', data.verificationUrl ? 'success' : 'error');
       if (data.verificationUrl) showAuthLink('Confirm this email', data.verificationUrl);
     })
     .catch(() => showAuthMessage('Unable to connect to the authentication server.', 'error'))

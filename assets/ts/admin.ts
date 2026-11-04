@@ -154,6 +154,48 @@ let _token: string = '';
 let _me: AdminUser | null = null;
 let _view: string = '';
 let _newsMediaDraft: MediaDraft[] = [];
+let _newsEditorState: { key: string; baseline: string; saving: boolean; pending: boolean; maxRequestBytes: number } | null = null;
+
+function newsDraftSnapshot(): string {
+  window.BiscoonNewsEditor?.sync?.();
+  const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value || '';
+  return JSON.stringify({
+    title: value('newsTitle'), summary: value('newsSummary'), body: value('newsBody'),
+    category: value('newsCategory'), status: value('newsStatus'), imageUrl: value('newsImageUrl'),
+    sourceName: value('newsSource'), authorName: value('newsAuthor'),
+    featured: Boolean((document.getElementById('newsFeatured') as HTMLInputElement | null)?.checked),
+    media: _newsMediaDraft,
+  });
+}
+
+function persistNewsDraft(): void {
+  if (!_newsEditorState || !document.getElementById('newsTitle')) return;
+  try {
+    const snapshot = newsDraftSnapshot();
+    if (snapshot !== _newsEditorState.baseline) sessionStorage.setItem(_newsEditorState.key, snapshot);
+    else sessionStorage.removeItem(_newsEditorState.key);
+    const hint = document.getElementById('newsDraftStatus');
+    if (hint && !_newsEditorState.pending) hint.textContent = snapshot === _newsEditorState.baseline ? 'No unsaved changes' : 'Draft backed up in this tab';
+  } catch {
+    const hint = document.getElementById('newsDraftStatus');
+    if (hint) hint.textContent = 'Draft backup unavailable. Save before leaving.';
+  }
+}
+
+window.addEventListener('beforeunload', event => {
+  if (!_newsEditorState) return;
+  persistNewsDraft();
+  if (_newsEditorState.saving || _newsEditorState.pending || newsDraftSnapshot() !== _newsEditorState.baseline) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
+for (const eventName of ['input', 'change', 'click', 'news-editor-change']) {
+  document.addEventListener(eventName, () => {
+    if (_newsEditorState) queueMicrotask(persistNewsDraft);
+  });
+}
+
 
 const _s = {
   users:         { page: 1, search: '', kind: 'regular' },
@@ -253,6 +295,7 @@ const ADMIN_PERMISSION_DEFS = [
 ];
 
 function navigate(view: string): void {
+  if (!closeModal()) return;
   if (!canAccessView(view)) {
     content('<div class="admin-error">You do not have permission to open this admin section.</div>');
     return;
@@ -1370,20 +1413,20 @@ function staffFormHtml(staff: Partial<AdminUser> = {}, isCreate: boolean = false
   return `
     <div class="admin-modal-grid">
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Name</label>
-        <input class="admin-modal-input" id="staffName" value="${esc(staff.name || '')}" autocomplete="off">
+        <label class="admin-modal-label" for="staffName">Name</label>
+        <input class="admin-modal-input" id="staffName" required value="${esc(staff.name || '')}" autocomplete="off">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Email</label>
-        <input class="admin-modal-input" id="staffEmail" type="email" value="${esc(staff.email || '')}" autocomplete="off">
+        <label class="admin-modal-label" for="staffEmail">Email</label>
+        <input class="admin-modal-input" id="staffEmail" required type="email" value="${esc(staff.email || '')}" autocomplete="off">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Phone</label>
-        <input class="admin-modal-input" id="staffPhone" value="${esc(staff.phone || '')}" autocomplete="off">
+        <label class="admin-modal-label" for="staffPhone">Phone (optional)</label>
+        <input class="admin-modal-input" id="staffPhone" type="tel" value="${esc(staff.phone || '')}" autocomplete="off">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">${isCreate ? 'Password' : 'New Password'}</label>
-        <input class="admin-modal-input" id="staffPassword" type="password" placeholder="${isCreate ? 'Minimum 8 characters' : 'Leave blank to keep current password'}" autocomplete="new-password">
+        <label class="admin-modal-label" for="staffPassword">${isCreate ? 'Password' : 'New Password'}</label>
+        <input class="admin-modal-input" id="staffPassword" type="password" minlength="8" ${isCreate ? 'required' : ''} placeholder="${isCreate ? 'Minimum 8 characters' : 'Leave blank to keep current password'}" autocomplete="new-password">
       </div>
       <div class="admin-modal-field admin-modal-full">
         <label class="admin-modal-label">Privileges</label>
@@ -1547,39 +1590,39 @@ function eventFormHtml(ev: Partial<AdminListing> = {}): string {
   return `
     <div class="admin-modal-grid">
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Event title</label>
-        <input class="admin-modal-input" id="evTitle" maxlength="200" value="${esc(ev.title || '')}" placeholder="e.g. Nepali New Year Celebration 2082">
+        <label class="admin-modal-label" for="evTitle">Event title</label>
+        <input class="admin-modal-input" id="evTitle" required maxlength="200" value="${esc(ev.title || '')}" placeholder="e.g. Nepali New Year Celebration">
       </div>
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Description</label>
+        <label class="admin-modal-label" for="evDesc">Description</label>
         <textarea class="admin-modal-textarea" id="evDesc" rows="5" placeholder="Event details, agenda, speakers…">${esc(ev.description || '')}</textarea>
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Date &amp; Time</label>
-        <input class="admin-modal-input" id="evDate" value="${esc(ev.availability || '')}" placeholder="e.g. April 14, 2025 · 5:00 PM">
+        <label class="admin-modal-label" for="evDate">Date &amp; Time</label>
+        <input class="admin-modal-input" id="evDate" value="${esc(ev.availability || '')}" placeholder="e.g. Date, time, and time zone (e.g. May 10 · 5 PM ET)">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Location / Venue</label>
+        <label class="admin-modal-label" for="evLocation">Location / Venue</label>
         <input class="admin-modal-input" id="evLocation" value="${esc(ev.location || '')}" placeholder="e.g. Boston City Hall, MA">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Price / Admission</label>
+        <label class="admin-modal-label" for="evPrice">Price / Admission (optional)</label>
         <input class="admin-modal-input" id="evPrice" value="${esc(ev.price || '')}" placeholder="Free, $10, Members only…">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Contact Phone</label>
-        <input class="admin-modal-input" id="evPhone" value="${esc(ev.contactPhone || '')}" placeholder="+1-555-…">
+        <label class="admin-modal-label" for="evPhone">Contact Phone (optional)</label>
+        <input class="admin-modal-input" id="evPhone" type="tel" value="${esc(ev.contactPhone || '')}" placeholder="+1-555-…">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Contact Email</label>
-        <input class="admin-modal-input" id="evEmail" value="${esc(ev.contactEmail || '')}" placeholder="events@example.com">
+        <label class="admin-modal-label" for="evEmail">Contact Email (optional)</label>
+        <input class="admin-modal-input" id="evEmail" type="email" value="${esc(ev.contactEmail || '')}" placeholder="events@example.com">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">RSVP / Tickets link</label>
-        <input class="admin-modal-input" id="evLink" value="${esc(ev.externalLink || '')}" placeholder="https://…">
+        <label class="admin-modal-label" for="evLink">RSVP / Tickets link (optional)</label>
+        <input class="admin-modal-input" id="evLink" type="url" value="${esc(ev.externalLink || '')}" placeholder="https://…">
       </div>
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Tags (comma-separated)</label>
+        <label class="admin-modal-label" for="evTags">Tags (comma-separated) (optional)</label>
         <input class="admin-modal-input" id="evTags" value="${esc((ev.tags || []).join(', '))}" placeholder="puja, concert, fundraiser, networking">
       </div>
     </div>
@@ -1727,6 +1770,41 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+async function prepareNewsImage(file: File): Promise<string> {
+  // Keep small uploads intact; optimize larger photos before JSON/base64 transport.
+  const targetBytes = 600 * 1024;
+  if (file.size <= targetBytes) return readFileAsDataUrl(file);
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error(`Could not open ${file.name}. Try a JPG, PNG, or WebP image.`));
+      image.src = objectUrl;
+    });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Image processing is unavailable in this browser.');
+    let scale = Math.min(1, 2400 / Math.max(image.naturalWidth, image.naturalHeight));
+    for (let attempt = 0; attempt < 6; attempt++) {
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', .85));
+      if (!blob) throw new Error(`Could not process ${file.name}. Try a different image.`);
+      if (blob.size <= targetBytes) {
+        return readFileAsDataUrl(new File([blob], 'news-photo.jpg', { type: 'image/jpeg' }));
+      }
+      scale *= .75;
+    }
+    throw new Error(`Could not resize ${file.name}. Try exporting it as a JPG.`);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function newsMediaTypeFromFile(file: File): 'video' | 'image' {
   return file?.type?.startsWith('video/') ? 'video' : 'image';
 }
@@ -1745,10 +1823,10 @@ function newsMediaLibraryHtml(): string {
         </div>
         <div class="admin-news-media-meta">
           <input class="admin-modal-input" data-news-media-caption="${esc(item.id)}" value="${esc(item.caption || '')}" placeholder="Caption">
-          <code>[[media:${esc(item.id)}]]</code>
+          <small>Click in your story, then insert here.</small>
         </div>
         <div class="admin-news-media-actions">
-          <button class="admin-btn admin-btn-ghost" type="button" data-insert-news-media="${esc(item.id)}">Insert</button>
+          <button class="admin-btn admin-btn-ghost" type="button" data-insert-news-media="${esc(item.id)}">Insert at cursor</button>
           <button class="admin-btn admin-btn-danger" type="button" data-remove-news-media="${esc(item.id)}">Remove</button>
         </div>
       </div>
@@ -1773,11 +1851,42 @@ function insertIntoNewsBody(openText: string, closeText: string = ''): void {
   textarea.setSelectionRange(caret, caret);
 }
 
+async function uploadNewsMedia(file: File): Promise<MediaDraft> {
+  const type = newsMediaTypeFromFile(file);
+  const url = type === 'image' ? await prepareNewsImage(file) : await readFileAsDataUrl(file);
+  const body = JSON.stringify({ type, url });
+  if (!_newsEditorState || new Blob([body]).size > _newsEditorState.maxRequestBytes) {
+    throw new Error(`${file.name} exceeds this server's upload limit. Choose a smaller file.`);
+  }
+  return (await api('/api/admin/news/media', { method: 'POST', body })).media;
+}
+
+async function runNewsMediaTask(work: () => Promise<void>): Promise<void> {
+  const state = _newsEditorState;
+  if (!state || state.pending || state.saving) {
+    notify('Wait for the current upload or save to finish.', 'error'); return;
+  }
+  state.pending = true;
+  const shell = document.querySelector<HTMLElement>('.news-editor-shell');
+  const save = document.getElementById('adminModalSave') as HTMLButtonElement | null;
+  if (shell) shell.inert = true;
+  if (save) save.disabled = true;
+  const hint = document.getElementById('newsDraftStatus');
+  if (hint) hint.textContent = 'Uploading media… Please keep this page open.';
+  try { await work(); }
+  catch (error) { notify(error.message || 'Media upload failed. Try again.', 'error'); }
+  finally {
+    state.pending = false;
+    if (shell) shell.inert = false;
+    if (save) save.disabled = false;
+    persistNewsDraft();
+  }
+}
+
 async function collectNewsPayload(): Promise<Record<string, unknown>> {
   window.BiscoonNewsEditor?.sync?.();
-  const imageFile = (document.getElementById('newsImageFile') as HTMLInputElement)?.files?.[0];
   let imageUrl = (document.getElementById('newsImageUrl') as HTMLInputElement)?.value.trim() || '';
-  if (imageFile) imageUrl = await readFileAsDataUrl(imageFile) as string;
+  if (_newsEditorState?.pending) throw new Error('Wait for media uploads to finish before saving.');
 
   return {
     title: (document.getElementById('newsTitle') as HTMLInputElement)?.value.trim(),
@@ -1805,92 +1914,34 @@ function newsFormHtml(article: Partial<AdminNews> = {}): string {
   const title = article.title || '';
   const summary = article.summary || '';
   return `
+    <div class="news-compose-intro"><div><span class="news-compose-eyebrow">BISCOON NEWSROOM</span><h3>A story worth sharing.</h3><p>Give your community the context, details, and voices that matter.</p></div><span class="news-compose-note">Write · Preview · Publish</span></div>
     <div class="news-editor-shell">
       <div class="news-editor-main">
         <div class="news-editor-section">
-          <div class="news-editor-section-label">Story basics</div>
+          <div class="news-editor-section-label">01 / The headline</div>
           <div class="admin-modal-field admin-modal-full">
             <div class="news-field-head">
               <label class="admin-modal-label" for="newsTitle">Headline</label>
               <span class="news-char-count" id="newsTitleCount">${title.length}/180</span>
             </div>
-            <input class="admin-modal-input" id="newsTitle" maxlength="180" value="${esc(title)}" placeholder="Write a clear, specific headline…">
+            <input class="admin-modal-input news-headline-input" id="newsTitle" aria-required="true" maxlength="180" value="${esc(title)}" placeholder="Write a clear, specific headline…">
           </div>
           <div class="admin-modal-field admin-modal-full">
             <div class="news-field-head">
-              <label class="admin-modal-label" for="newsSummary">Summary / Standfirst</label>
+              <label class="admin-modal-label" for="newsSummary">Short summary</label>
               <span class="news-char-count" id="newsSummaryCount">${summary.length}/360</span>
             </div>
-            <textarea class="admin-modal-textarea" id="newsSummary" rows="3" maxlength="360" placeholder="One or two sentences that sell the story…">${esc(summary)}</textarea>
+            <textarea class="admin-modal-textarea" id="newsSummary" aria-required="true" rows="3" maxlength="360" placeholder="What happened, and why does it matter?">${esc(summary)}</textarea>
           </div>
         </div>
 
         <div class="news-editor-section">
-          <div class="news-editor-section-label">Publishing</div>
-          <div class="news-pill-row" role="group" aria-label="Status">
-            <button type="button" class="news-pill${status === 'draft' ? ' active' : ''}" data-news-status-pill="draft">Draft</button>
-            <button type="button" class="news-pill${status === 'published' ? ' active' : ''}" data-news-status-pill="published">Published</button>
-          </div>
-          <input type="hidden" id="newsStatus" value="${esc(status)}">
-
-          <div class="news-chip-row" role="group" aria-label="Category">
-            ${NEWS_CATEGORIES.filter(Boolean).map(cat => `
-              <button type="button" class="news-chip${cat === category ? ' active' : ''}" data-news-category-chip="${esc(cat)}">${esc(newsCategoryLabel(cat))}</button>
-            `).join('')}
-          </div>
-          <input type="hidden" id="newsCategory" value="${esc(category)}">
-
-          <label class="news-featured-toggle">
-            <input type="checkbox" id="newsFeatured"${article.featured ? ' checked' : ''}>
-            <span class="news-featured-ui">
-              <strong>★ Feature this story</strong>
-              <small>Pin it at the top of the public news page</small>
-            </span>
-          </label>
-
-          <div class="admin-modal-grid" style="margin-top:12px">
-            <div class="admin-modal-field">
-              <label class="admin-modal-label">Source</label>
-              <input class="admin-modal-input" id="newsSource" value="${esc(article.sourceName || 'Biscoon Newsroom')}">
-            </div>
-            <div class="admin-modal-field">
-              <label class="admin-modal-label">Author</label>
-              <input class="admin-modal-input" id="newsAuthor" value="${esc(article.authorName || '')}" placeholder="Optional">
-            </div>
-          </div>
-        </div>
-
-        <div class="news-editor-section">
-          <div class="news-editor-section-label">Cover image</div>
-          <div class="news-dropzone" id="newsCoverDrop" tabindex="0">
-            <div class="news-dropzone-preview" id="newsCoverPreview">
-              ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'Cover image')}">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
-            </div>
-            <div class="news-dropzone-actions">
-              <input class="admin-modal-input" id="newsImageUrl" value="${esc(article.imageUrl || '')}" placeholder="https://… or leave blank">
-              <label class="admin-btn admin-btn-ghost news-file-btn">
-                Choose file
-                <input id="newsImageFile" type="file" accept="image/*" hidden>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="news-editor-section">
-          <div class="news-editor-section-label">Story media</div>
-          <div class="news-dropzone news-dropzone-media" id="newsMediaDrop" tabindex="0">
-            <div class="news-dropzone-empty">Drop images or videos here, then insert them into the article body</div>
-            <label class="admin-btn admin-btn-ghost news-file-btn">
-              Choose files
-              <input id="newsMediaFiles" type="file" accept="image/*,video/*" multiple hidden>
-            </label>
-          </div>
-          <div id="newsMediaLibrary">${newsMediaLibraryHtml()}</div>
-        </div>
-
-        <div class="news-editor-section">
-          <div class="news-editor-section-label">Article body</div>
+          <div class="news-editor-section-label">02 / Tell the story</div>
           <div class="admin-news-formatbar" role="toolbar" aria-label="Article formatting">
+            <div class="admin-news-format-group">
+              <button type="button" class="admin-news-format-btn" id="newsAddInlineImages">＋ Add images</button>
+              <input id="newsInlineImages" type="file" accept="image/*" multiple hidden aria-label="Insert images into story">
+            </div>
             <div class="admin-news-format-group">
               <button type="button" class="admin-news-format-btn" data-news-format="bold" title="Bold (⌘B)" aria-pressed="false"><strong>B</strong></button>
               <button type="button" class="admin-news-format-btn" data-news-format="italic" title="Italic (⌘I)" aria-pressed="false"><em>I</em></button>
@@ -1913,14 +1964,78 @@ function newsFormHtml(article: Partial<AdminNews> = {}): string {
             </div>
           </div>
           <div class="admin-news-rich-editor" id="newsRichEditor"></div>
-          <div class="admin-news-editor-hint">Select text, then tap a toolbar button. Active formats stay highlighted.</div>
+          <div class="admin-news-editor-hint"><span id="newsWritingStats">0 words · 0 min read</span><span>Click between paragraphs, then Add images. Select text to format it.</span></div>
           <textarea class="admin-modal-textarea admin-news-hidden-body" id="newsBody" rows="12">${esc(article.body || '')}</textarea>
         </div>
+        <details class="news-editor-section news-media-details">
+          <summary class="news-editor-section-label">Add a cover image <span>Optional</span></summary>
+          <div class="news-dropzone" id="newsCoverDrop" tabindex="0">
+            <div class="news-dropzone-preview" id="newsCoverPreview">
+              ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'Cover image')}">` : '<div class="news-dropzone-empty">Drop an image here, paste a URL, or choose a file</div>'}
+            </div>
+            <div class="news-dropzone-actions">
+              <input class="admin-modal-input" id="newsImageUrl" aria-label="Cover image URL" value="${esc(article.imageUrl || '')}" placeholder="https://… or leave blank">
+              <label class="admin-btn admin-btn-ghost news-file-btn">
+                Choose file
+                <input id="newsImageFile" aria-label="Upload cover image" type="file" accept="image/*" hidden>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <details class="news-editor-section news-media-details">
+          <summary class="news-editor-section-label">Add photos & videos <span>Optional</span></summary>
+          <div class="news-dropzone news-dropzone-media" id="newsMediaDrop" tabindex="0">
+            <div class="news-dropzone-empty">Add multiple photos or videos. Large photos are resized automatically.</div>
+            <label class="admin-btn admin-btn-ghost news-file-btn">
+              Choose files
+              <input id="newsMediaFiles" aria-label="Upload story photos or videos" type="file" accept="image/*,video/*" multiple hidden>
+            </label>
+          </div>
+          <div id="newsMediaLibrary">${newsMediaLibraryHtml()}</div>
+        </details>
+
       </div>
 
-      <aside class="news-editor-preview" aria-live="polite">
-        <div class="news-preview-label">Live preview</div>
-        <div class="news-preview-card">
+      <aside class="news-editor-preview">
+        <div class="news-editor-section">
+          <div class="news-editor-section-label">Ready when you are</div>
+          <div class="news-pill-row" role="group" aria-label="Status">
+            <button type="button" class="news-pill${status === 'draft' ? ' active' : ''}" data-news-status-pill="draft" aria-pressed="${status === 'draft'}">Save as draft</button>
+            <button type="button" class="news-pill${status === 'published' ? ' active' : ''}" data-news-status-pill="published" aria-pressed="${status === 'published'}">Publish to news</button>
+          </div>
+          <p class="news-publish-help" id="newsPublishHelp">${status === 'published' ? 'Saving makes this story visible on the news page.' : 'Only admins can see drafts. Publish when your story is ready.'}</p><input type="hidden" id="newsStatus" value="${esc(status)}">
+
+          <div class="news-editor-section-label">Choose a desk</div><div class="news-chip-row" role="group" aria-label="Category">
+            ${NEWS_CATEGORIES.filter(Boolean).map(cat => `
+              <button type="button" class="news-chip${cat === category ? ' active' : ''}" data-news-category-chip="${esc(cat)}">${esc(newsCategoryLabel(cat))}</button>
+            `).join('')}
+          </div>
+          <input type="hidden" id="newsCategory" value="${esc(category)}">
+
+          <label class="news-featured-toggle">
+            <input type="checkbox" id="newsFeatured"${article.featured ? ' checked' : ''}>
+            <span class="news-featured-ui">
+              <strong>★ Feature this story</strong>
+              <small>Highlight in Trending. Not required to appear in news.</small>
+            </span>
+          </label>
+
+          <div class="admin-modal-grid" style="margin-top:12px">
+            <div class="admin-modal-field">
+              <label class="admin-modal-label" for="newsSource">Source</label>
+              <input class="admin-modal-input" id="newsSource" value="${esc(article.sourceName || 'Biscoon Newsroom')}">
+            </div>
+            <div class="admin-modal-field">
+              <label class="admin-modal-label" for="newsAuthor">Author</label>
+              <input class="admin-modal-input" id="newsAuthor" value="${esc(article.authorName || '')}" placeholder="Optional">
+            </div>
+          </div>
+        </div>
+
+
+        <div class="news-preview-label">Your story at a glance</div>
+        <div class="news-preview-card news-preview-trigger" id="newsFullPreviewTrigger" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Preview the full story">
           <div class="news-preview-cover" id="newsPreviewCover">
             ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title || 'Cover image')}">` : '<span>Cover preview</span>'}
           </div>
@@ -1930,16 +2045,60 @@ function newsFormHtml(article: Partial<AdminNews> = {}): string {
             <span class="admin-badge admin-badge-red" id="newsPreviewFeatured" style="display:${article.featured ? '' : 'none'}">Featured</span>
           </div>
           <h3 class="news-preview-title" id="newsPreviewTitle">${esc(title || 'Your headline appears here')}</h3>
-          <p class="news-preview-summary" id="newsPreviewSummary">${esc(summary || 'The standfirst will show here as you type.')}</p>
+          <p class="news-preview-summary" id="newsPreviewSummary">${esc(summary || 'Your short summary appears here as you write.')}</p>
           <div class="news-preview-byline" id="newsPreviewByline">${esc(article.sourceName || 'Biscoon Newsroom')}${article.authorName ? ' · ' + esc(article.authorName) : ''}</div>
         </div>
-        <div class="news-preview-hint">Preview updates as you edit. Save when ready.</div>
+        <div class="news-preview-hint">Click the card to preview your full story →</div><p class="news-preview-hint" id="newsDraftStatus" role="status">No unsaved changes</p>
       </aside>
     </div>
   `;
 }
 
+function openNewsFullPreview(): void {
+  if (document.getElementById('newsFullPreview')) return;
+  window.BiscoonNewsEditor?.sync?.();
+  const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() || '';
+  const title = value('newsTitle') || 'Your headline appears here';
+  const cover = value('newsImageUrl') || _newsMediaDraft.find(item => item.type === 'image')?.url || '';
+  const dialog = document.createElement('dialog');
+  dialog.id = 'newsFullPreview';
+  dialog.className = 'news-full-preview';
+  dialog.setAttribute('aria-labelledby', 'newsFullPreviewLabel');
+  dialog.innerHTML = `
+    <header class="news-full-preview-toolbar">
+      <div><strong id="newsFullPreviewLabel">Story preview</strong><small>Preview only · Your edits have not been saved</small></div>
+      <button class="admin-btn admin-btn-ghost" type="button" data-close-full-preview autofocus>← Back to editing</button>
+    </header>
+    <article class="news-full-preview-article">
+      <div class="news-compose-eyebrow">${esc(newsCategoryLabel(value('newsCategory')))}</div>
+      <h1>${esc(title)}</h1>
+      <div class="news-preview-byline">${esc(value('newsSource') || 'Biscoon Newsroom')}${value('newsAuthor') ? ` · By ${esc(value('newsAuthor'))}` : ''}</div>
+      ${cover ? `<img class="news-full-preview-cover" src="${esc(cover)}" alt="${esc(title)}">` : ''}
+      <p class="news-full-preview-summary">${esc(value('newsSummary') || 'Your short summary appears here.')}</p>
+      <div class="admin-news-body">${formatNewsBody(value('newsBody'), _newsMediaDraft) || '<p>Your story will appear here as you write.</p>'}</div>
+    </article>`;
+  dialog.querySelector('[data-close-full-preview]')?.addEventListener('click', () => dialog.close());
+  // Keep Escape inside this preview so the underlying editor stays open.
+  dialog.addEventListener('keydown', event => {
+    if (event.key === 'Escape') event.stopPropagation();
+  });
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+    document.getElementById('newsFullPreviewTrigger')?.focus();
+  });
+  document.getElementById('adminModalOverlay')?.appendChild(dialog);
+  dialog.showModal();
+}
+
 function wireNewsEditorInteractivity(): void {
+  const previewTrigger = document.getElementById('newsFullPreviewTrigger');
+  previewTrigger?.addEventListener('click', openNewsFullPreview);
+  previewTrigger?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openNewsFullPreview();
+    }
+  });
   const title = document.getElementById('newsTitle') as HTMLInputElement | null;
   const summary = document.getElementById('newsSummary') as HTMLTextAreaElement | null;
   const source = document.getElementById('newsSource') as HTMLInputElement | null;
@@ -1975,7 +2134,7 @@ function wireNewsEditorInteractivity(): void {
 
   function refreshPreview() {
     if (previewTitle) previewTitle.textContent = title?.value.trim() || 'Your headline appears here';
-    if (previewSummary) previewSummary.textContent = summary?.value.trim() || 'The standfirst will show here as you type.';
+    if (previewSummary) previewSummary.textContent = summary?.value.trim() || 'Your short summary appears here as you write.';
     if (titleCount) titleCount.textContent = `${title?.value.length || 0}/180`;
     if (summaryCount) summaryCount.textContent = `${summary?.value.length || 0}/360`;
     if (previewByline) {
@@ -1994,6 +2153,23 @@ function wireNewsEditorInteractivity(): void {
     }
   }
 
+  function refreshWritingStats() {
+    const body = document.getElementById('newsBody') as HTMLTextAreaElement | null;
+    const text = document.createElement('div');
+    text.innerHTML = body?.value || '';
+    const words = (text.textContent || '').trim().split(/\s+/).filter(Boolean).length;
+    const stats = document.getElementById('newsWritingStats');
+    if (stats) stats.textContent = `${words} words · ${Math.ceil(words / 200)} min read`;
+  }
+  document.getElementById('newsRichEditor')?.addEventListener('input', () => {
+    window.BiscoonNewsEditor?.sync?.();
+    refreshWritingStats();
+  });
+  refreshWritingStats();
+  document.getElementById('newsAddInlineImages')?.addEventListener('click', () => {
+    (document.getElementById('newsInlineImages') as HTMLInputElement | null)?.click();
+  });
+
   title?.addEventListener('input', refreshPreview);
   summary?.addEventListener('input', refreshPreview);
   source?.addEventListener('input', refreshPreview);
@@ -2004,7 +2180,12 @@ function wireNewsEditorInteractivity(): void {
     btn.addEventListener('click', () => {
       const value = btn.dataset.newsStatusPill || 'draft';
       if (statusInput) statusInput.value = value;
-      document.querySelectorAll('[data-news-status-pill]').forEach(el => el.classList.toggle('active', el === btn));
+      document.querySelectorAll('[data-news-status-pill]').forEach(el => {
+        el.classList.toggle('active', el === btn);
+        el.setAttribute('aria-pressed', String(el === btn));
+      });
+      const help = document.getElementById('newsPublishHelp');
+      if (help) help.textContent = value === 'published' ? 'Saving makes this story visible on the news page.' : 'Only admins can see drafts. Publish when your story is ready.';
       refreshPreview();
     });
   });
@@ -2026,9 +2207,12 @@ function wireNewsEditorInteractivity(): void {
     const file = imageFile.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await readFileAsDataUrl(file) as string;
-      if (imageUrl) imageUrl.value = dataUrl;
-      setCover(dataUrl);
+      await runNewsMediaTask(async () => {
+        const media = await uploadNewsMedia(file);
+        if (imageUrl) imageUrl.value = media.url;
+        if (imageFile) imageFile.value = '';
+        setCover(media.url);
+      });
     } catch (err: any) {
       notify(err.message || 'Could not read image.', 'error');
     }
@@ -2062,9 +2246,12 @@ function wireNewsEditorInteractivity(): void {
       return;
     }
     try {
-      const dataUrl = await readFileAsDataUrl(file) as string;
-      if (imageUrl) imageUrl.value = dataUrl;
-      setCover(dataUrl);
+      await runNewsMediaTask(async () => {
+        const media = await uploadNewsMedia(file);
+        if (imageUrl) imageUrl.value = media.url;
+        if (imageFile) imageFile.value = '';
+        setCover(media.url);
+      });
     } catch (err: any) {
       notify(err.message || 'Could not read image.', 'error');
     }
@@ -2261,34 +2448,50 @@ async function openViewNews(id: string): Promise<void> {
 }
 
 async function openNewsEditor(id: string = ''): Promise<void> {
+  if (!closeModal()) return;
   let article: Partial<AdminNews> = {};
-  if (id) {
-    try {
-      const data = await api(`/api/admin/news/${encodeURIComponent(id)}`);
-      article = data.article;
-    } catch (err) {
-      notify(err.message, 'error');
-      return;
-    }
-  }
-
+  let maxRequestBytes: number;
+  try {
+    const limits = await api('/api/admin/news/media-limits');
+    maxRequestBytes = limits.maxRequestBytes;
+    if (id) article = (await api(`/api/admin/news/${encodeURIComponent(id)}`)).article;
+  } catch (err) { notify(err.message, 'error'); return; }
+  const key = `biscoon-news-draft:${_me?.id || 'session'}:${id || 'new'}`;
+  let restored = false;
+  try {
+    const saved = sessionStorage.getItem(key);
+    if (saved && window.confirm('Restore your unsaved news draft from this tab?')) {
+      article = { ...article, ...JSON.parse(saved) };
+      restored = true;
+    } else if (saved) sessionStorage.removeItem(key);
+  } catch { /* Editing still works when browser storage is unavailable. */ }
   _newsMediaDraft = (article.media || []).map(item => ({ ...item }));
   openModal(id ? 'Edit News Story' : 'Create News Story', newsFormHtml(article), async () => {
-    await api(id ? `/api/admin/news/${encodeURIComponent(id)}` : '/api/admin/news', {
-      method: id ? 'PUT' : 'POST',
-      body: JSON.stringify(await collectNewsPayload()),
-    });
-    showNews(1);
+    const state = _newsEditorState;
+    if (!state || state.pending) throw new Error('Wait for media uploads to finish before saving.');
+    state.saving = true;
+    const shell = document.querySelector<HTMLElement>('.news-editor-shell');
+    if (shell) shell.inert = true;
+    try {
+      const body = JSON.stringify(await collectNewsPayload());
+      if (new Blob([body]).size > state.maxRequestBytes) throw new Error('This story exceeds the upload limit. Remove some media or shorten the story.');
+      await api(id ? `/api/admin/news/${encodeURIComponent(id)}` : '/api/admin/news', {
+        method: id ? 'PUT' : 'POST', body,
+      });
+      state.baseline = newsDraftSnapshot();
+      try { sessionStorage.removeItem(key); } catch { /* Storage may be unavailable. */ }
+      showNews(1);
+    } finally { state.saving = false; if (shell) shell.inert = false; }
   });
-  const modal = document.querySelector('#adminModalOverlay .admin-modal');
-  modal?.classList.add('admin-modal-wide');
+  _newsEditorState = { key, baseline: '', saving: false, pending: false, maxRequestBytes };
+  const overlay = document.getElementById('adminModalOverlay');
+  overlay?.querySelector('.admin-modal')?.classList.add('admin-modal-wide');
   requestAnimationFrame(() => {
-    window.BiscoonNewsEditor?.mount?.({
-      element: '#newsRichEditor',
-      textarea: '#newsBody',
-      media: () => _newsMediaDraft,
-    });
+    if (!overlay?.isConnected || !_newsEditorState) return;
+    window.BiscoonNewsEditor?.mount?.({ element: '#newsRichEditor', textarea: '#newsBody', media: () => _newsMediaDraft });
     wireNewsEditorInteractivity();
+    _newsEditorState.baseline = restored ? '' : newsDraftSnapshot();
+    persistNewsDraft();
   });
 }
 
@@ -2989,11 +3192,11 @@ async function showSpotlights(): Promise<void> {
                 <div class="admin-spot-field-error" data-spot-field-error="spotTitle" hidden></div>
               </div>
               <div class="admin-ann-field admin-ann-full">
-                <label class="admin-ann-label">Supporting line</label>
+                <label class="admin-ann-label" for="spotSubtitle">Supporting line</label>
                 <input class="admin-ann-input" id="spotSubtitle" placeholder="One short sentence under the headline" maxlength="200">
               </div>
               <div class="admin-ann-field admin-ann-full">
-                <label class="admin-ann-label">Extra details (optional)</label>
+                <label class="admin-ann-label" for="spotBody">Extra details (optional)</label>
                 <textarea class="admin-ann-textarea" id="spotBody" placeholder="Shown under the supporting line" rows="2" maxlength="400"></textarea>
               </div>
               <div class="admin-ann-field admin-ann-full">
@@ -3008,7 +3211,7 @@ async function showSpotlights(): Promise<void> {
                 <div class="admin-spot-field-error" data-spot-field-error="spotImageUrl" hidden></div>
               </div>
               <div class="admin-ann-field admin-ann-full">
-                <label class="admin-ann-label">Type</label>
+                <label class="admin-ann-label" for="spotType">Type</label>
                 <input type="hidden" id="spotType" value="ad">
                 <div class="admin-spot-types" role="group" aria-label="Spotlight type">
                   <button type="button" class="admin-spot-type is-active" data-type="ad">📣 Ad</button>
@@ -3018,26 +3221,26 @@ async function showSpotlights(): Promise<void> {
                 </div>
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label">Corner badge</label>
+                <label class="admin-ann-label" for="spotBadgeText">Corner badge</label>
                 <input class="admin-ann-input" id="spotBadgeText" placeholder="e.g. FREE ENTRY" maxlength="40">
                 <div class="admin-spot-field-error" data-spot-field-error="spotBadgeText" hidden></div>
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label">Badge color</label>
+                <label class="admin-ann-label" for="spotBadgeColor">Badge color</label>
                 <input class="admin-ann-input" id="spotBadgeColor" type="color" value="#E63946">
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label">Button label (optional)</label>
+                <label class="admin-ann-label" for="spotCtaText">Button label (optional)</label>
                 <input class="admin-ann-input" id="spotCtaText" placeholder="e.g. Register Now" maxlength="60">
                 <div class="admin-spot-field-error" data-spot-field-error="spotCtaText" hidden></div>
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label">Ad link — click banner opens this</label>
+                <label class="admin-ann-label" for="spotCtaUrl">Ad link — click banner opens this</label>
                 <input class="admin-ann-input" id="spotCtaUrl" type="url" placeholder="https://…" inputmode="url">
                 <div class="admin-spot-field-error" data-spot-field-error="spotCtaUrl" hidden></div>
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label">Carousel order</label>
+                <label class="admin-ann-label" for="spotOrder">Carousel order</label>
                 <input class="admin-ann-input" id="spotOrder" type="number" value="0" min="0" step="1" title="Lower numbers show first">
                 <div class="admin-spot-field-error" data-spot-field-error="spotOrder" hidden></div>
               </div>
@@ -3175,11 +3378,11 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           <div class="admin-spot-field-error" data-spot-field-error="editSpotTitle" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
-          <label class="admin-modal-label">Supporting line</label>
+          <label class="admin-modal-label" for="editSpotSubtitle">Supporting line</label>
           <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(s.subtitle || '')}">
         </div>
         <div class="admin-modal-field admin-modal-full">
-          <label class="admin-modal-label">Extra details</label>
+          <label class="admin-modal-label" for="editSpotBody">Extra details</label>
           <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(s.body || '')}</textarea>
         </div>
         <div class="admin-modal-field admin-modal-full">
@@ -3196,7 +3399,7 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           <div class="admin-spot-field-error" data-spot-field-error="editSpotImageUrl" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
-          <label class="admin-modal-label">Type</label>
+          <label class="admin-modal-label" for="editSpotType">Type</label>
           <input type="hidden" id="editSpotType" value="${esc(type)}">
           <div class="admin-spot-types" id="editSpotTypes" role="group" aria-label="Spotlight type">
             <button type="button" class="admin-spot-type ${type === 'ad' ? 'is-active' : ''}" data-type="ad">📣 Ad</button>
@@ -3206,26 +3409,26 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           </div>
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label">Corner badge</label>
+          <label class="admin-modal-label" for="editSpotBadgeText">Corner badge</label>
           <input class="admin-modal-input" id="editSpotBadgeText" maxlength="40" value="${esc(s.badgeText || '')}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotBadgeText" hidden></div>
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label">Badge color</label>
+          <label class="admin-modal-label" for="editSpotBadgeColor">Badge color</label>
           <input class="admin-modal-input" id="editSpotBadgeColor" type="color" value="${esc(s.badgeColor || '#E63946')}">
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label">Button label (optional)</label>
+          <label class="admin-modal-label" for="editSpotCtaText">Button label (optional)</label>
           <input class="admin-modal-input" id="editSpotCtaText" maxlength="60" value="${esc(s.ctaText || '')}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaText" hidden></div>
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label">Ad link — click banner opens this</label>
+          <label class="admin-modal-label" for="editSpotCtaUrl">Ad link — click banner opens this</label>
           <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(s.ctaUrl || '')}" inputmode="url" placeholder="https://…">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaUrl" hidden></div>
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label">Carousel order</label>
+          <label class="admin-modal-label" for="editSpotOrder">Carousel order</label>
           <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" step="1" value="${s.order ?? 0}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotOrder" hidden></div>
         </div>
@@ -3367,18 +3570,18 @@ async function showAnnouncements(): Promise<void> {
       </div>
       <div class="admin-ann-form">
         <div class="admin-ann-form-title">📢 Create New Announcement</div>
-        <div id="annFormError" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#E63946;margin-bottom:12px"></div>
+        <div id="annFormError" role="alert" style="display:none;background:#fce8e8;border:1.5px solid #f8c3c3;border-radius:8px;padding:10px 14px;font-size:13px;color:#E63946;margin-bottom:12px"></div>
         <div class="admin-ann-grid">
           <div class="admin-ann-field admin-ann-full">
-            <label class="admin-ann-label">Title</label>
+            <label class="admin-ann-label" for="annTitle">Title</label>
             <input class="admin-ann-input" id="annTitle" placeholder="e.g. Site maintenance this Saturday">
           </div>
           <div class="admin-ann-field admin-ann-full">
-            <label class="admin-ann-label">Message</label>
+            <label class="admin-ann-label" for="annBody">Message</label>
             <textarea class="admin-ann-textarea" id="annBody" placeholder="Write the announcement message shown to all users…"></textarea>
           </div>
           <div class="admin-ann-field">
-            <label class="admin-ann-label">Type</label>
+            <label class="admin-ann-label" for="annType">Type</label>
             <select class="admin-ann-select" id="annType">
               <option value="info">ℹ️ Info (blue)</option>
               <option value="warning">⚠️ Warning (yellow)</option>
@@ -3386,8 +3589,8 @@ async function showAnnouncements(): Promise<void> {
             </select>
           </div>
           <div class="admin-ann-field">
-            <label class="admin-ann-label">Expires at (optional)</label>
-            <input class="admin-ann-input" id="annExpiry" type="datetime-local">
+            <label class="admin-ann-label" for="annExpiry">Expires at (optional)</label>
+            <input class="admin-ann-input" id="annExpiry" type="datetime-local" aria-describedby="annExpiryHelp"><p class="field-guidance" id="annExpiryHelp">Uses your device’s local time. Leave blank to keep the announcement active until you turn it off.</p>
           </div>
         </div>
         <div class="admin-ann-actions">
@@ -3433,6 +3636,7 @@ async function showAnnouncements(): Promise<void> {
 
       errEl.style.display = 'none';
       if (!title || !body) {
+        document.getElementById(!title ? 'annTitle' : 'annBody')?.focus();
         errEl.textContent = 'Title and message are required.';
         errEl.style.display = 'block';
         return;
@@ -3599,45 +3803,45 @@ async function openEditListing(id: string): Promise<void> {
     <div class="admin-modal-meta">Posted ${fmtDate(l.createdAt)}</div>
     <div class="admin-modal-grid">
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Title</label>
-        <input class="admin-modal-input" id="mTitle" value="${esc(l.title || '')}">
+        <label class="admin-modal-label" for="mTitle">Title</label>
+        <input class="admin-modal-input" id="mTitle" required value="${esc(l.title || '')}">
       </div>
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Description</label>
-        <textarea class="admin-modal-textarea" id="mDesc" rows="5">${esc(l.description || '')}</textarea>
+        <label class="admin-modal-label" for="mDesc">Description</label>
+        <textarea class="admin-modal-textarea" id="mDesc" required rows="5">${esc(l.description || '')}</textarea>
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Category</label>
+        <label class="admin-modal-label" for="mCat">Category</label>
         <select class="admin-modal-select" id="mCat">
           ${CATEGORIES.filter(c => c).map(c => `<option value="${c}"${c === l.category ? ' selected' : ''}>${capitalize(c)}</option>`).join('')}
         </select>
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Subcategory</label>
+        <label class="admin-modal-label" for="mSubcat">Subcategory</label>
         <input class="admin-modal-input" id="mSubcat" value="${esc(l.subcategory || '')}">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Location</label>
+        <label class="admin-modal-label" for="mLocation">Location</label>
         <input class="admin-modal-input" id="mLocation" value="${esc(l.location || '')}">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Price</label>
+        <label class="admin-modal-label" for="mPrice">Price (optional)</label>
         <input class="admin-modal-input" id="mPrice" value="${esc(l.price || '')}">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Price Note</label>
+        <label class="admin-modal-label" for="mPriceNote">Price Note (optional)</label>
         <input class="admin-modal-input" id="mPriceNote" value="${esc(l.priceNote || '')}">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Availability</label>
+        <label class="admin-modal-label" for="mAvail">Availability (optional)</label>
         <input class="admin-modal-input" id="mAvail" value="${esc(l.availability || '')}">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Contact Phone</label>
+        <label class="admin-modal-label" for="mPhone">Contact Phone (optional)</label>
         <input class="admin-modal-input" id="mPhone" value="${esc(l.contactPhone || '')}">
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">External Link</label>
+        <label class="admin-modal-label" for="mLink">External Link (optional)</label>
         <input class="admin-modal-input" id="mLink" value="${esc(l.externalLink || '')}">
       </div>
     </div>
@@ -3666,21 +3870,21 @@ function discussionFormHtml(d: Partial<AdminDiscussion> = {}): string {
     ${d.id ? `<div class="admin-modal-meta">By ${esc(d.authorName)} · ${d.commentCount} comment${d.commentCount !== 1 ? 's' : ''} · ${fmtDate(d.createdAt)}</div>` : ''}
     <div class="admin-modal-grid">
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Title</label>
-        <input class="admin-modal-input" id="dTitle" maxlength="200" value="${esc(d.title || '')}">
+        <label class="admin-modal-label" for="dTitle">Title</label>
+        <input class="admin-modal-input" id="dTitle" required maxlength="200" value="${esc(d.title || '')}">
       </div>
       <div class="admin-modal-field admin-modal-full">
-        <label class="admin-modal-label">Body</label>
-        <textarea class="admin-modal-textarea" id="dBody" rows="8">${esc(d.body || '')}</textarea>
+        <label class="admin-modal-label" for="dBody">Body</label>
+        <textarea class="admin-modal-textarea" id="dBody" required rows="8">${esc(d.body || '')}</textarea>
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Category</label>
+        <label class="admin-modal-label" for="dCat">Category</label>
         <select class="admin-modal-select" id="dCat">
           ${discussionCategoryOptions(d.category || 'general')}
         </select>
       </div>
       <div class="admin-modal-field">
-        <label class="admin-modal-label">Tags (comma-separated)</label>
+        <label class="admin-modal-label" for="dTags">Tags (comma-separated) (optional)</label>
         <input class="admin-modal-input" id="dTags" value="${esc((d.tags || []).join(', '))}" placeholder="visa, boston, housing">
       </div>
     </div>
@@ -3724,22 +3928,22 @@ async function openEditDiscussion(id: string): Promise<void> {
    MODAL ENGINE
 ══════════════════════════════════════ */
 function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>) | null): void {
-  closeModal();
+  if (!closeModal()) return;
   const overlay = document.createElement('div');
   overlay.id = 'adminModalOverlay';
   overlay.className = 'admin-modal-overlay';
   const hasActions = onSave !== null;
   overlay.innerHTML = `
-    <div class="admin-modal" role="dialog" aria-modal="true">
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
       <div class="admin-modal-head">
-        <div class="admin-modal-title">${title}</div>
-        <button class="admin-modal-close" id="adminModalClose">×</button>
+        <div class="admin-modal-title" id="adminModalTitle">${title}</div>
+        <button class="admin-modal-close" id="adminModalClose" aria-label="Close form" type="button">×</button>
       </div>
-      <div class="admin-modal-error" id="adminModalError"></div>
+      <div class="admin-modal-error" id="adminModalError" role="alert" tabindex="-1"></div>
       ${bodyHtml}
       ${hasActions ? `<div class="admin-modal-actions">
         <button class="admin-btn admin-btn-ghost" id="adminModalCancel">Cancel</button>
-        <button class="admin-btn" id="adminModalSave" style="background:#E63946;color:#fff;border-color:#E63946;padding:8px 20px;font-size:13px">Save Changes</button>
+        <button class="admin-btn" id="adminModalSave" style="background:#E63946;color:#fff;border-color:#E63946;padding:8px 20px;font-size:13px">${title.startsWith('Create ') ? esc(title) : 'Save changes'}</button>
       </div>` : `<div class="admin-modal-actions">
         <button class="admin-btn admin-btn-ghost" id="adminModalCancel">Close</button>
       </div>`}
@@ -3747,28 +3951,47 @@ function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>
   `;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('show'));
-  document.getElementById('adminModalClose').addEventListener('click', closeModal);
-  document.getElementById('adminModalCancel').addEventListener('click', closeModal);
+  document.getElementById('adminModalClose').addEventListener('click', () => closeModal());
+  document.getElementById('adminModalCancel').addEventListener('click', () => closeModal());
   if (onSave) {
     document.getElementById('adminModalSave').addEventListener('click', async () => {
       const errEl = document.getElementById('adminModalError');
       const btn = document.getElementById('adminModalSave') as HTMLButtonElement | null;
       errEl.style.display = 'none';
+      const invalid = Array.from(overlay.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea')).find(field => field.willValidate && !field.checkValidity());
+      if (invalid) { invalid.reportValidity(); invalid.focus(); return; }
+      const actionLabel = btn.textContent;
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         await onSave();
-        closeModal();
+        closeModal(true);
         notify('Changes saved successfully.', 'success');
       }
       catch (err) {
         errEl.textContent = err.message; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Save Changes';
+        btn.disabled = false; btn.textContent = actionLabel;
+        errEl.focus();
         notify(err.message, 'error');
       }
     });
   }
 }
-function closeModal() { document.getElementById('adminModalOverlay')?.remove(); }
+function closeModal(saved = false): boolean {
+  if (_newsEditorState && !saved) {
+    if (_newsEditorState.saving || _newsEditorState.pending) {
+      notify('Please wait for the current upload or save to finish.', 'error');
+      return false;
+    }
+    if (newsDraftSnapshot() !== _newsEditorState.baseline) {
+      persistNewsDraft();
+      if (!window.confirm('Close this editor? Your unsaved draft will be kept in this tab for recovery.')) return false;
+    }
+  }
+  if (_newsEditorState) window.BiscoonNewsEditor?.destroy?.();
+  _newsEditorState = null;
+  document.getElementById('adminModalOverlay')?.remove();
+  return true;
+}
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
   if (e.key === '/' && !isTypingTarget(e.target as HTMLElement | null) && !document.getElementById('adminModalOverlay')) {
@@ -3790,8 +4013,11 @@ document.addEventListener('click', async e => {
   const navLink = (e.target as HTMLElement).closest<HTMLElement>('[data-view]');
   if (navLink && navLink.closest<HTMLElement>('.admin-nav')) { navigate(navLink.dataset.view); return; }
 
-  // Modal overlay close
-  if ((e.target as HTMLElement).id === 'adminModalOverlay') { closeModal(); return; }
+  // Keep the news composer open on backdrop clicks so writing is not discarded.
+  if ((e.target as HTMLElement).id === 'adminModalOverlay') {
+    if (!(e.target as HTMLElement).querySelector('.news-editor-shell')) closeModal();
+    return;
+  }
 
   // News body formatting — TipTap handles this in capture phase via BiscoonNewsEditor.
   // Keep a fallback only when the rich editor is not mounted.
@@ -4172,6 +4398,7 @@ document.addEventListener('click', async e => {
 
   // Logout
   if ((e.target as HTMLElement).closest<HTMLElement>('#adminLogout')) {
+    if (!closeModal()) return;
     localStorage.removeItem(ADMIN_TOKEN_KEY);
     localStorage.removeItem(ADMIN_SESSION_KEY);
     localStorage.removeItem(ADMIN_LAST_ACTIVITY_KEY);
@@ -4180,23 +4407,27 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('change', async e => {
-  if ((e.target as HTMLElement).closest<HTMLElement>('#newsMediaFiles')) {
+  if ((e.target as HTMLElement).closest<HTMLElement>('#newsMediaFiles, #newsInlineImages')) {
     const files = Array.from((e.target as HTMLInputElement).files || []);
-    try {
-      const additions = await Promise.all(files.map(async (file, index) => ({
-        id: `media-${Date.now()}-${index}`,
-        type: newsMediaTypeFromFile(file) as 'image' | 'video',
-        url: await readFileAsDataUrl(file) as string,
-        caption: '',
-        createdAt: new Date().toISOString(),
-      })));
-      _newsMediaDraft.push(...additions);
-      renderNewsMediaLibrary();
-      (e.target as HTMLInputElement).value = '';
-      notify(`${additions.length} media item${additions.length !== 1 ? 's' : ''} added.`, 'success');
-    } catch (err) {
-      notify(err.message, 'error');
-    }
+    if (!files.length) return;
+    const inline = (e.target as HTMLInputElement).id === 'newsInlineImages';
+    await runNewsMediaTask(async () => {
+      if (_newsMediaDraft.length + files.length > 24) throw new Error('A story can contain up to 24 media items.');
+      for (const file of files) {
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) throw new Error('Choose image or video files.');
+        if (file.type.startsWith('video/') && file.size > 18 * 1024 * 1024) throw new Error(`${file.name} is too large. Videos must be under 18 MB.`);
+      }
+      for (const file of files) {
+        const item = await uploadNewsMedia(file);
+        _newsMediaDraft.push(item);
+        if (inline) window.BiscoonNewsEditor?.insertMedia?.(item);
+        renderNewsMediaLibrary();
+        persistNewsDraft();
+      }
+      (document.getElementById('newsMediaLibrary')?.closest('details') as HTMLDetailsElement | null)?.setAttribute('open', '');
+      notify(`${files.length} media item${files.length !== 1 ? 's' : ''} ${inline ? 'inserted into your story' : 'added to the library'}.`, 'success');
+    });
+    (e.target as HTMLInputElement).value = '';
     return;
   }
 

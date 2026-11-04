@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 type LngLat = [number, number];
 
@@ -61,6 +61,7 @@ function initMap(shell: HTMLElement): void {
   const canvas = shell.querySelector<HTMLElement>('[data-map-canvas]');
   if (!canvas) return;
   injectCss();
+  maplibregl.setWorkerUrl(scriptRelativeUrl('../../vendor/maplibre/maplibre-gl-worker.mjs'));
   shell.dataset.mapReady = 'true';
   const location = shell.dataset.location || 'United States';
   const center = guessCoords(location);

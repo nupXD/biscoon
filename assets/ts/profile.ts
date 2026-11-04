@@ -424,7 +424,9 @@ function renderProfileListingEditForm(listing: ProfileListing): string {
       <div class="form-row--two">
         <div class="form-group">
           <label class="form-label" for="modalEditCategory">Category</label>
-          <input class="form-input" id="modalEditCategory" name="category" type="text" value="${escapeHtml(listing.category || '')}" required />
+          <select class="form-select" id="modalEditCategory" name="category" required>
+          ${Array.from(new Set([listing.category || '', 'jobs', 'housing', 'photography', 'marketplace', 'community', 'services', 'events', 'other'])).filter(Boolean).map(category => `<option value="${escapeHtml(category)}" ${category === listing.category ? 'selected' : ''}>${escapeHtml(category.charAt(0).toUpperCase() + category.slice(1))}</option>`).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label" for="modalEditSubcategory">Specific type</label>
