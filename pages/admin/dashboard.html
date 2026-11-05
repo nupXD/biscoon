@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="../../assets/apple-touch-icon.png"/>
 <link rel="stylesheet" href="../../assets/css/pages/admin/dashboard.css"/>
 <link rel="stylesheet" href="../../assets/vendor/photoswipe/photoswipe.css"/>
+<link rel="stylesheet" href="../../assets/css/pages/admin/workspace.css">
 <link rel="stylesheet" href="../../assets/css/forms.css">
 <script src="../../assets/js/plugins/form-guidance.js" defer></script>
 </head>
@@ -38,43 +39,46 @@
     </div>
 
     <nav class="admin-nav" id="adminNav">
-      <button class="admin-nav-link" data-view="dashboard">
-        <span class="admin-nav-icon">📊</span><span class="admin-nav-label">Dashboard</span>
+<button class="admin-nav-link" data-view="dashboard">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"/></svg></span><span class="admin-nav-label">Dashboard</span>
       </button>
-      <button class="admin-nav-link" data-view="users">
-        <span class="admin-nav-icon">👥</span><span class="admin-nav-label">Users</span>
+<div class="admin-nav-group" role="group" aria-label="Content"><div class="admin-nav-group-title">Content</div>
+<button class="admin-nav-link" data-view="listings">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18H5z M8 7h8 M8 12h8 M8 17h5"/></svg></span><span class="admin-nav-label">Listings</span>
       </button>
-      <button class="admin-nav-link" data-view="listings">
-        <span class="admin-nav-icon">📋</span><span class="admin-nav-label">Listings</span>
+<button class="admin-nav-link" data-view="events">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v16H4z M4 10h16 M8 3v4 M16 3v4"/></svg></span><span class="admin-nav-label">Events</span>
       </button>
-      <button class="admin-nav-link" data-view="events">
-        <span class="admin-nav-icon">🎉</span><span class="admin-nav-label">Events</span>
+<button class="admin-nav-link" data-view="news">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18v16H3z M6 7h5v5H6z M14 7h4 M14 11h4 M6 16h12"/></svg></span><span class="admin-nav-label">News</span>
       </button>
-      <button class="admin-nav-link" data-view="news">
-        <span class="admin-nav-icon">📰</span><span class="admin-nav-label">News</span>
+<button class="admin-nav-link" data-view="spotlight">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3z M10 9l5 3-5 3z"/></svg></span><span class="admin-nav-label">Spotlight</span>
+        <span class="admin-nav-hint">Homepage alerts</span>
       </button>
-      <button class="admin-nav-link" data-view="discussions">
-        <span class="admin-nav-icon">💬</span><span class="admin-nav-label">Discussions</span>
+<button class="admin-nav-link" data-view="announcements">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h5l12-6v16L8 14H3z M8 14l2 7"/></svg></span><span class="admin-nav-label">Announcements</span>
+      </button></div>
+<div class="admin-nav-group" role="group" aria-label="Community &amp; Moderation"><div class="admin-nav-group-title">Community &amp; Moderation</div>
+<button class="admin-nav-link" data-view="discussions">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18v13H8l-5 4z"/></svg></span><span class="admin-nav-label">Discussions</span>
       </button>
-      <button class="admin-nav-link" data-view="comments">
-        <span class="admin-nav-icon">🗨️</span><span class="admin-nav-label">Comments</span>
+<button class="admin-nav-link" data-view="comments">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H9l-5 4z M8 8h8 M8 12h5"/></svg></span><span class="admin-nav-label">Comments</span>
       </button>
-      <button class="admin-nav-link" data-view="reports">
-        <span class="admin-nav-icon">🚩</span><span class="admin-nav-label">Reports</span>
+<button class="admin-nav-link" data-view="reports">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3l14 2-3 5 3 5-14-2"/></svg></span><span class="admin-nav-label">Reports</span>
+      <span class="admin-nav-count" id="reportsNavCount" hidden></span></button></div>
+<div class="admin-nav-group" role="group" aria-label="Administration"><div class="admin-nav-group-title">Administration</div>
+<button class="admin-nav-link" data-view="users">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M18 8h4 M20 6v4"/></svg></span><span class="admin-nav-label">Users</span>
       </button>
-      <button class="admin-nav-link" data-view="spotlight">
-        <span class="admin-nav-icon">🎬</span><span class="admin-nav-label">Spotlight</span>
-        <span class="admin-nav-hint">Homepage hero</span>
+<button class="admin-nav-link" data-view="audit">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h5"/></svg></span><span class="admin-nav-label">Audit Logs</span>
       </button>
-      <button class="admin-nav-link" data-view="announcements">
-        <span class="admin-nav-icon">📢</span><span class="admin-nav-label">Announcements</span>
-      </button>
-      <button class="admin-nav-link" data-view="audit">
-        <span class="admin-nav-icon">🧾</span><span class="admin-nav-label">Audit Logs</span>
-      </button>
-      <button class="admin-nav-link" data-view="trash">
-        <span class="admin-nav-icon">🗑️</span><span class="admin-nav-label">Trash</span>
-      </button>
+<button class="admin-nav-link" data-view="trash">
+        <span class="admin-nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18 M9 6V3h6v3 M6 6l1 15h10l1-15 M10 10v7 M14 10v7"/></svg></span><span class="admin-nav-label">Trash</span>
+      </button></div>
     </nav>
 
     <div class="admin-sidebar-footer">

@@ -793,3 +793,24 @@ button,input,select,textarea{font:inherit}
 .news-full-preview-article .admin-news-body img,.news-full-preview-article .admin-news-body video{width:100%;max-height:520px;object-fit:contain}
 .news-full-preview-article .admin-news-body ul,.news-full-preview-article .admin-news-body ol{padding-left:24px}
 @media(max-width:640px){.news-full-preview-toolbar{flex-wrap:wrap;padding:12px 16px}.news-full-preview-article{padding:24px 18px}}
+
+/* Task-oriented admin navigation and restrained action hierarchy. */
+.admin-nav-group { display: flex; flex-direction: column; gap: 3px; margin-top: 16px; }
+.admin-nav-group[hidden], .admin-nav-link[hidden], .admin-nav-count[hidden] { display: none; }
+.admin-nav-group-title { padding: 0 12px 6px; color: #657185; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.admin-sidebar-collapsed .admin-nav-group-title { display: none; }
+.admin-nav-count { margin-left: auto; padding: 2px 7px; border-radius: 12px; background: #fce9eb; color: #a62634; font-size: 12px; font-variant-numeric: tabular-nums; }
+.admin-attention { padding: 20px 24px; margin-bottom: 24px; background: #fff; border: 1px solid #dce2eb; border-left: 3px solid #e63946; border-radius: 12px; }
+.admin-attention h2 { margin: 0 0 6px; font-size: 18px; color: #182236; }
+.admin-attention p { margin: 0 0 14px; color: #59677b; font-size: 14px; }
+.attention-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.admin-btn, .dash-action-btn { min-height: 40px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.admin-btn:focus-visible, .dash-action-btn:focus-visible, .admin-nav-link:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.admin-modal, .admin-confirm { overscroll-behavior: contain; }
+.admin-stat-icon { background: #f1f4f8; color: #526176; }
+@media(max-width:768px) { .admin-sidebar-collapsed .admin-nav-group-title { display: block; } .admin-attention { padding: 18px; } .admin-btn, .dash-action-btn { min-height: 44px; } }
+.admin-body > .skip-link { position: fixed; top: -60px; left: 12px; z-index: 10000; padding: 10px 16px; border-radius: 6px; background: #fff; color: #1d4ed8; }
+.admin-body > .skip-link:focus { top: 8px; }
+.admin-topbar-title { font-style: normal; }
+.admin-stat-card { border-left-color: #dce2eb; }
+.dash-see-all { color: #526176; }

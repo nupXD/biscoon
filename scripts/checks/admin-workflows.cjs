@@ -1,0 +1,61 @@
+const { chromium } = require('@playwright/test');
+const assert = require('node:assert/strict');
+(async () => {
+ const browser = await chromium.launch();
+ try { for (const width of [390,1440]) {
+  const page=await browser.newPage({viewport:{width,height:950}});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.addInitScript(()=>localStorage.setItem('biscoonAdminToken','test'));
+  await page.route('**/api/**',route=>{
+   const url=new URL(route.request().url());let data={total:0,page:1,pages:1,listings:[],news:[],users:[],discussions:[],reports:[],feed:[],announcements:[],summary:{all:0,draft:0,published:0,featured:0}};
+   if(url.pathname==='/api/auth/me')data={user:{id:'test',name:'Admin Test',role:'super-admin',permissions:[]}};
+   if(url.pathname==='/api/admin/stats')data={users:{total:0},listings:{total:0},news:{total:0},discussions:{total:0},byCategory:[],recentUsers:[],recentListings:[]};
+   if(url.pathname==='/api/admin/reports')data.total=url.searchParams.get('status')==='open'?3:2;
+   if(url.pathname==='/api/admin/news'){data.total=4; data.news=[{id:'preview-story',title:'Boston community opens a new welcome center for Nepali families',summary:'Local volunteers share housing resources, language support, and upcoming neighborhood events.',category:'community',status:'draft',featured:false}];}
+   if(url.pathname==='/api/admin/news/media-limits')data={maxRequestBytes:25000000};
+   return route.fulfill({contentType:'application/json',body:JSON.stringify(data)});
+  });
+  await page.goto('http://127.0.0.1:4173/pages/admin/dashboard.html?view=news&status=draft&search=Boston&page=2');
+  await page.waitForSelector('#newsSearch');
+  assert.equal(await page.locator('#newsSearch').inputValue(),'Boston');
+  await page.screenshot({path:`/tmp/biscoon-news-admin-${width}.png`,fullPage:true});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
+  await page.reload();await page.waitForSelector('#newsSearch');
+  assert.equal(await page.locator('#newsSearch').inputValue(),'Boston');
+  await page.evaluate(()=>navigate('events'));await page.waitForSelector('#eventSearch');
+  await page.goBack();await page.waitForSelector('#newsSearch');
+  assert.equal(await page.locator('#newsSearch').inputValue(),'Boston');
+  await page.evaluate(()=>openModal('Create Event',eventFormHtml(),async()=>{}));
+  await page.locator('#evTitle').fill('Unsaved event');
+  await page.waitForFunction(()=>getComputedStyle(document.getElementById('adminModalOverlay')).opacity === '1');
+  await page.screenshot({path:`/tmp/biscoon-admin-editor-${width}.png`,animations:'disabled'});
+  page.once('dialog',dialog=>dialog.dismiss());await page.locator('#adminModalCancel').click();
+  assert.equal(await page.locator('#evTitle').inputValue(),'Unsaved event');
+  await page.locator('#adminModalSave').focus();await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'adminModalClose');
+  page.once('dialog',dialog=>dialog.accept());await page.keyboard.press('Escape');
+  await page.waitForSelector('#adminModalOverlay',{state:'detached'});
+  assert.equal(await page.locator('#adminLayout').getAttribute('inert'),null);
+  await page.evaluate(()=>{window.confirmResult=null;confirmAction('Delete this item?',{tone:'danger'}).then(result=>window.confirmResult=result);});
+  assert(await page.locator('[data-confirm-cancel]').evaluate(el=>el===document.activeElement));
+  await page.keyboard.press('Escape');await page.waitForFunction(()=>window.confirmResult===false);
+  await page.waitForSelector('.admin-confirm-overlay',{state:'detached'});
+  await page.evaluate(()=>navigate('announcements'));await page.waitForSelector('#annTitle');
+  await page.locator('#annTitle').fill('Keep this draft');
+  page.once('dialog',dialog=>dialog.dismiss());await page.evaluate(()=>navigate('events'));
+  assert.equal(await page.locator('#annTitle').inputValue(),'Keep this draft');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.evaluate(()=>navigate('dashboard'));await page.waitForSelector('[data-attention="news"]');
+  assert.equal(await page.locator('#reportsNavCount').textContent(),'5');
+  assert.match(await page.locator('[data-attention="news"]').textContent(),/4 unpublished/);
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({path:`/tmp/biscoon-admin-${width}.png`,fullPage:true});
+  await page.locator('[data-create-discussion]').click();await page.waitForSelector('#dTitle');
+  await page.locator('#adminModalCancel').click();
+  await page.locator('[data-create-news]').click();await page.waitForSelector('#newsTitle');
+  await page.waitForFunction(()=>getComputedStyle(document.getElementById('adminModalOverlay')).opacity === '1');
+  await page.screenshot({path:`/tmp/biscoon-admin-news-editor-${width}.png`,animations:'disabled'});
+  assert.deepEqual(errors,[]);
+  await page.close(); console.log(`Admin workflows passed at ${width}px`);
+ }} finally {await browser.close();}
+})().catch(error=>{console.error(error);process.exit(1)});

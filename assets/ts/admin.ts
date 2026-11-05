@@ -156,6 +156,38 @@ let _view: string = '';
 let _newsMediaDraft: MediaDraft[] = [];
 let _newsEditorState: { key: string; baseline: string; saving: boolean; pending: boolean; maxRequestBytes: number } | null = null;
 
+let _modalBaseline = '';
+let _modalSaving = false;
+let _modalReturnFocus: HTMLElement | null = null;
+let _inlineBaseline = '';
+function inlineSnapshot(): string {
+  return JSON.stringify(Array.from(document.querySelectorAll<HTMLInputElement>('.admin-ann-form input, .admin-ann-form textarea, .admin-ann-form select, #spotTitle, #spotSubtitle, #spotBody, #spotImageUrl, #spotImageFile, #spotType, #spotBadgeText, #spotBadgeColor, #spotCtaText, #spotCtaUrl, #spotOrder, #spotStart, #spotEnd')).map(field => [field.id, field.value, field.checked]));
+}
+function allowInlineLeave(): boolean {
+  const busy = document.querySelector<HTMLButtonElement>('#spotSubmit, #annSubmit')?.disabled;
+  if (busy) { notify('Please wait for publishing to finish.', 'info'); return false; }
+  if (_inlineBaseline && inlineSnapshot() !== _inlineBaseline && !window.confirm('Discard your unsaved changes? Choose Cancel to keep editing.')) return false;
+  _inlineBaseline = '';
+  return true;
+}
+function modalSnapshot(): string {
+  return JSON.stringify(Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('#adminModalOverlay input, #adminModalOverlay textarea, #adminModalOverlay select')).map(field => [field.id, field.value, (field as HTMLInputElement).checked]));
+}
+function modalIsDirty(): boolean {
+  return !!document.getElementById('adminModalSave') && !_newsEditorState && modalSnapshot() !== _modalBaseline;
+}
+function trapDialogFocus(overlay: HTMLElement, onEscape: () => void): void {
+  overlay.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onEscape(); }
+    if (event.key !== 'Tab') return;
+    const items = Array.from(overlay.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex="0"]')).filter(el => !el.hasAttribute('disabled') && !el.closest('[inert]') && el.getClientRects().length);
+    const first = items[0], last = items[items.length - 1];
+    if (!first) { event.preventDefault(); return; }
+    if (event.shiftKey && (document.activeElement === first || !overlay.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && (document.activeElement === last || !overlay.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+  });
+}
+
 function newsDraftSnapshot(): string {
   window.BiscoonNewsEditor?.sync?.();
   const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value || '';
@@ -183,6 +215,7 @@ function persistNewsDraft(): void {
 }
 
 window.addEventListener('beforeunload', event => {
+  if (_modalSaving || modalIsDirty() || (_inlineBaseline && inlineSnapshot() !== _inlineBaseline)) { event.preventDefault(); event.returnValue = ''; }
   if (!_newsEditorState) return;
   persistNewsDraft();
   if (_newsEditorState.saving || _newsEditorState.pending || newsDraftSnapshot() !== _newsEditorState.baseline) {
@@ -211,6 +244,37 @@ const _s = {
   dashboard:     { range: 'all' as 'today' | '7d' | '30d' | 'all', updatedAt: 0 },
 };
 
+const workspaceDefaults = JSON.parse(JSON.stringify(_s));
+function writeWorkspace(push = false): void {
+  if (!_view) return;
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('view', _view);
+  for (const [key, value] of Object.entries(_s[_view] || {})) {
+    if (key !== 'updatedAt' && value !== '' && value !== workspaceDefaults[_view]?.[key]) url.searchParams.set(key, String(value));
+  }
+  if (url.href !== window.location.href) history[push ? 'pushState' : 'replaceState']({}, '', url);
+}
+function restoreWorkspace(): void {
+  const query = new URLSearchParams(window.location.search);
+  const candidate = query.get('view') || firstAccessibleView();
+  const view = canAccessView(candidate) && (Object.prototype.hasOwnProperty.call(workspaceDefaults, candidate) || candidate === 'trash') ? candidate : firstAccessibleView();
+  if (_s[view]) {
+    Object.assign(_s[view], workspaceDefaults[view]);
+    for (const key of Object.keys(_s[view])) {
+      const value = query.get(key);
+      if (value === null || key === 'updatedAt') continue;
+      _s[view][key] = key === 'page' ? Math.max(1, Math.min(100000, Number(value) || 1)) : value;
+    }
+  }
+  navigate(view, false);
+}
+window.addEventListener('popstate', () => {
+  if (!_me) return;
+  if (!closeModal() || !allowInlineLeave()) { writeWorkspace(true); return; }
+  restoreWorkspace();
+});
+
 let _dashRefreshTimer: ReturnType<typeof setInterval> | null = null;
 let _dashUpdatedTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -230,7 +294,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     _me = user;
     document.getElementById('adminName').textContent = `${_me.name} · ${roleLabel(_me.role)}`;
     syncNavVisibility();
-    navigate(firstAccessibleView());
+    restoreWorkspace();
+    void updateAttentionCounts();
   } catch {
     goLogin();
   }
@@ -294,14 +359,15 @@ const ADMIN_PERMISSION_DEFS = [
   { key: 'announcements', label: 'Announcements', description: 'Create, pause, activate, and delete site announcements.' },
 ];
 
-function navigate(view: string): void {
-  if (!closeModal()) return;
+function navigate(view: string, push = true): void {
+  if (!closeModal() || !allowInlineLeave()) return;
   if (!canAccessView(view)) {
     content('<div class="admin-error">You do not have permission to open this admin section.</div>');
     return;
   }
   stopDashboardAutoRefresh();
   _view = view;
+  writeWorkspace(push);
   document.querySelectorAll<HTMLElement>('.admin-nav-link').forEach(l =>
     l.classList.toggle('active', l.dataset.view === view));
   document.getElementById('viewTitle').textContent = VIEW_TITLES[view] || view;
@@ -320,6 +386,7 @@ function content(html: string): void {
   const el = document.getElementById('adminContent');
   if (!el) return;
   el.innerHTML = html;
+  _inlineBaseline = inlineSnapshot();
   el.classList.remove('admin-content-enter');
   void el.offsetWidth;
   el.classList.add('admin-content-enter');
@@ -354,6 +421,7 @@ function setupAdminShell(): void {
     const host = document.createElement('div');
     host.id = 'adminToastHost';
     host.className = 'admin-toast-host';
+    host.setAttribute('aria-live', 'polite');
     document.body.appendChild(host);
   }
 
@@ -546,6 +614,7 @@ function setupGlobalSearch(): void {
 }
 
 function refreshCurrentView(showToast: boolean = false): void {
+  if (!closeModal() || !allowInlineLeave()) return;
   const handlers = {
     dashboard: showDashboard,
     users: showUsers,
@@ -584,14 +653,18 @@ function notify(message: string, type: 'info' | 'success' | 'error' | 'warning' 
 
 function confirmAction(message: string, options: ConfirmOptions = {}): Promise<boolean> {
   return new Promise(resolve => {
+    const previousFocus = document.activeElement as HTMLElement;
+    const background = document.getElementById('adminModalOverlay') || document.getElementById('adminLayout');
+    const alreadyInert = background?.hasAttribute('inert');
+    background?.setAttribute('inert', '');
     const overlay = document.createElement('div');
     overlay.className = 'admin-confirm-overlay';
     const tone = options.tone === 'danger' ? 'danger' : 'primary';
     overlay.innerHTML = `
-      <div class="admin-confirm" role="dialog" aria-modal="true">
+      <div class="admin-confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="admin-confirm-icon admin-confirm-icon-${tone}">${tone === 'danger' ? '!' : '?'}</div>
         <div class="admin-confirm-body">
-          <div class="admin-confirm-title">${esc(options.title || 'Confirm action')}</div>
+          <div class="admin-confirm-title" id="confirmTitle">${esc(options.title || 'Confirm action')}</div>
           <div class="admin-confirm-message">${esc(message)}</div>
         </div>
         <div class="admin-confirm-actions">
@@ -600,9 +673,12 @@ function confirmAction(message: string, options: ConfirmOptions = {}): Promise<b
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    let finished = false;
     const finish = value => {
+      if (finished) return;
+      finished = true;
       overlay.classList.remove('show');
-      setTimeout(() => overlay.remove(), 160);
+      setTimeout(() => { overlay.remove(); if (!alreadyInert) background?.removeAttribute('inert'); previousFocus?.focus(); }, 160);
       resolve(value);
     };
     overlay.addEventListener('click', e => {
@@ -610,7 +686,8 @@ function confirmAction(message: string, options: ConfirmOptions = {}): Promise<b
       if ((e.target as HTMLElement).closest<HTMLElement>('[data-confirm-ok]')) finish(true);
     });
     requestAnimationFrame(() => overlay.classList.add('show'));
-    overlay.querySelector<HTMLElement>('[data-confirm-ok]')?.focus();
+    trapDialogFocus(overlay, () => finish(false));
+    overlay.querySelector<HTMLElement>('[data-confirm-cancel]')?.focus();
   });
 }
 
@@ -676,7 +753,11 @@ function firstAccessibleView(): string {
 function syncNavVisibility(): void {
   document.querySelectorAll<HTMLElement>('.admin-nav-link[data-view]').forEach(link => {
     link.hidden = !canAccessView(link.dataset.view);
+    const label = link.querySelector('.admin-nav-label')?.textContent || '';
+    link.setAttribute('aria-label', label);
+    link.title = label;
   });
+  document.querySelectorAll<HTMLElement>('.admin-nav-group').forEach(group => { group.hidden = !group.querySelector('.admin-nav-link:not([hidden])'); });
 }
 function permissionSummary(permissions: string[] = []): string {
   if (!permissions.length) return '<span class="admin-muted">No privileges</span>';
@@ -739,7 +820,7 @@ function stopDashboardAutoRefresh(): void {
 function startDashboardAutoRefresh(): void {
   stopDashboardAutoRefresh();
   _dashRefreshTimer = setInterval(() => {
-    if (_view !== 'dashboard' || document.hidden) return;
+    if (_view !== 'dashboard' || document.hidden || document.getElementById('adminModalOverlay') || document.querySelector('.admin-confirm-overlay')) return;
     showDashboard(true);
   }, 60000);
   _dashUpdatedTimer = setInterval(() => {
@@ -780,7 +861,28 @@ function animateStatValues(root: ParentNode = document): void {
   });
 }
 
+async function updateAttentionCounts(): Promise<void> {
+  const count = async (path: string) => { try { const data = await api(path); return Number(data.total || 0); } catch { return null; } };
+  const [open, reviewing, drafts] = await Promise.all([
+    hasAdminPermission('reports') ? count('/api/admin/reports?status=open&limit=1') : null,
+    hasAdminPermission('reports') ? count('/api/admin/reports?status=reviewing&limit=1') : null,
+    hasAdminPermission('news') ? count('/api/admin/news?status=draft&limit=1') : null,
+  ]);
+  const reports = open === null || reviewing === null ? null : open + reviewing;
+  const badge = document.getElementById('reportsNavCount');
+  if (badge) { badge.textContent = reports === null ? '' : String(reports); badge.hidden = reports === null; }
+  const host = document.getElementById('dashboardAttention');
+  if (host) {
+    host.innerHTML = `<div class="attention-intro"><div class="attention-heading">Community desk</div><h2>Needs attention</h2><p>Review community reports and finish unpublished stories.</p></div><div class="attention-actions">
+      ${hasAdminPermission('reports') ? `<button class="admin-btn admin-btn-ghost" data-attention="reports">${reports === null ? 'Reports unavailable — open reports' : `${open} open reports`}</button>` : ''}
+      ${hasAdminPermission('reports') && reviewing !== null ? `<button class="admin-btn admin-btn-ghost" data-attention="reviewing">${reviewing} reports in review</button>` : ''}
+      ${hasAdminPermission('news') ? `<button class="admin-btn admin-btn-ghost" data-attention="news">${drafts === null ? 'Draft count unavailable — open news' : `${drafts} unpublished drafts`}</button>` : ''}
+      </div>`;
+  }
+}
+
 async function showDashboard(soft = false): Promise<void> {
+  writeWorkspace();
   try {
     if (!soft) content(loadingState('Dashboard'));
     const range = _s.dashboard.range || 'all';
@@ -797,7 +899,7 @@ async function showDashboard(soft = false): Promise<void> {
     content(`
       <div class="dash-header">
         <div>
-          <div class="dash-greeting">Welcome back, ${esc(_me!.name.split(' ')[0])} 👋</div>
+          <div class="dash-greeting">Welcome back, ${esc(_me!.name.split(' ')[0])}</div>
           <div class="dash-updated" id="dashUpdatedAt">${formatUpdatedAgo(_s.dashboard.updatedAt)}</div>
         </div>
         <div class="dash-header-actions">
@@ -810,6 +912,7 @@ async function showDashboard(soft = false): Promise<void> {
         </div>
       </div>
 
+      ${(hasAdminPermission('reports') || hasAdminPermission('news')) ? '<section class="admin-attention" id="dashboardAttention" aria-live="polite">Loading items that need attention…</section>' : ''}
       <div class="dash-stat-grid">
         ${hasAdminPermission('users') ? statCard('👥', range === 'all' ? 'Total Users' : 'Users', s.users.total, s.users.thisWeek, s.users.today, 'blue', 'users', trendLabel) : ''}
         ${hasAdminPermission('listings') ? statCard('📋', range === 'all' ? 'Total Listings' : 'Listings', s.listings.total, s.listings.thisWeek, s.listings.today, 'green', 'listings', trendLabel) : ''}
@@ -818,14 +921,14 @@ async function showDashboard(soft = false): Promise<void> {
       </div>
 
       <div class="dash-quick-actions">
-        ${hasAdminPermission('users') ? '<button class="dash-action-btn" data-nav-to="users" data-user-kind="regular">👥 Regular Users</button>' : ''}
-        ${canManageStaff() ? '<button class="dash-action-btn" data-nav-to="users" data-user-kind="staff">🛡 Admin Users</button>' : ''}
-        ${hasAdminPermission('listings') ? '<button class="dash-action-btn" data-nav-to="listings">📋 Manage Listings</button>' : ''}
-        ${hasAdminPermission('news') ? '<button class="dash-action-btn" data-nav-to="news">📰 Publish News</button>' : ''}
-        ${hasAdminPermission('discussions') ? '<button class="dash-action-btn" data-nav-to="discussions">💬 Start Discussion</button>' : ''}
-        ${hasAdminPermission('comments') ? '<button class="dash-action-btn" data-nav-to="comments">🗨️ Review Comments</button>' : ''}
-        ${hasAdminPermission('announcements') ? '<button class="dash-action-btn dash-action-primary" data-nav-to="announcements">📢 Create Announcement</button>' : ''}
-        ${canManageStaff() ? '<button class="dash-action-btn" data-nav-to="audit">🧾 Audit Logs</button>' : ''}
+        ${hasAdminPermission('users') ? '<button class="dash-action-btn" data-nav-to="users" data-user-kind="regular">Regular Users</button>' : ''}
+        ${canManageStaff() ? '<button class="dash-action-btn" data-nav-to="users" data-user-kind="staff">Admin Users</button>' : ''}
+        ${hasAdminPermission('listings') ? '<button class="dash-action-btn" data-nav-to="listings">Manage Listings</button>' : ''}
+        ${hasAdminPermission('news') ? '<button class="dash-action-btn dash-action-primary" data-create-news>Publish News</button>' : ''}
+        ${hasAdminPermission('discussions') ? '<button class="dash-action-btn" data-create-discussion>Start Discussion</button>' : ''}
+        ${hasAdminPermission('comments') ? '<button class="dash-action-btn" data-nav-to="comments">Review Comments</button>' : ''}
+        ${hasAdminPermission('announcements') ? '<button class="dash-action-btn" data-nav-to="announcements">Create Announcement</button>' : ''}
+        ${canManageStaff() ? '<button class="dash-action-btn" data-nav-to="audit">Audit Logs</button>' : ''}
       </div>
 
       <div class="admin-two-col">
@@ -935,6 +1038,7 @@ async function showDashboard(soft = false): Promise<void> {
       });
     });
 
+    void updateAttentionCounts();
     document.querySelectorAll<HTMLElement>('[data-nav-to]').forEach(el => {
       const activate = () => {
         if (el.dataset.userKind) _s.users.kind = el.dataset.userKind;
@@ -993,11 +1097,11 @@ function statCard(icon: string, label: string, value: number, weekCount: number,
   const trendHtml = weekCount > 0
     ? `<span class="dash-trend-up">↑ ${weekCount} ${esc(trendLabel)}</span>`
     : `<span class="dash-trend-zero">No new ${esc(trendLabel)}</span>`;
-  const todayHtml = todayCount !== null
+  const todayHtml = todayCount != null
     ? ` · <span class="dash-today-val">${todayCount} today</span>`
     : '';
   return `<div class="admin-stat-card admin-stat-${color}${clickable ? ' dash-stat-clickable' : ''}"${clickable ? ` data-nav-to="${navTo}" tabindex="0" role="button"` : ''}>
-    <div class="admin-stat-icon">${icon}</div>
+    <div class="admin-stat-icon" aria-hidden="true">${document.querySelector(`.admin-nav-link[data-view="${navTo}"] .admin-nav-icon`)?.innerHTML || esc(icon)}</div>
     <div class="admin-stat-content">
       <div class="admin-stat-value" data-count-to="${Number(value) || 0}">0</div>
       <div class="admin-stat-label">${label}</div>
@@ -1224,6 +1328,7 @@ function bindSearch(id: string, onChange: (value: string) => void, delay = 350):
 ══════════════════════════════════════ */
 async function showUsers(page?: number): Promise<void> {
   if (page !== undefined) _s.users.page = page;
+  writeWorkspace();
   if (_s.users.kind === 'staff') {
     await showStaffUsers(_s.users.page);
     return;
@@ -1243,7 +1348,7 @@ async function showUsers(page?: number): Promise<void> {
         ${sectionStat('On this page', (data.users || []).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="userSearch" type="search" placeholder="Search name or email…" value="${esc(search)}">
+        <input class="admin-search" id="userSearch" aria-label="Search users" type="search" placeholder="Search name or email…" value="${esc(search)}">
         <span class="ix-count">${data.total.toLocaleString()} regular user${data.total !== 1 ? 's' : ''}</span>
       </div>
       <div class="admin-card ix-card">
@@ -1277,6 +1382,7 @@ async function showStaffUsers(page?: number): Promise<void> {
     return;
   }
   if (page !== undefined) _s.users.page = page;
+  writeWorkspace();
   const { page: p, search } = _s.users;
   try {
     const data = await api(`/api/admin/staff?${new URLSearchParams({ page: String(p), limit: String(20), search })}`);
@@ -1290,7 +1396,7 @@ async function showStaffUsers(page?: number): Promise<void> {
         ${sectionStat('On this page', (data.staff || []).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="userSearch" type="search" placeholder="Search admin users…" value="${esc(search)}">
+        <input class="admin-search" id="userSearch" aria-label="Search users" type="search" placeholder="Search admin users…" value="${esc(search)}">
         <span class="ix-count">${data.total.toLocaleString()} admin user${data.total !== 1 ? 's' : ''}</span>
       </div>
       <div class="admin-card ix-card">
@@ -1493,6 +1599,7 @@ function discussionCategoryOptions(selected: string = 'general'): string {
 
 async function showListings(page?: number): Promise<void> {
   if (page !== undefined) _s.listings.page = page;
+  writeWorkspace();
   const { page: p, category, search } = _s.listings;
   try {
     const data = await api(`/api/admin/listings?${new URLSearchParams({ page: String(p), limit: String(20), category, search })}`);
@@ -1504,8 +1611,8 @@ async function showListings(page?: number): Promise<void> {
         ${topCats.map(c => `<button type="button" class="ix-chip${category === c ? ' active' : ''}" data-listing-chip="${esc(c)}">${esc(capitalize(c))}</button>`).join('')}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="listingSearch" type="search" placeholder="Search listings…" value="${esc(search)}">
-        <select class="admin-select" id="listingCat">
+        <input class="admin-search" id="listingSearch" aria-label="Search listings" type="search" placeholder="Search listings…" value="${esc(search)}">
+        <select class="admin-select" id="listingCat" aria-label="Listing category">
           ${CATEGORIES.map(c => `<option value="${esc(c)}"${c === category ? ' selected' : ''}>${c ? capitalize(c) : 'All categories'}</option>`).join('')}
         </select>
         <span class="ix-count">${data.total.toLocaleString()} listing${data.total !== 1 ? 's' : ''}</span>
@@ -1548,6 +1655,7 @@ async function showListings(page?: number): Promise<void> {
 ══════════════════════════════════════ */
 async function showEvents(page?: number): Promise<void> {
   if (page !== undefined) _s.events.page = page;
+  writeWorkspace();
   const { page: p, search } = _s.events;
   try {
     const data = await api(`/api/admin/listings?${new URLSearchParams({ page: String(p), limit: String(20), category: 'events', search })}`);
@@ -1558,7 +1666,7 @@ async function showEvents(page?: number): Promise<void> {
         ${sectionStat('On this page', (data.listings || []).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="eventSearch" type="search" placeholder="Search events…" value="${esc(search)}">
+        <input class="admin-search" id="eventSearch" aria-label="Search events" type="search" placeholder="Search events…" value="${esc(search)}">
         <span class="ix-count">${data.total.toLocaleString()} event${data.total !== 1 ? 's' : ''}</span>
       </div>
       <div class="admin-card ix-card">
@@ -1599,7 +1707,7 @@ function eventFormHtml(ev: Partial<AdminListing> = {}): string {
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label" for="evDate">Date &amp; Time</label>
-        <input class="admin-modal-input" id="evDate" value="${esc(ev.availability || '')}" placeholder="e.g. Date, time, and time zone (e.g. May 10 · 5 PM ET)">
+        <input class="admin-modal-input" id="evDate" value="${esc(ev.availability || '')}" aria-describedby="evDateHelp" placeholder="e.g. May 10, 5 PM ET"><p id="evDateHelp" class="field-guidance">Include the date, start time, and time zone.</p>
       </div>
       <div class="admin-modal-field">
         <label class="admin-modal-label" for="evLocation">Location / Venue</label>
@@ -1924,7 +2032,7 @@ function newsFormHtml(article: Partial<AdminNews> = {}): string {
               <label class="admin-modal-label" for="newsTitle">Headline</label>
               <span class="news-char-count" id="newsTitleCount">${title.length}/180</span>
             </div>
-            <input class="admin-modal-input news-headline-input" id="newsTitle" aria-required="true" maxlength="180" value="${esc(title)}" placeholder="Write a clear, specific headline…">
+            <input class="admin-modal-input news-headline-input" id="newsTitle" aria-required="true" maxlength="180" value="${esc(title)}" placeholder="Write your headline…">
           </div>
           <div class="admin-modal-field admin-modal-full">
             <div class="news-field-head">
@@ -2271,6 +2379,7 @@ function wireNewsEditorInteractivity(): void {
 
 async function showNews(page?: number): Promise<void> {
   if (page !== undefined) _s.news.page = page;
+  writeWorkspace();
   const { page: p, status, category, search, featured, range } = _s.news;
   try {
     const params = new URLSearchParams({
@@ -2321,7 +2430,7 @@ async function showNews(page?: number): Promise<void> {
       </div>
 
       <div class="admin-toolbar news-toolbar">
-        <input class="admin-search" id="newsSearch" type="search" placeholder="Search news…" value="${esc(search)}">
+        <input class="admin-search" id="newsSearch" aria-label="Search news" type="search" placeholder="Search news…" value="${esc(search)}">
         <div class="admin-tabs" role="tablist">
           ${[
             { value: 'all', label: 'All' },
@@ -2329,7 +2438,7 @@ async function showNews(page?: number): Promise<void> {
             { value: 'draft', label: 'Draft' },
           ].map(tab => `<button type="button" class="admin-tab${status === tab.value ? ' active' : ''}" data-news-status-tab="${tab.value}">${tab.label}</button>`).join('')}
         </div>
-        <select class="admin-select" id="newsCategoryFilter">
+        <select class="admin-select" id="newsCategoryFilter" aria-label="News category">
           ${NEWS_CATEGORIES.map(value => `<option value="${esc(value)}"${value === category ? ' selected' : ''}>${value ? newsCategoryLabel(value) : 'All categories'}</option>`).join('')}
         </select>
         <button type="button" class="admin-btn${featured === 'yes' ? ' admin-btn-primary' : ' admin-btn-ghost'}" data-news-featured-toggle aria-pressed="${featured === 'yes'}">★ Featured only</button>
@@ -2357,10 +2466,10 @@ async function showNews(page?: number): Promise<void> {
                   ${article.summary ? `<div class="news-row-summary">${esc(article.summary)}</div>` : ''}
                 </div>
                 <div class="news-row-actions">
-                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-featured="${esc(article.id)}" data-featured="${article.featured ? '1' : '0'}" title="Toggle featured">${article.featured ? '★' : '☆'}</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-featured="${esc(article.id)}" data-featured="${article.featured ? '1' : '0'}" aria-pressed="${Boolean(article.featured)}" aria-label="${article.featured ? 'Remove from featured stories' : 'Feature this story'}">${article.featured ? '★ Featured' : '☆ Feature'}</button>
                   <button class="admin-btn admin-btn-ghost" type="button" data-toggle-news-status="${esc(article.id)}" data-status="${esc(article.status || 'draft')}" title="Toggle publish">${article.status === 'published' ? 'Unpublish' : 'Publish'}</button>
-                  <button class="admin-btn admin-btn-ghost" type="button" data-edit-news="${esc(article.id)}">✏️ Edit</button>
-                  <button class="admin-btn admin-btn-danger" type="button" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">🗑</button>
+                  <button class="admin-btn admin-btn-ghost" type="button" data-edit-news="${esc(article.id)}">Edit</button>
+                  <button class="admin-btn admin-btn-danger" type="button" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}" aria-label="Move story to trash">Trash</button>
                 </div>
               </article>
             `).join('')}
@@ -2441,8 +2550,8 @@ async function openViewNews(id: string): Promise<void> {
     <div class="admin-view-desc" style="margin-top:12px">${esc(article.summary)}</div>
     <div class="admin-news-body">${formatNewsBody(article.body, article.media || [])}</div>
     <div class="admin-view-actions">
-      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-news="${esc(article.id)}">✏️ Edit News</button>
-      <button class="admin-btn admin-btn-danger" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}">🗑 Delete</button>
+      <button class="admin-btn" style="background:#E63946;color:#fff;border-color:#E63946" data-edit-news="${esc(article.id)}">Edit News</button>
+      <button class="admin-btn admin-btn-danger" data-del-news="${esc(article.id)}" data-del-title="${esc(article.title)}" aria-label="Move story to trash">Trash Delete</button>
     </div>
   `, null);
 }
@@ -2500,6 +2609,7 @@ async function openNewsEditor(id: string = ''): Promise<void> {
 ══════════════════════════════════════ */
 async function showDiscussions(page?: number): Promise<void> {
   if (page !== undefined) _s.discussions.page = page;
+  writeWorkspace();
   const { page: p, search } = _s.discussions;
   try {
     const data = await api(`/api/admin/discussions?${new URLSearchParams({ page: String(p), limit: '20', search })}`);
@@ -2512,7 +2622,7 @@ async function showDiscussions(page?: number): Promise<void> {
         ${sectionStat('On this page', (data.discussions || []).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="discussionSearch" type="search" placeholder="Search discussions…" value="${esc(search)}">
+        <input class="admin-search" id="discussionSearch" aria-label="Search discussions" type="search" placeholder="Search discussions…" value="${esc(search)}">
         <span class="ix-count">${data.total.toLocaleString()} discussion${data.total !== 1 ? 's' : ''}</span>
       </div>
       <div class="admin-card ix-card">
@@ -2548,6 +2658,7 @@ async function showDiscussions(page?: number): Promise<void> {
 ══════════════════════════════════════ */
 async function showComments(page?: number): Promise<void> {
   if (page !== undefined) _s.comments.page = page;
+  writeWorkspace();
   const { page: p, type, search } = _s.comments;
   try {
     const data = await api(`/api/admin/comments?${new URLSearchParams({ page: String(p), limit: String(25), type, search })}`);
@@ -2564,7 +2675,7 @@ async function showComments(page?: number): Promise<void> {
         ${sectionStat('Discussions (page)', discussionCount, type === 'discussion')}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="commentSearch" type="search" placeholder="Search comments…" value="${esc(search)}">
+        <input class="admin-search" id="commentSearch" aria-label="Search comments" type="search" placeholder="Search comments…" value="${esc(search)}">
         <span class="ix-count">${data.total.toLocaleString()} comment${data.total !== 1 ? 's' : ''}</span>
       </div>
       <div class="admin-card ix-card">
@@ -2593,7 +2704,9 @@ async function showComments(page?: number): Promise<void> {
    REPORTS
 ══════════════════════════════════════ */
 async function showReports(page?: number): Promise<void> {
+  void updateAttentionCounts();
   if (page !== undefined) _s.reports.page = page;
+  writeWorkspace();
   const { page: p, status } = _s.reports;
   try {
     const data = await api(`/api/admin/reports?${new URLSearchParams({ page: String(p), limit: String(25), status })}`);
@@ -2684,6 +2797,7 @@ async function showAuditLogs(page?: number): Promise<void> {
     return;
   }
   if (page !== undefined) _s.audit.page = page;
+  writeWorkspace();
   const { page: p, action, targetType, search } = _s.audit;
 
   try {
@@ -2700,11 +2814,11 @@ async function showAuditLogs(page?: number): Promise<void> {
         ${sectionStat('On this page', (data.auditLogs || []).length)}
       </div>
       <div class="admin-toolbar">
-        <input class="admin-search" id="auditSearch" type="search" placeholder="Search actor, target, or action…" value="${esc(search)}">
-        <select class="admin-select" id="auditActionFilter">
+        <input class="admin-search" id="auditSearch" aria-label="Search audit logs" type="search" placeholder="Search actor, target, or action…" value="${esc(search)}">
+        <select class="admin-select" id="auditActionFilter" aria-label="Audit action">
           ${AUDIT_ACTIONS.map(value => `<option value="${esc(value)}"${value === action ? ' selected' : ''}>${value === 'all' ? 'All actions' : auditLabel(value)}</option>`).join('')}
         </select>
-        <select class="admin-select" id="auditTargetFilter">
+        <select class="admin-select" id="auditTargetFilter" aria-label="Record type">
           ${AUDIT_TARGET_TYPES.map(value => `<option value="${esc(value)}"${value === targetType ? ' selected' : ''}>${value === 'all' ? 'All targets' : auditLabel(value)}</option>`).join('')}
         </select>
         <span class="ix-count">${data.total.toLocaleString()} audit event${data.total !== 1 ? 's' : ''}</span>
@@ -2864,17 +2978,15 @@ function validateSpotlightFields(values: SpotlightFormValues, ids: SpotlightFiel
     errors.push({ id: ids.title, message: 'Headline should be at least 3 characters.' });
   }
 
-  if (!values.imageUrl) {
-    errors.push({ id: ids.image, message: 'Upload an image or paste an https:// URL.' });
-  } else if (!isSpotlightImageValue(values.imageUrl)) {
+  if (values.imageUrl && !isSpotlightImageValue(values.imageUrl)) {
     errors.push({ id: ids.image, message: 'Use a valid image URL (https://…) or upload a file.' });
   }
 
   if (values.ctaText && !values.ctaUrl) {
-    errors.push({ id: ids.ctaUrl, message: 'Add a link so the banner can open the ad, or clear the button label.' });
+    errors.push({ id: ids.ctaUrl, message: 'Add the event page, registration link, or destination visitors should open.' });
   }
-  if (values.ctaUrl && !isHttpUrl(values.ctaUrl)) {
-    errors.push({ id: ids.ctaUrl, message: 'Link must start with http:// or https://' });
+  if (values.ctaUrl && !isHttpUrl(values.ctaUrl) && !(values.ctaUrl.startsWith('/') && !values.ctaUrl.startsWith('//') && !values.ctaUrl.includes('\\'))) {
+    errors.push({ id: ids.ctaUrl, message: 'Use an https:// link or a Biscoon path starting with /.' });
   }
 
   if (!Number.isFinite(values.order) || values.order < 0 || !Number.isInteger(values.order)) {
@@ -2913,7 +3025,7 @@ function readSpotlightCreateValues(): SpotlightFormValues {
     badgeColor: (document.getElementById('spotBadgeColor') as HTMLInputElement)?.value.trim() || '',
     ctaText: (document.getElementById('spotCtaText') as HTMLInputElement)?.value.trim() || '',
     ctaUrl: (document.getElementById('spotCtaUrl') as HTMLInputElement)?.value.trim() || '',
-    type: (document.getElementById('spotType') as HTMLInputElement)?.value || 'ad',
+    type: (document.getElementById('spotType') as HTMLInputElement)?.value || 'event',
     order: Number((document.getElementById('spotOrder') as HTMLInputElement)?.value),
     startDate: (document.getElementById('spotStart') as HTMLInputElement)?.value || null,
     endDate: (document.getElementById('spotEnd') as HTMLInputElement)?.value || null,
@@ -2927,12 +3039,12 @@ function readSpotlightEditValues(fallbackImage = ''): SpotlightFormValues {
     title: (document.getElementById('editSpotTitle') as HTMLInputElement)?.value.trim() || '',
     subtitle: (document.getElementById('editSpotSubtitle') as HTMLInputElement)?.value.trim() || '',
     body: (document.getElementById('editSpotBody') as HTMLTextAreaElement)?.value.trim() || '',
-    imageUrl: fileData || urlInput?.value.trim() || fallbackImage || '',
+    imageUrl: fileData || (urlInput ? urlInput.value.trim() : fallbackImage) || '',
     badgeText: (document.getElementById('editSpotBadgeText') as HTMLInputElement)?.value.trim() || '',
     badgeColor: (document.getElementById('editSpotBadgeColor') as HTMLInputElement)?.value.trim() || '',
     ctaText: (document.getElementById('editSpotCtaText') as HTMLInputElement)?.value.trim() || '',
     ctaUrl: (document.getElementById('editSpotCtaUrl') as HTMLInputElement)?.value.trim() || '',
-    type: (document.getElementById('editSpotType') as HTMLInputElement)?.value || 'ad',
+    type: (document.getElementById('editSpotType') as HTMLInputElement)?.value || 'event',
     order: Number((document.getElementById('editSpotOrder') as HTMLInputElement)?.value),
     startDate: (document.getElementById('editSpotStart') as HTMLInputElement)?.value || null,
     endDate: (document.getElementById('editSpotEnd') as HTMLInputElement)?.value || null,
@@ -2940,29 +3052,7 @@ function readSpotlightEditValues(fallbackImage = ''): SpotlightFormValues {
 }
 
 function spotlightPreviewHtml(s: Partial<AdminSpotlight> = {}): string {
-  const typeLabels: Record<string, string> = { ad: 'Ad', event: 'Event', news: 'News', promo: 'Promo' };
-  const hasLink = Boolean((s.ctaUrl || '').trim());
-  const badge = s.badgeText
-    ? `<span class="admin-spot-preview-badge" style="background:${esc(s.badgeColor || '#E63946')}">${esc(s.badgeText)}</span>`
-    : `<span class="admin-spot-preview-badge admin-spot-preview-badge--type">${esc(typeLabels[s.type || 'ad'] || 'Ad')}</span>`;
-  const bg = s.imageUrl
-    ? `background-image:url("${esc(s.imageUrl).replace(/"/g, '%22')}")`
-    : 'background:linear-gradient(135deg,#1a2332,#3d4f66)';
-  const ctaLabel = (s.ctaText || '').trim() || (hasLink ? 'Learn more' : '');
-  return `
-    <div class="admin-spot-preview${hasLink ? ' admin-spot-preview--linked' : ''}" style="${bg}">
-      <div class="admin-spot-preview-overlay"></div>
-      <div class="admin-spot-preview-content">
-        ${badge}
-        <h3 class="admin-spot-preview-title">${esc(s.title || 'Your headline here')}</h3>
-        <p class="admin-spot-preview-sub">${esc(s.subtitle || 'Optional supporting line')}</p>
-        ${s.body ? `<p class="admin-spot-preview-body">${esc(s.body)}</p>` : ''}
-        ${ctaLabel
-          ? `<span class="admin-spot-preview-cta">${esc(ctaLabel)}</span>`
-          : '<span class="admin-spot-preview-cta admin-spot-preview-cta--ghost">Add a link to make this clickable</span>'}
-        ${hasLink ? '<span class="admin-spot-preview-clickhint">Clicking the banner opens the ad link</span>' : ''}
-      </div>
-    </div>`;
+  return `<div class="admin-event-preview">${s.imageUrl && isSpotlightImageValue(s.imageUrl) ? `<img class="admin-event-preview-art" src="${esc(s.imageUrl)}" alt="Event artwork">` : ''}<span class="admin-event-preview-label">${s.type === 'event' || !s.type ? 'Event spotlight' : 'Community spotlight'}</span>${s.badgeText ? `<span class="admin-badge admin-badge-red">${esc(s.badgeText)}</span>` : ''}<h3>${esc(s.title || 'Your event title')}</h3><p>${esc(s.subtitle || 'Date · Time · Location')}</p>${s.body ? `<p>${esc(s.body)}</p>` : ''}<strong>${esc(s.ctaText || 'View event')} →</strong><small>The entire alert opens your destination.</small></div>`;
 }
 
 function bindSpotlightComposer(): void {
@@ -2984,7 +3074,7 @@ function bindSpotlightComposer(): void {
       ctaText: (document.getElementById('spotCtaText') as HTMLInputElement)?.value.trim(),
       ctaUrl: (document.getElementById('spotCtaUrl') as HTMLInputElement)?.value.trim(),
       imageUrl,
-      type: (document.getElementById('spotType') as HTMLInputElement)?.value || 'ad',
+      type: (document.getElementById('spotType') as HTMLInputElement)?.value || 'event',
     });
   };
 
@@ -3154,14 +3244,14 @@ async function showSpotlights(): Promise<void> {
     const openComposer = spots.length === 0;
 
     content(`
-      ${sectionHero('Homepage Spotlight', 'These banners rotate in the homepage hero. Turn Live on so visitors see them.')}
+      ${sectionHero('Homepage Spotlight', 'A full-screen event spotlight welcomes visitors once per tab session. They can open the event or skip to the homepage.')}
       <div class="admin-spot-guide">
         <div class="admin-spot-guide-steps">
-          <div><strong>1</strong><span>Create a banner</span></div>
+          <div><strong>1</strong><span>Create an event alert</span></div>
           <div><strong>2</strong><span>Flip Live when ready</span></div>
           <div><strong>3</strong><span>Reorder with ↑ ↓</span></div>
         </div>
-        <p>You can publish <strong>multiple</strong> spotlights — live ones rotate in the homepage carousel. Add a link so visitors open the ad when they click the banner.</p>
+        <p>The first active event opens as a full-screen poster. Visitors can click it to open your destination or choose Skip this. Add the date, time and venue below; the visibility schedule controls when the spotlight is shown.</p>
       </div>
       <div class="ix-stat-grid">
         ${sectionStat('Total', spots.length, true)}
@@ -3170,7 +3260,7 @@ async function showSpotlights(): Promise<void> {
       </div>
 
       <div class="admin-spot-toolbar">
-        <input class="admin-ann-input admin-spot-search" id="spotSearch" type="search" placeholder="Search title, type, badge…" aria-label="Search spotlights">
+        <input class="admin-ann-input admin-spot-search" id="spotSearch" aria-label="Search spotlights" type="search" placeholder="Search title, type, badge…">
         <div class="admin-spot-filters" role="group" aria-label="Filter by status">
           <button type="button" class="admin-spot-filter is-active" data-status="all">All</button>
           <button type="button" class="admin-spot-filter" data-status="live">Live</button>
@@ -3182,7 +3272,7 @@ async function showSpotlights(): Promise<void> {
       <div class="admin-spot-composer" id="spotComposerPanel" ${openComposer ? '' : 'hidden'}>
         <div class="admin-spot-composer-grid" id="spotComposer">
           <div class="admin-ann-form admin-spot-form">
-            <div class="admin-ann-form-title">Create a homepage banner</div>
+            <div class="admin-ann-form-title">Create an event spotlight</div>
             <p class="admin-spot-form-hint">Fill the fields — the preview on the right updates as you type.</p>
             <div id="spotFormError" class="admin-spot-error" hidden></div>
             <div class="admin-ann-grid">
@@ -3192,15 +3282,15 @@ async function showSpotlights(): Promise<void> {
                 <div class="admin-spot-field-error" data-spot-field-error="spotTitle" hidden></div>
               </div>
               <div class="admin-ann-field admin-ann-full">
-                <label class="admin-ann-label" for="spotSubtitle">Supporting line</label>
-                <input class="admin-ann-input" id="spotSubtitle" placeholder="One short sentence under the headline" maxlength="200">
+                <label class="admin-ann-label" for="spotSubtitle">Date, time &amp; location</label>
+                <input class="admin-ann-input" id="spotSubtitle" placeholder="e.g. Nov 21 · 5 PM ET · Boston City Hall" maxlength="200">
               </div>
               <div class="admin-ann-field admin-ann-full">
                 <label class="admin-ann-label" for="spotBody">Extra details (optional)</label>
                 <textarea class="admin-ann-textarea" id="spotBody" placeholder="Shown under the supporting line" rows="2" maxlength="400"></textarea>
               </div>
               <div class="admin-ann-field admin-ann-full">
-                <label class="admin-ann-label">Banner image <span style="color:#E63946">*</span></label>
+                <label class="admin-ann-label">Event poster (optional)</label>
                 <div class="admin-spot-image-row">
                   <label class="admin-spot-file" id="spotFileLbl">📁 Choose image<input type="file" id="spotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden></label>
                   <input class="admin-ann-input" id="spotImageUrl" type="url" placeholder="or paste https:// image URL">
@@ -3212,11 +3302,11 @@ async function showSpotlights(): Promise<void> {
               </div>
               <div class="admin-ann-field admin-ann-full">
                 <label class="admin-ann-label" for="spotType">Type</label>
-                <input type="hidden" id="spotType" value="ad">
+                <input type="hidden" id="spotType" value="event">
                 <div class="admin-spot-types" role="group" aria-label="Spotlight type">
-                  <button type="button" class="admin-spot-type is-active" data-type="ad">📣 Ad</button>
-                  <button type="button" class="admin-spot-type" data-type="event">🎉 Event</button>
-                  <button type="button" class="admin-spot-type" data-type="news">📰 News</button>
+                  <button type="button" class="admin-spot-type" data-type="ad">📣 Ad</button>
+                  <button type="button" class="admin-spot-type is-active" data-type="event">🎉 Event</button>
+                  <button type="button" class="admin-spot-type" data-type="news">News</button>
                   <button type="button" class="admin-spot-type" data-type="promo">🔥 Promo</button>
                 </div>
               </div>
@@ -3235,25 +3325,25 @@ async function showSpotlights(): Promise<void> {
                 <div class="admin-spot-field-error" data-spot-field-error="spotCtaText" hidden></div>
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label" for="spotCtaUrl">Ad link — click banner opens this</label>
-                <input class="admin-ann-input" id="spotCtaUrl" type="url" placeholder="https://…" inputmode="url">
+                <label class="admin-ann-label" for="spotCtaUrl">Destination — where clicking the alert takes visitors</label>
+                <input class="admin-ann-input" id="spotCtaUrl" type="text" value="/pages/community/events.html" placeholder="https://… or /pages/post/detail.html?id=…" inputmode="url">
                 <div class="admin-spot-field-error" data-spot-field-error="spotCtaUrl" hidden></div>
               </div>
               <div class="admin-ann-field">
-                <label class="admin-ann-label" for="spotOrder">Carousel order</label>
+                <label class="admin-ann-label" for="spotOrder">Display order</label>
                 <input class="admin-ann-input" id="spotOrder" type="number" value="0" min="0" step="1" title="Lower numbers show first">
                 <div class="admin-spot-field-error" data-spot-field-error="spotOrder" hidden></div>
               </div>
               <div class="admin-ann-field admin-ann-full">
-                <label class="admin-ann-label">Schedule (optional)</label>
+                <label class="admin-ann-label">Alert visibility schedule (optional)</label>
                 <div class="admin-spot-schedule">
                   <div>
-                    <span class="admin-spot-schedule-label">Show from</span>
+                    <span class="admin-spot-schedule-label">Show alert from</span>
                     <input class="admin-ann-input" id="spotStart" type="datetime-local" aria-label="Show from">
                     <div class="admin-spot-field-error" data-spot-field-error="spotStart" hidden></div>
                   </div>
                   <div>
-                    <span class="admin-spot-schedule-label">Show until</span>
+                    <span class="admin-spot-schedule-label">Hide alert after</span>
                     <input class="admin-ann-input" id="spotEnd" type="datetime-local" aria-label="Show until">
                     <div class="admin-spot-field-error" data-spot-field-error="spotEnd" hidden></div>
                   </div>
@@ -3268,7 +3358,7 @@ async function showSpotlights(): Promise<void> {
           <aside class="admin-spot-preview-pane">
             <div class="admin-spot-preview-label">Homepage preview</div>
             <div id="spotLivePreview">${spotlightPreviewHtml({})}</div>
-            <p class="admin-spot-preview-note">Visitors see this in the homepage carousel. With a link, clicking the banner opens the ad. Multiple live spotlights rotate automatically.</p>
+            <p class="admin-spot-preview-note">The first event appears full-screen with a Skip this button. Upload a wide poster for the best result; artwork is displayed without cropping. Alerts remain on the homepage after skipping.</p>
           </aside>
         </div>
       </div>
@@ -3302,8 +3392,8 @@ async function showSpotlights(): Promise<void> {
                 <span class="admin-spot-switch-knob"></span>
                 <span class="admin-spot-switch-label">${s.active ? 'Live' : 'Paused'}</span>
               </button>
-              <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="-1" title="Show earlier in carousel">↑</button>
-              <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="1" title="Show later in carousel">↓</button>
+              <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="-1" title="Show earlier within its type">↑</button>
+              <button type="button" class="admin-btn admin-btn-ghost" data-move-spot="${esc(s.id)}" data-move-dir="1" title="Show later within its type">↓</button>
               <button type="button" class="admin-btn admin-btn-ghost" data-edit-spot="${esc(s.id)}">Edit</button>
               <button type="button" class="admin-btn admin-btn-danger" data-del-spot="${esc(s.id)}" title="Delete">🗑</button>
             </div>
@@ -3334,7 +3424,7 @@ async function openViewSpotlight(id: string): Promise<void> {
       <div class="admin-spot-view-meta">
         <div class="admin-spot-view-row"><span>Status</span>${badge(s.active ? 'Live on homepage' : 'Paused', s.active ? 'green' : 'gray')}</div>
         <div class="admin-spot-view-row"><span>Type</span>${badge(typeLabels[s.type || 'ad'] || 'Ad', typeColors[s.type || ''] || 'gray')}</div>
-        <div class="admin-spot-view-row"><span>Carousel order</span><strong>${s.order ?? 0}</strong></div>
+        <div class="admin-spot-view-row"><span>Display order</span><strong>${s.order ?? 0}</strong></div>
         ${s.ctaUrl ? `<div class="admin-spot-view-row"><span>Button link</span><a href="${esc(s.ctaUrl)}" target="_blank" rel="noopener">${esc(s.ctaUrl)}</a></div>` : ''}
         ${s.startDate ? `<div class="admin-spot-view-row"><span>Shows from</span>${fmtDate(s.startDate)}</div>` : ''}
         ${s.endDate ? `<div class="admin-spot-view-row"><span>Shows until</span>${fmtDate(s.endDate)}</div>` : ''}
@@ -3378,7 +3468,7 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           <div class="admin-spot-field-error" data-spot-field-error="editSpotTitle" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
-          <label class="admin-modal-label" for="editSpotSubtitle">Supporting line</label>
+          <label class="admin-modal-label" for="editSpotSubtitle">Date, time &amp; location</label>
           <input class="admin-modal-input" id="editSpotSubtitle" maxlength="200" value="${esc(s.subtitle || '')}">
         </div>
         <div class="admin-modal-field admin-modal-full">
@@ -3386,12 +3476,12 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           <textarea class="admin-modal-textarea" id="editSpotBody" rows="2" maxlength="400">${esc(s.body || '')}</textarea>
         </div>
         <div class="admin-modal-field admin-modal-full">
-          <label class="admin-modal-label">Banner image</label>
+          <label class="admin-modal-label">Event poster (optional)</label>
           <div class="admin-spot-image-row">
             <label class="admin-spot-file" id="editSpotFileLbl">📁 Choose image
               <input type="file" id="editSpotImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
             </label>
-            <input class="admin-modal-input" id="editSpotImageUrl" type="url" placeholder="or paste https:// URL" value="${esc(s.imageUrl || '')}">
+            <input class="admin-modal-input" id="editSpotImageUrl" type="text" placeholder="or paste https:// URL" value="${esc(s.imageUrl || '')}">
           </div>
           <div id="editSpotImgPreviewWrap" class="admin-spot-thumb-wrap" ${s.imageUrl ? '' : 'hidden'}>
             <img id="editSpotImgPreview" class="admin-spot-thumb" src="${esc(s.imageUrl || '')}" alt="Banner preview">
@@ -3404,7 +3494,7 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           <div class="admin-spot-types" id="editSpotTypes" role="group" aria-label="Spotlight type">
             <button type="button" class="admin-spot-type ${type === 'ad' ? 'is-active' : ''}" data-type="ad">📣 Ad</button>
             <button type="button" class="admin-spot-type ${type === 'event' ? 'is-active' : ''}" data-type="event">🎉 Event</button>
-            <button type="button" class="admin-spot-type ${type === 'news' ? 'is-active' : ''}" data-type="news">📰 News</button>
+            <button type="button" class="admin-spot-type ${type === 'news' ? 'is-active' : ''}" data-type="news">News</button>
             <button type="button" class="admin-spot-type ${type === 'promo' ? 'is-active' : ''}" data-type="promo">🔥 Promo</button>
           </div>
         </div>
@@ -3423,25 +3513,25 @@ function spotlightFormHtml(s: Partial<AdminSpotlight> = {}): string {
           <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaText" hidden></div>
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label" for="editSpotCtaUrl">Ad link — click banner opens this</label>
-          <input class="admin-modal-input" id="editSpotCtaUrl" type="url" value="${esc(s.ctaUrl || '')}" inputmode="url" placeholder="https://…">
+          <label class="admin-modal-label" for="editSpotCtaUrl">Destination — where clicking the alert takes visitors</label>
+          <input class="admin-modal-input" id="editSpotCtaUrl" type="text" value="${esc(s.ctaUrl || '')}" inputmode="url" placeholder="https://…">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotCtaUrl" hidden></div>
         </div>
         <div class="admin-modal-field">
-          <label class="admin-modal-label" for="editSpotOrder">Carousel order</label>
+          <label class="admin-modal-label" for="editSpotOrder">Display order</label>
           <input class="admin-modal-input" id="editSpotOrder" type="number" min="0" step="1" value="${s.order ?? 0}">
           <div class="admin-spot-field-error" data-spot-field-error="editSpotOrder" hidden></div>
         </div>
         <div class="admin-modal-field admin-modal-full">
-          <label class="admin-modal-label">Schedule (optional)</label>
+          <label class="admin-modal-label">Alert visibility schedule (optional)</label>
           <div class="admin-spot-schedule">
             <div>
-              <span class="admin-spot-schedule-label">Show from</span>
+              <span class="admin-spot-schedule-label">Show alert from</span>
               <input class="admin-modal-input" id="editSpotStart" type="datetime-local" value="${toDatetimeLocal(s.startDate)}" aria-label="Show from">
               <div class="admin-spot-field-error" data-spot-field-error="editSpotStart" hidden></div>
             </div>
             <div>
-              <span class="admin-spot-schedule-label">Show until</span>
+              <span class="admin-spot-schedule-label">Hide alert after</span>
               <input class="admin-modal-input" id="editSpotEnd" type="datetime-local" value="${toDatetimeLocal(s.endDate)}" aria-label="Show until">
               <div class="admin-spot-field-error" data-spot-field-error="editSpotEnd" hidden></div>
             </div>
@@ -3460,7 +3550,7 @@ async function openEditSpotlight(id: string): Promise<void> {
   try { s = await api(`/api/admin/spotlights/${encodeURIComponent(id)}`); }
   catch (err: any) { notify(err.message, 'error'); return; }
 
-  openModal(`Edit homepage banner`, spotlightFormHtml(s), async () => {
+  openModal(`Edit homepage alert`, spotlightFormHtml(s), async () => {
     const payload = readSpotlightEditValues(s.imageUrl || '');
     const firstError = validateSpotlightFields(payload, {
       title: 'editSpotTitle',
@@ -3498,7 +3588,7 @@ async function openEditSpotlight(id: string): Promise<void> {
         ctaText: (document.getElementById('editSpotCtaText') as HTMLInputElement)?.value.trim(),
         ctaUrl: (document.getElementById('editSpotCtaUrl') as HTMLInputElement)?.value.trim(),
         imageUrl: fileData || urlInput?.value.trim() || s.imageUrl || '',
-        type: (document.getElementById('editSpotType') as HTMLInputElement)?.value || 'ad',
+        type: (document.getElementById('editSpotType') as HTMLInputElement)?.value || 'event',
       });
     };
 
@@ -3560,12 +3650,15 @@ async function showAnnouncements(): Promise<void> {
     const data = await api('/api/admin/announcements');
     const typeColors = { info: 'blue', warning: 'red', success: 'green' };
 
-    const activeCount = (data.announcements || []).filter((a: any) => a.active).length;
+    const eligible = (data.announcements || []).filter((a: any) => a.active && (!a.expiresAt || new Date(a.expiresAt).getTime() > Date.now()));
+    const liveId = eligible[0]?.id;
+    const activeCount = eligible.length;
     content(`
-      ${sectionHero('Announcements', 'Site-wide banners for all users. Pause or activate instantly.')}
+      ${sectionHero('Announcements', 'The newest active, unexpired announcement appears below the public site header. Older active notices wait until it is paused or expires.')}
       <div class="ix-stat-grid">
         ${sectionStat('Total', (data.announcements || []).length, true)}
-        ${sectionStat('Live', activeCount)}
+        ${sectionStat('Showing publicly', liveId ? 1 : 0)}
+        ${sectionStat('Waiting', Math.max(0, activeCount - 1))}
         ${sectionStat('Inactive', (data.announcements || []).length - activeCount)}
       </div>
       <div class="admin-ann-form">
@@ -3606,7 +3699,7 @@ async function showAnnouncements(): Promise<void> {
               <div class="admin-ann-card-title">${esc(a.title)}</div>
               <div class="admin-ann-card-body">${esc(a.body)}</div>
               <div class="admin-ann-card-meta">
-                ${badge(a.active ? 'Live' : 'Inactive', a.active ? 'green' : 'gray')}
+                ${badge(a.expiresAt && new Date(a.expiresAt).getTime() <= Date.now() ? 'Expired' : a.id === liveId ? 'Showing publicly' : a.active ? 'Waiting' : 'Paused', a.id === liveId ? 'green' : 'gray')}
                 ${badge(a.type, typeColors[a.type] || 'gray')}
                 <span>By ${esc(a.createdBy || 'admin')}</span>
                 <span>${fmtDate(a.createdAt)}</span>
@@ -3645,7 +3738,7 @@ async function showAnnouncements(): Promise<void> {
       try {
         await api('/api/admin/announcements', {
           method: 'POST',
-          body: JSON.stringify({ title, body, type, expiresAt: expiry || null }),
+          body: JSON.stringify({ title, body, type, expiresAt: expiry ? new Date(expiry).toISOString() : null }),
         });
         showAnnouncements();
         notify('Announcement published.', 'success');
@@ -3929,6 +4022,7 @@ async function openEditDiscussion(id: string): Promise<void> {
 ══════════════════════════════════════ */
 function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>) | null): void {
   if (!closeModal()) return;
+  _modalReturnFocus = document.activeElement as HTMLElement;
   const overlay = document.createElement('div');
   overlay.id = 'adminModalOverlay';
   overlay.className = 'admin-modal-overlay';
@@ -3951,6 +4045,10 @@ function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>
   `;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('show'));
+  _modalBaseline = modalSnapshot();
+  trapDialogFocus(overlay, () => closeModal());
+  document.getElementById('adminLayout')?.setAttribute('inert', '');
+  requestAnimationFrame(() => overlay.querySelector<HTMLElement>('input:not([type=hidden]), textarea, select, #adminModalClose')?.focus());
   document.getElementById('adminModalClose').addEventListener('click', () => closeModal());
   document.getElementById('adminModalCancel').addEventListener('click', () => closeModal());
   if (onSave) {
@@ -3961,6 +4059,8 @@ function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>
       const invalid = Array.from(overlay.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea')).find(field => field.willValidate && !field.checkValidity());
       if (invalid) { invalid.reportValidity(); invalid.focus(); return; }
       const actionLabel = btn.textContent;
+      _modalSaving = true;
+      overlay.querySelector('.admin-modal')?.setAttribute('inert', '');
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         await onSave();
@@ -3972,11 +4072,17 @@ function openModal(title: string, bodyHtml: string, onSave: (() => Promise<void>
         btn.disabled = false; btn.textContent = actionLabel;
         errEl.focus();
         notify(err.message, 'error');
+      } finally {
+        _modalSaving = false;
+        overlay.querySelector('.admin-modal')?.removeAttribute('inert');
+        if (overlay.isConnected && errEl.style.display !== 'none') errEl.focus();
       }
     });
   }
 }
 function closeModal(saved = false): boolean {
+  if (!saved && _modalSaving) { notify('Please wait for saving to finish.', 'info'); return false; }
+  if (!saved && modalIsDirty() && !window.confirm('Discard your unsaved changes? Choose Cancel to keep editing.')) return false;
   if (_newsEditorState && !saved) {
     if (_newsEditorState.saving || _newsEditorState.pending) {
       notify('Please wait for the current upload or save to finish.', 'error');
@@ -3989,7 +4095,10 @@ function closeModal(saved = false): boolean {
   }
   if (_newsEditorState) window.BiscoonNewsEditor?.destroy?.();
   _newsEditorState = null;
-  document.getElementById('adminModalOverlay')?.remove();
+  const existed = document.getElementById('adminModalOverlay');
+  existed?.remove();
+  if (existed) { document.getElementById('adminLayout')?.removeAttribute('inert'); _modalReturnFocus?.focus(); }
+  _modalBaseline = '';
   return true;
 }
 document.addEventListener('keydown', e => {
@@ -4009,6 +4118,12 @@ document.addEventListener('keydown', e => {
 ══════════════════════════════════════ */
 document.addEventListener('click', async e => {
 
+  const attention = (e.target as HTMLElement).closest<HTMLElement>('[data-attention]');
+  if (attention) {
+    if (attention.dataset.attention === 'news') { _s.news.status = 'draft'; _s.news.page = 1; navigate('news'); }
+    else { _s.reports.status = attention.dataset.attention === 'reviewing' ? 'reviewing' : 'open'; _s.reports.page = 1; navigate('reports'); }
+    return;
+  }
   // Navigation
   const navLink = (e.target as HTMLElement).closest<HTMLElement>('[data-view]');
   if (navLink && navLink.closest<HTMLElement>('.admin-nav')) { navigate(navLink.dataset.view); return; }
@@ -4330,7 +4445,7 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Reorder spotlight in carousel
+  // Reorder spotlight alerts
   const moveSpot = (e.target as HTMLElement).closest<HTMLElement>('[data-move-spot]');
   if (moveSpot) {
     const id = moveSpot.dataset.moveSpot!;
@@ -4348,7 +4463,7 @@ document.addEventListener('click', async e => {
       await api(`/api/admin/spotlights/${encodeURIComponent(a.id)}`, { method: 'PUT', body: JSON.stringify({ order: orderB }) });
       await api(`/api/admin/spotlights/${encodeURIComponent(b.id)}`, { method: 'PUT', body: JSON.stringify({ order: orderA }) });
       showSpotlights();
-      notify('Carousel order updated.', 'success');
+      notify('Display order updated.', 'success');
     } catch (err: any) { notify(err.message, 'error'); }
     return;
   }
@@ -4398,7 +4513,7 @@ document.addEventListener('click', async e => {
 
   // Logout
   if ((e.target as HTMLElement).closest<HTMLElement>('#adminLogout')) {
-    if (!closeModal()) return;
+    if (!closeModal() || !allowInlineLeave()) return;
     localStorage.removeItem(ADMIN_TOKEN_KEY);
     localStorage.removeItem(ADMIN_SESSION_KEY);
     localStorage.removeItem(ADMIN_LAST_ACTIVITY_KEY);

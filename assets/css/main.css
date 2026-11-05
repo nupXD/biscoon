@@ -644,14 +644,26 @@ footer { background: var(--surface2); padding: 48px 40px 0; color: var(--gray-60
 .dropdown-menu .admin-panel-link:hover { background: var(--red-ultra) !important; }
 
 /* ── ANNOUNCEMENT BANNER ── */
-.site-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px; font-size: 13.5px; gap: 12px; line-height: 1.45; }
-.site-banner-info { background: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1e40af; }
-.site-banner-warning { background: #fffbeb; border-bottom: 1px solid #fcd34d; color: #92400e; }
-.site-banner-success { background: #f0fdf4; border-bottom: 1px solid #86efac; color: #14532d; }
-.site-banner-text { flex: 1; }
-.site-banner-title { font-weight: 600; margin-right: 6px; }
-.site-banner-close { background: none; border: none; cursor: pointer; font-size: 18px; opacity: 0.6; line-height: 1; padding: 2px 4px; color: inherit; }
-.site-banner-close:hover { opacity: 1; }
+.site-banner { --notice-ink: #273e66; --notice-bg: #f0f5fc; --notice-border: #d9e4f4; position: relative; width: 100%; min-width: 0; color: var(--notice-ink); background: var(--notice-bg); border-bottom: 1px solid var(--notice-border); }
+.site-banner-warning { --notice-ink: #744b0e; --notice-bg: #fff8e9; --notice-border: #eeddb5; }
+.site-banner-success { --notice-ink: #205a44; --notice-bg: #eef8f2; --notice-border: #d0e8da; }
+.site-banner-inner { max-width: 1280px; margin: 0 auto; padding: 16px 28px; display: flex; align-items: flex-start; gap: 14px; }
+.site-banner-icon { display: flex; padding: 10px; border: 1px solid var(--notice-border); background: rgb(255 255 255 / 65%); border-radius: 10px; flex-shrink: 0; }
+.site-banner-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.site-banner-label { display: block; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 4px; }
+.site-banner-title { display: block; margin: 0 0 3px; font-size: 15px; font-weight: 700; line-height: 1.45; }
+.site-banner-body { display: block; font-size: 13px; line-height: 1.65; white-space: pre-line; }
+.site-banner-close { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 40px; min-height: 40px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+.site-banner-close:hover { background: rgb(255 255 255 / 70%); border-color: var(--notice-border); }
+.site-banner-reopen { border: 0; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 600; min-height: 40px; cursor: pointer; }
+.site-banner-collapsed .site-banner-inner { padding-top: 0; padding-bottom: 0; }
+.site-banner button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media(max-width:640px) {
+ .site-banner-inner { padding: 14px 12px 14px 16px; gap: 10px; }
+ .site-banner-icon { display: none; }
+ .site-banner-title { font-size: 14px; }
+ .site-banner-close { min-width: 44px; min-height: 44px; }
+}
 
 /* ── WEATHER WIDGET ── */
 .weather-main { display: flex; align-items: center; gap: 14px; margin-bottom: 14px }

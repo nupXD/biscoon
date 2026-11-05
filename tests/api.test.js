@@ -708,3 +708,35 @@ test('proxy policy ignores spoofed forwarded headers unless the connecting proxy
   const proxied = await request(fixture).get('/').set('X-Forwarded-For', '198.51.100.99');
   expect(proxied.body.ip).toBe('198.51.100.99');
 });
+
+test('public announcements exclude expired, paused, and deleted records and disable caching', async () => {
+  const Announcement = require('../src/models/Announcement').default;
+  await Announcement.create([
+    {id:'visible',title:'Visible',body:'Public notice',active:true,createdAt:new Date('2020-01-01')},
+    {id:'expired',title:'Expired',body:'Old notice',active:true,expiresAt:new Date('2020-01-01')},
+    {id:'paused',title:'Paused',body:'Paused notice',active:false},
+    {id:'deleted',title:'Deleted',body:'Deleted notice',active:true,deleted:true},
+  ]);
+  const response = await request(app).get('/api/announcements/active');
+  expect(response.status).toBe(200);
+  expect(response.headers['cache-control']).toBe('no-store');
+  expect(response.body.announcement.id).toBe('visible');
+  await Announcement.updateOne({id:'visible'},{$set:{active:false}});
+  const empty = await request(app).get('/api/announcements/active');
+  expect(empty.body.announcement).toBeNull();
+});
+
+test('event spotlights can be published without artwork and honor visibility schedules', async () => {
+  const created = await request(app).post('/api/admin/spotlights').set('Authorization', `Bearer ${adminToken}`).send({title:'Community welcome event',subtitle:'Nov 21 · 5 PM ET · Boston',ctaUrl:'/pages/community/events.html'});
+  expect(created.status).toBe(200);
+  const Spot = require('../src/models/HeroSpotlight').default;
+  await Spot.create({id:'future-alert',title:'Future event',startDate:new Date(Date.now()+86400000)});
+  const active = await request(app).get('/api/spotlight/active');
+  expect(active.body.spotlights.map(s=>s.id)).toEqual([created.body.id]);
+  expect(active.body.spotlights[0].type).toBe('event');
+  expect(active.body.spotlights[0].imageUrl).toBe('');
+  await Spot.insertMany(Array.from({length:9},(_,i)=>({id:`promo-${i}`,title:'Promotion',type:'promo',order:-10})));
+  const prioritized = await request(app).get('/api/spotlight/active');
+  expect(prioritized.body.spotlights).toHaveLength(8);
+  expect(prioritized.body.spotlights[0].id).toBe(created.body.id);
+});

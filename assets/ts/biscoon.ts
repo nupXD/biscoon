@@ -968,131 +968,125 @@ async function loadWeather(): Promise<void> {
 }
 
 // ── Announcement banner ──
+let announcementRequestPending = false;
+let dismissedAnnouncement = '';
+const ANNOUNCEMENT_DISMISS_KEY = 'biscoonDismissedAnnouncement';
+function renderSiteAnnouncement(announcement: Announcement | null, restoreFocus = false): void {
+  const existing = document.getElementById('siteBanner');
+  if (!announcement) { existing?.remove(); return; }
+  const nav = document.querySelector('nav.site-header') || document.querySelector('nav');
+  if (!nav) return;
+  const collapsed = dismissedAnnouncement === announcement.id;
+  const signature = JSON.stringify([announcement, collapsed]);
+  if (existing?.dataset.signature === signature) return;
+  const banner = document.createElement('section');
+  const type = ['info', 'warning', 'success'].includes(announcement.type || '') ? announcement.type : 'info';
+  banner.className = `site-banner site-banner-${type}${collapsed ? ' site-banner-collapsed' : ''}`;
+  banner.id = 'siteBanner';
+  banner.dataset.signature = signature;
+  banner.setAttribute('aria-label', 'Site announcement');
+  banner.innerHTML = collapsed
+    ? '<div class="site-banner-inner"><button class="site-banner-reopen" type="button" aria-expanded="false">Show announcement <span aria-hidden="true">↓</span></button></div>'
+    : `<div class="site-banner-inner"><span class="site-banner-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h5l12-6v16L8 14H3z M8 14l2 7"/></svg></span><div class="site-banner-text" role="status"><span class="site-banner-label">${type === 'warning' ? 'Important notice' : 'Biscoon announcement'}</span><strong class="site-banner-title">${escapeHtml(announcement.title)}</strong><span class="site-banner-body">${escapeHtml(announcement.body)}</span></div><button type="button" class="site-banner-close" aria-label="Hide announcement" title="Hide announcement" aria-expanded="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>`;
+  if (existing) existing.replaceWith(banner);
+  else nav.insertAdjacentElement('afterend', banner);
+  const button = banner.querySelector<HTMLButtonElement>('button')!;
+  button.addEventListener('click', () => {
+    dismissedAnnouncement = collapsed ? '' : announcement.id;
+    try {
+      if (dismissedAnnouncement) sessionStorage.setItem(ANNOUNCEMENT_DISMISS_KEY, dismissedAnnouncement);
+      else sessionStorage.removeItem(ANNOUNCEMENT_DISMISS_KEY);
+    } catch { /* Use the in-memory preference when storage is unavailable. */ }
+    renderSiteAnnouncement(announcement, true);
+  });
+  if (restoreFocus) button.focus();
+}
 async function checkSiteAnnouncement(): Promise<void> {
-  const DISMISS_KEY = 'biscoonDismissedAnnouncement';
+  if (announcementRequestPending) return;
+  announcementRequestPending = true;
   try {
-    const res = await fetch('/api/announcements/active');
+    const res = await fetch(`${getApiBase()}/api/announcements/active`, { cache: 'no-store' });
     if (!res.ok) return;
     const { announcement }: { announcement: Announcement | null } = await res.json();
-    if (!announcement) return;
-    if (sessionStorage.getItem(DISMISS_KEY) === announcement.id) return;
-
-    const nav = document.querySelector('nav');
-    if (!nav) return;
-
-    const typeClass = `site-banner-${announcement.type || 'info'}`;
-    const banner = document.createElement('div');
-    banner.className = `site-banner ${typeClass}`;
-    banner.id = 'siteBanner';
-    banner.innerHTML = `
-      <span class="site-banner-text">
-        <span class="site-banner-title">${escapeHtml(announcement.title)}</span>${escapeHtml(announcement.body)}
-      </span>
-      <button class="site-banner-close" aria-label="Dismiss">×</button>`;
-    nav.insertAdjacentElement('afterend', banner);
-
-    (banner.querySelector('.site-banner-close') as HTMLButtonElement).addEventListener('click', () => {
-      sessionStorage.setItem(DISMISS_KEY, announcement.id);
-      banner.remove();
-    });
-  } catch (_) {}
+    try { dismissedAnnouncement = sessionStorage.getItem(ANNOUNCEMENT_DISMISS_KEY) || ''; } catch { /* Rendering must not depend on storage access. */ }
+    renderSiteAnnouncement(announcement);
+  } catch { /* Keep the current banner during temporary network failures. */ }
+  finally { announcementRequestPending = false; }
 }
+window.addEventListener('focus', () => { void checkSiteAnnouncement(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkSiteAnnouncement(); });
+setInterval(() => { if (!document.hidden) void checkSiteAnnouncement(); }, 60000);
 
 // ── Hero Spotlight ──
+let spotlightIntroShown = false;
+function showSpotlightIntro(spot: HeroSpotlight, href: string): void {
+  if (spotlightIntroShown || document.querySelector('dialog[open]')) return;
+  try { if (sessionStorage.getItem('biscoonSpotlightIntroSeen') === '1') return; } catch {}
+  spotlightIntroShown = true;
+  try { sessionStorage.setItem('biscoonSpotlightIntroSeen', '1'); } catch {}
+  const previousFocus = document.activeElement as HTMLElement | null;
+  const previousOverflow = document.body.style.overflow;
+  const dialog = document.createElement('dialog');
+  dialog.id = 'spotlightIntro';
+  dialog.className = 'spotlight-intro';
+  dialog.setAttribute('aria-labelledby', 'spotlightIntroTitle');
+  const image = spot.imageUrl && (/^https?:\/\//i.test(spot.imageUrl) || spot.imageUrl.startsWith('/uploads/')) ? spot.imageUrl : '';
+  dialog.innerHTML = `<div class="spotlight-intro-shell">
+    <div class="spotlight-intro-brand" aria-label="Biscoon">Bis<span>coon</span><small>.com</small></div>
+    <div class="spotlight-intro-bar"><span>${spot.type === 'event' ? 'Event spotlight' : spot.type === 'ad' ? 'Advertisement' : 'Community spotlight'}</span><button type="button" class="spotlight-intro-skip" autofocus>Skip this <span aria-hidden="true">→</span></button></div>
+    <a class="spotlight-intro-poster${image ? '' : ' spotlight-intro-poster--text'}" href="${escapeHtml(href)}" aria-label="${escapeHtml(spot.ctaText || 'View event')}: ${escapeHtml(spot.title)}">
+      ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(spot.title)}" fetchpriority="high">` : '<span class="spotlight-intro-kicker">You’re invited</span>'}
+      <div class="spotlight-intro-caption"><div>${spot.badgeText ? `<span class="spotlight-intro-badge">${escapeHtml(spot.badgeText)}</span>` : ''}<h1 id="spotlightIntroTitle">${escapeHtml(spot.title)}</h1>${spot.subtitle ? `<p>${escapeHtml(spot.subtitle)}</p>` : ''}${spot.body ? `<p>${escapeHtml(spot.body)}</p>` : ''}</div><span class="spotlight-intro-cta">${escapeHtml(spot.ctaText || 'View event')} <span aria-hidden="true">↗</span></span></div>
+    </a>
+  </div>`;
+  document.body.append(dialog);
+  document.body.style.overflow = 'hidden';
+  const cleanup = () => {
+    document.body.style.overflow = previousOverflow;
+    dialog.remove();
+    if (previousFocus && previousFocus !== document.body && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+    else document.getElementById('main')?.focus({ preventScroll: true });
+  };
+  dialog.addEventListener('close', cleanup, { once: true });
+  dialog.querySelector('.spotlight-intro-skip')!.addEventListener('click', () => dialog.close());
+  dialog.querySelector('a')!.addEventListener('click', event => {
+    const mouse = event as MouseEvent;
+    if (!mouse.ctrlKey && !mouse.metaKey && !mouse.shiftKey && mouse.button === 0) dialog.close();
+  });
+  dialog.querySelector('img')?.addEventListener('error', event => {
+    (event.target as HTMLImageElement).remove();
+    dialog.querySelector('a')?.classList.add('spotlight-intro-poster--text');
+  }, { once: true });
+  dialog.showModal();
+}
+
 async function initHeroSpotlight(): Promise<void> {
   const wrap = document.getElementById('heroSpotlightWrap');
   if (!wrap) return;
   try {
-    const res = await fetch(`${getApiBase()}/api/spotlight/active`);
+    const res = await fetch(`${getApiBase()}/api/spotlight/active`, { cache: 'no-store' });
     if (!res.ok) return;
     const { spotlights }: { spotlights: HeroSpotlight[] } = await res.json();
-    if (!spotlights || spotlights.length === 0) return;
-
-    // Accept uploads/ paths AND http/https URLs
-    const safeUrl = (u?: string): string => {
-      if (!u) return '';
-      if (u.startsWith('/uploads/')) return u;
-      try { const p = new URL(u); return (p.protocol === 'https:' || p.protocol === 'http:') ? u : ''; } catch { return ''; }
+    if (!spotlights?.length) { wrap.hidden = true; wrap.replaceChildren(); return; }
+    const destination = (value: string | undefined): string => {
+      if (!value) return '/pages/community/events.html';
+      if (value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')) return value;
+      try { const url = new URL(value); if (['http:', 'https:'].includes(url.protocol)) return url.href; } catch {}
+      return '/pages/community/events.html';
     };
-
-    const buildSlide = (s: HeroSpotlight): string => {
-      const img = safeUrl(s.imageUrl);
-      const link = safeUrl(s.ctaUrl);
-      const typeLabel = ({ ad: 'AD', event: 'EVENT', news: 'NEWS', promo: 'PROMO' })[s.type || 'ad'] || 'AD';
-      const badgeHtml = s.badgeText
-        ? `<span class="spotlight-badge" style="background:${escapeHtml(s.badgeColor || '#E63946')}">${escapeHtml(s.badgeText)}</span>`
-        : `<span class="spotlight-badge spotlight-badge-type">${typeLabel}</span>`;
-      const ctaLabel = (s.ctaText || '').trim() || (link ? 'Learn more' : '');
-      const ctaHtml = link
-        ? `<span class="spotlight-cta">${escapeHtml(ctaLabel)}</span>`
-        : '';
-      // Use double quotes for style attribute; encode only " in URL to avoid breaking attribute boundary
-      const cssImg = img.replace(/"/g, '%22');
-      const slideClass = `swiper-slide spotlight-slide${link ? ' spotlight-slide--linked' : ''}`;
-      const inner = `
-        <div class="spotlight-overlay"></div>
-        <div class="spotlight-content">
-          ${badgeHtml}
-          <h2 class="spotlight-title">${escapeHtml(s.title)}</h2>
-          ${s.subtitle ? `<p class="spotlight-subtitle">${escapeHtml(s.subtitle)}</p>` : ''}
-          ${s.body ? `<p class="spotlight-body">${escapeHtml(s.body)}</p>` : ''}
-          ${ctaHtml}
-        </div>`;
-      // Whole banner is clickable when a link is set (image + text area)
-      if (link) {
-        return `<a class="${slideClass}" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" style="background-image:url(&quot;${cssImg}&quot;)" aria-label="${escapeHtml(s.title || 'Open spotlight')}">${inner}</a>`;
-      }
-      return `<div class="${slideClass}" style="background-image:url(&quot;${cssImg}&quot;)">${inner}</div>`;
-    };
-
-    const swiperDiv = document.createElement('div');
-    swiperDiv.className = 'swiper spotlight-swiper';
-
-    const wrapperDiv = document.createElement('div');
-    wrapperDiv.className = 'swiper-wrapper';
-    wrapperDiv.innerHTML = spotlights.map(buildSlide).join('');
-    swiperDiv.appendChild(wrapperDiv);
-
-    if (spotlights.length > 1) {
-      const pag = document.createElement('div');
-      pag.className = 'swiper-pagination spotlight-pagination';
-      swiperDiv.appendChild(pag);
-
-      const hitPrev = document.createElement('button');
-      hitPrev.type = 'button';
-      hitPrev.className = 'spotlight-edge spotlight-edge--prev';
-      hitPrev.setAttribute('aria-label', 'Previous spotlight');
-      swiperDiv.appendChild(hitPrev);
-
-      const hitNext = document.createElement('button');
-      hitNext.type = 'button';
-      hitNext.className = 'spotlight-edge spotlight-edge--next';
-      hitNext.setAttribute('aria-label', 'Next spotlight');
-      swiperDiv.appendChild(hitNext);
-    }
-
-    wrap.appendChild(swiperDiv);
-
-    // Activate 2-column hero layout
-    document.getElementById('heroSection')?.classList.add('hero--has-spotlight');
-
-    const Swiper = (window as any).Swiper;
-    if (!Swiper) return;
-    const multi = spotlights.length > 1;
-    new Swiper('.spotlight-swiper', {
-      loop: multi,
-      autoplay: multi
-        ? { delay: 10000, disableOnInteraction: false, pauseOnMouseEnter: true }
-        : false,
-      speed: 700,
-      pagination: multi ? { el: '.spotlight-pagination', clickable: true } : false,
-      navigation: multi
-        ? { nextEl: '.spotlight-edge--next', prevEl: '.spotlight-edge--prev' }
-        : false,
-      keyboard: { enabled: true },
-      a11y: { enabled: true },
-    });
-  } catch (_) {}
+    const ordered = [...spotlights].sort((a, b) => Number(b.type === 'event') - Number(a.type === 'event'));
+    wrap.innerHTML = `<div class="event-alert-shell"><div class="event-alert-heading"><div><span class="event-alert-eyebrow">Biscoon spotlight</span><h2>Happening in our community</h2></div><a class="event-alert-all" href="/pages/community/events.html">All events <span aria-hidden="true">→</span></a></div><div class="event-alert-list">${ordered.map(spot => {
+      const href = destination(spot.ctaUrl);
+      const type = ({ event: 'Event', news: 'News', promo: 'Community offer', ad: 'Sponsored' })[spot.type || 'event'] || 'Spotlight';
+      const image = spot.imageUrl && (/^https?:\/\//i.test(spot.imageUrl) || spot.imageUrl.startsWith('/uploads/')) ? spot.imageUrl : '';
+      return `<a class="event-alert-card" href="${escapeHtml(href)}">
+        <div class="event-alert-art">${image ? `<img src="${escapeHtml(image)}" alt="" width="72" height="72" loading="lazy">` : '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h16v16H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3 M8 17h6"/></svg>'}</div>
+        <div class="event-alert-copy"><div class="event-alert-meta"><span>${escapeHtml(type)}</span>${spot.badgeText ? `<span class="event-alert-badge">${escapeHtml(spot.badgeText)}</span>` : ''}</div><h3>${escapeHtml(spot.title)}</h3>${spot.subtitle ? `<p class="event-alert-details">${escapeHtml(spot.subtitle)}</p>` : ''}${spot.body ? `<p class="event-alert-description">${escapeHtml(spot.body)}</p>` : ''}<span class="event-alert-action">${escapeHtml(spot.ctaText || (spot.type === 'event' ? 'View event' : 'View details'))} <span aria-hidden="true">→</span></span></div>
+      </a>`;
+    }).join('')}</div></div>`;
+    wrap.hidden = false;
+    showSpotlightIntro(ordered[0], destination(ordered[0].ctaUrl));
+  } catch { /* Keep the rest of the homepage available when spotlight is offline. */ }
 }
 
 // ── Auth functions ──

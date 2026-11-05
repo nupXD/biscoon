@@ -1360,9 +1360,8 @@ router.post('/spotlights', requirePermission('announcements'), async (req: Reque
   const req_ = req as AuthRequest;
   const { title, subtitle, body, badgeText, badgeColor, imageUrl, ctaText, ctaUrl, type, order, startDate, endDate } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: 'Title is required.' }); return; }
-  if (!imageUrl?.trim()) { res.status(400).json({ error: 'Image is required.' }); return; }
-  const savedImageUrl = await cleanSpotlightImage(imageUrl);
-  if (!savedImageUrl) { res.status(400).json({ error: 'Invalid image. Provide an https:// URL or upload a JPG/PNG/WebP under 5MB.' }); return; }
+  const savedImageUrl = imageUrl?.trim() ? await cleanSpotlightImage(imageUrl) : '';
+  if (imageUrl?.trim() && !savedImageUrl) { res.status(400).json({ error: 'Invalid image. Provide an https:// URL or upload a JPG/PNG/WebP under 5MB.' }); return; }
   const spot = new HeroSpotlight({
     id: uuidv4(),
     title: title.trim(),
@@ -1373,7 +1372,7 @@ router.post('/spotlights', requirePermission('announcements'), async (req: Reque
     imageUrl: savedImageUrl,
     ctaText: ctaText?.trim() || '',
     ctaUrl: ctaUrl?.trim() || '',
-    type: type || 'ad',
+    type: type || 'event',
     order: typeof order === 'number' ? order : 0,
     startDate: startDate ? new Date(startDate) : null,
     endDate: endDate ? new Date(endDate) : null,
@@ -1398,9 +1397,10 @@ router.put('/spotlights/:id', requirePermission('announcements'), async (req: Re
   if (body !== undefined) spot.body = body.trim();
   if (badgeText !== undefined) spot.badgeText = badgeText.trim();
   if (badgeColor !== undefined) spot.badgeColor = badgeColor.trim();
-  if (imageUrl?.trim()) {
-    const saved = await cleanSpotlightImage(imageUrl);
-    if (saved) spot.imageUrl = saved;
+  if (imageUrl !== undefined) {
+    const saved = imageUrl.trim() ? await cleanSpotlightImage(imageUrl) : '';
+    if (imageUrl.trim() && !saved) { res.status(400).json({ error: 'Invalid image URL or upload.' }); return; }
+    spot.imageUrl = saved;
   }
   if (ctaText !== undefined) spot.ctaText = ctaText.trim();
   if (ctaUrl !== undefined) spot.ctaUrl = ctaUrl.trim();

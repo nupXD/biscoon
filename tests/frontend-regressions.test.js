@@ -534,10 +534,11 @@ function newsDraftContext(overrides = {}) {
   const hint = { textContent: '' };
   const remove = jest.fn();
   const context = vm.createContext({
+    _modalSaving: false, _modalBaseline: '', _modalReturnFocus: null, modalIsDirty: () => false,
     _newsEditorState: state, newsDraftSnapshot: () => 'changed',
     window: { confirm: jest.fn(() => false), BiscoonNewsEditor: { destroy: jest.fn() } },
     sessionStorage: { setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
-    document: { getElementById: id => id === 'newsDraftStatus' ? hint : id === 'adminModalOverlay' ? { remove } : {} },
+    document: { getElementById: id => id === 'newsDraftStatus' ? hint : id === 'adminModalOverlay' ? { remove } : { removeAttribute() {} } },
     notify: jest.fn(), ...overrides,
   });
   for (const name of ['persistNewsDraft', 'closeModal']) {
@@ -582,7 +583,7 @@ test('news draft recovery restores the saved body and media without publishing i
     sessionStorage: { getItem: () => JSON.stringify(saved) },
     window: { confirm: () => true },
     openModal: jest.fn(), newsFormHtml: article => { shown = article; return ''; },
-    document: { getElementById: () => ({ remove() {}, querySelector: () => ({ classList: { add() {} } }) }) },
+    document: { getElementById: () => ({ remove() {}, removeAttribute() {}, querySelector: () => ({ classList: { add() {} } }) }) },
     requestAnimationFrame() {},
   });
   const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'openNewsEditor').getText(source);
